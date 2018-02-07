@@ -1,0 +1,420 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{615F9EDD-5E37-4F7A-AA90-24B2309B413B}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>Hdx2017</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+    <ProjectName>LobeliaEngine</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>Lobelia;C:\Users\2160149\Desktop\Hdx2017\Lobelia;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\include;Hdx;Header\Application;Header\Scene;ImGui\Header;C:\Users\2160149\AppData\Local\Programs\Python\Python35\include;C:\Users\2160149\AppData\Local\Programs\Python\Python35\include;Hdx\Header;C:\Program Files\Autodesk\FBX\FBX SDK\2017.1\include;C:\Effekseer\include;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\include;Header\Rain;Header;System;Effekseer\\include;Hdx;DirectXTex;ogg\\Header;XAudio2;xnamath</AdditionalIncludeDirectories>
+      <AdditionalOptions>/std:c++latest %(AdditionalOptions)</AdditionalOptions>
+      <MinimalRebuild>false</MinimalRebuild>
+      <StructMemberAlignment>Default</StructMemberAlignment>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>x3daudio\x86;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\lib\vs2015\x86\debug;C:\Users\2160149\AppData\Local\Programs\Python\Python35\libs;C:\Effekseer\lib\x86;C:\Program Files\Autodesk\FBX\FBX SDK\2017.1\lib\vs2015\x86\debug;DirectXTex\\x86;Effekseer\\lib\\x86;ogg\\Lib\\x86;x3daudio</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Effekseer\include;Lobelia;C:\Users\2160149\Desktop\Hdx2017\Lobelia;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\include;Header\Application;Header\Scene;ImGui\Header;C:\Users\2160149\AppData\Local\Programs\Python\Python35\include;XAudio2;System;ogg\Header;Hdx\;C:\Program Files\Autodesk\FBX\FBX SDK\2017.1\include;Header</AdditionalIncludeDirectories>
+      <AdditionalOptions>/std:c++latest %(AdditionalOptions)</AdditionalOptions>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <MinimalRebuild>false</MinimalRebuild>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <OpenMPSupport>false</OpenMPSupport>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Effekseer\lib\x64;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\lib\vs2015\x64\debug;C:\Users\2160149\AppData\Local\Programs\Python\Python35\libs;DirectXTex\x64;C:\Effekseer\lib\x64;C:\Program Files\Autodesk\FBX\FBX SDK\2017.1\lib\vs2015\x64\debug;x3daudio;ogg\Lib\x64\Debug;%(AdditionalLibraryDirectories)x3daudio\x64</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>Lobelia;C:\Users\2160149\Desktop\Hdx2017\Lobelia;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\include;Hdx;Header\Application;Header\Scene;ImGui\Header;C:\Users\2160149\AppData\Local\Programs\Python\Python35\include;Hdx\Header;C:\Program Files\Autodesk\FBX\FBX SDK\2017.1\include;C:\Effekseer\include;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\include;Header\Rain;System;Header;Effekseer\\include;Hdx;DirectXTex;ogg\\Header;XAudio2;xnamath</AdditionalIncludeDirectories>
+      <AdditionalOptions>/std:c++latest /MP %(AdditionalOptions)</AdditionalOptions>
+      <StructMemberAlignment>Default</StructMemberAlignment>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>x3daudio\x86;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\lib\vs2015\x86\release;C:\Users\2160149\AppData\Local\Programs\Python\Python35\libs;C:\Effekseer\lib\x86;DirectXTex\\x86;C:\Program Files\Autodesk\FBX\FBX SDK\2017.1\lib\vs2015\x86\release;ogg\\Lib\\x86;x3daudio;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>C:\Effekseer\include;Lobelia;C:\Users\2160149\Desktop\Hdx2017\Lobelia;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\include;Header\Application;Header\Scene;ImGui\Header;C:\Users\2160149\AppData\Local\Programs\Python\Python35\include;XAudio2;System;ogg\Header;Hdx\;C:\Program Files\Autodesk\FBX\FBX SDK\2017.1\include;Header</AdditionalIncludeDirectories>
+      <AdditionalOptions>/std:c++latest %(AdditionalOptions)</AdditionalOptions>
+      <EnableParallelCodeGeneration>true</EnableParallelCodeGeneration>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ObjectFileName>$(IntDir)</ObjectFileName>
+      <OpenMPSupport>false</OpenMPSupport>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Effekseer\lib\x64;C:\Program Files\Autodesk\FBX\FBX SDK\2016.1.1\lib\vs2015\x64\release;C:\Users\2160149\AppData\Local\Programs\Python\Python35\libs;DirectXTex\x64\;C:\Effekseer\lib\x64;C:\Program Files\Autodesk\FBX\FBX SDK\2017.1\lib\vs2015\x64\release;x3daudio;ogg\Lib\x64\Release;%(AdditionalLibraryDirectories)x3daudio\x64</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="ImGui\Source\imgui.cpp" />
+    <ClCompile Include="ImGui\Source\imgui_demo.cpp" />
+    <ClCompile Include="ImGui\Source\imgui_draw.cpp" />
+    <ClCompile Include="ImGui\Source\imgui_impl_dx11.cpp" />
+    <ClCompile Include="Lobelia\Application\Application.cpp" />
+    <ClCompile Include="Lobelia\Audio\Bank\Bank.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Audio\Device\Device.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)/Audio</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)/Audio</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)/Audio</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)/Audio</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Audio\Loader\Loader.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Audio\Voice\Voice.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Common\Utility\FileController\FileController.cpp" />
+    <ClCompile Include="Lobelia\Common\Utility\FilePathControl\FilePathControl.cpp" />
+    <ClCompile Include="Lobelia\Common\Window\Window.cpp" />
+    <ClCompile Include="Lobelia\Config\Config.cpp" />
+    <ClCompile Include="Lobelia\Console\Console.cpp" />
+    <ClCompile Include="Lobelia\Exception\Exception.cpp" />
+    <ClCompile Include="Lobelia\Game\Collision\Collision.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)/Lobleia/</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)/Lobelia/</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)/Lobelia/</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Game\DesignPattern\DesignPattern.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Game\GameObject\GameObject.cpp" />
+    <ClCompile Include="Lobelia\Graphics\BufferCreator\BufferCreator.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Device\Device.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)/Graphics</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)/Graphics</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)/Graphics</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)/Graphics</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Graphics\Direct2D\Direct2DSystem.cpp" />
+    <ClCompile Include="Lobelia\Graphics\DisplayInfo\DisplayInfo.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Environment\Environment.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Experimental\Effect.cpp" />
+    <ClCompile Include="Lobelia\Graphics\GPUParticle\GPUParticle.cpp" />
+    <ClCompile Include="Lobelia\Graphics\GraphicDriverInfo\GraphicDriverInfo.cpp" />
+    <ClCompile Include="Lobelia\Graphics\InputLayout\InputLayout.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Material\Material.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Model\Model.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Pipeline\Pipeline.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Renderer\Renderer.cpp" />
+    <ClCompile Include="Lobelia\Graphics\RenderState\RenderState.cpp" />
+    <ClCompile Include="Lobelia\Graphics\RenderTarget\RenderTarget.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Shader\Reflection\Reflection.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Shader\Shader.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Sprite\Sprite.cpp" />
+    <ClCompile Include="Lobelia\Graphics\SwapChain\SwapChain.cpp" />
+    <ClCompile Include="Lobelia\Graphics\SwapChain\ToneCurve\ToneCurve.cpp" />
+    <ClCompile Include="Lobelia\Graphics\Texture\Texture.cpp" />
+    <ClCompile Include="Lobelia\Graphics\View\View.cpp" />
+    <ClCompile Include="Lobelia\Input\Controller\DS4\DS4.cpp" />
+    <ClCompile Include="Lobelia\Input\DeviceList\Device.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)/Device</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)/Device</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)/Device</ObjectFileName>
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)/Device</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Input\DeviceList\DeviceManager.cpp" />
+    <ClCompile Include="Lobelia\Input\Keyboard\Keyboard.cpp" />
+    <ClCompile Include="Lobelia\Input\Mouse\Mouse.cpp" />
+    <ClCompile Include="Lobelia\Lobelia.cpp">
+      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)/Lobelia/</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Movie\Movie.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Network\Network.cpp" />
+    <ClCompile Include="Lobelia\XML\XML.cpp" />
+    <ClCompile Include="Source\Scene\SceneMain.cpp" />
+    <ClCompile Include="System\WinMain.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Header\Scene\SceneMain.hpp" />
+    <ClInclude Include="ImGui\Header\imconfig.h" />
+    <ClInclude Include="ImGui\Header\imgui.h" />
+    <ClInclude Include="ImGui\Header\imgui_impl_dx11.h" />
+    <ClInclude Include="ImGui\Header\imgui_internal.h" />
+    <ClInclude Include="ImGui\Header\stb_rect_pack.h" />
+    <ClInclude Include="ImGui\Header\stb_textedit.h" />
+    <ClInclude Include="ImGui\Header\stb_truetype.h" />
+    <ClInclude Include="Lobelia\Application\Application.hpp" />
+    <ClInclude Include="Lobelia\Audio\Bank\Bank.hpp" />
+    <ClInclude Include="Lobelia\Audio\Device\Device.hpp" />
+    <ClInclude Include="Lobelia\Audio\Loader\Loader.hpp" />
+    <ClInclude Include="Lobelia\Audio\Voice\Voice.hpp" />
+    <ClInclude Include="Lobelia\Common\Common.hpp" />
+    <ClInclude Include="Lobelia\Common\Define\Define.hpp" />
+    <ClInclude Include="Lobelia\Common\Literal\Literal.hpp" />
+    <ClInclude Include="Lobelia\Common\Timer\Timer.h" />
+    <ClInclude Include="Lobelia\Common\Utility\Color.hpp" />
+    <ClInclude Include="Lobelia\Common\Utility\FileController\FileController.hpp" />
+    <ClInclude Include="Lobelia\Common\Utility\FilePathControl\FilePathControl.hpp" />
+    <ClInclude Include="Lobelia\Common\Utility\ResourceBank\ResourceBank.hpp" />
+    <ClInclude Include="Lobelia\Common\Utility\Singleton.hpp" />
+    <ClInclude Include="Lobelia\Common\Utility\Utility.hpp" />
+    <ClInclude Include="Lobelia\Common\Window\Window.h" />
+    <ClInclude Include="Lobelia\Config\Config.hpp" />
+    <ClInclude Include="Lobelia\Console\Console.hpp" />
+    <ClInclude Include="Lobelia\Exception\Exception.hpp" />
+    <ClInclude Include="Lobelia\Game\Collision\Collision.hpp" />
+    <ClInclude Include="Lobelia\Game\DesignPattern\DesignPattern.hpp" />
+    <ClInclude Include="Lobelia\Game\GameObject\GameObject.hpp" />
+    <ClInclude Include="Lobelia\Game\Ranking.hpp" />
+    <ClInclude Include="Lobelia\Game\SelectModule.hpp" />
+    <ClInclude Include="Lobelia\Game\StringView.hpp" />
+    <ClInclude Include="Lobelia\Graphics\BufferCreator\BufferCreator.h" />
+    <ClInclude Include="Lobelia\Graphics\ConstantBuffer\ConstantBuffer.hpp" />
+    <ClInclude Include="Lobelia\Graphics\ConstantBuffer\ShaderStageList.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Device\Device.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Direct2D\Direct2DSystem.hpp" />
+    <ClInclude Include="Lobelia\Graphics\DisplayInfo\DisplayInfo.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Environment\Environment.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Experimental\Effect.hpp" />
+    <ClInclude Include="Lobelia\Graphics\GPUParticle\GPUParticle.hpp" />
+    <ClInclude Include="Lobelia\Graphics\GraphicDriverInfo\GraphicDriverInfo.hpp" />
+    <ClInclude Include="Lobelia\Graphics\InputLayout\InputLayout.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Material\Material.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Mesh\Mesh.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Model\Model.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Origin\Origin.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Pipeline\Pipeline.hpp" />
+    <ClInclude Include="Lobelia\Graphics\RenderableObject\RenderableObject.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Renderer\Renderer.hpp" />
+    <ClInclude Include="Lobelia\Graphics\RenderState\RenderState.hpp" />
+    <ClInclude Include="Lobelia\Graphics\RenderTarget\RenderTarget.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Shader\Reflection\Reflection.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Shader\Shader.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Shader\ShaderBank.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Sprite\Sprite.hpp" />
+    <ClInclude Include="Lobelia\Graphics\SwapChain\SwapChain.hpp" />
+    <ClInclude Include="Lobelia\Graphics\SwapChain\ToneCurve\ToneCurve.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Texture\Texture.hpp" />
+    <ClInclude Include="Lobelia\Graphics\Transform\Transform.hpp" />
+    <ClInclude Include="Lobelia\Graphics\View\View.hpp" />
+    <ClInclude Include="Lobelia\Input\Controller\DS4\DS4.hpp" />
+    <ClInclude Include="Lobelia\Input\Data\Data.hpp" />
+    <ClInclude Include="Lobelia\Input\DeviceList\Device.hpp" />
+    <ClInclude Include="Lobelia\Input\DeviceList\DeviceManager.hpp" />
+    <ClInclude Include="Lobelia\Input\Keyboard\Keyboard.hpp" />
+    <ClInclude Include="Lobelia\Input\Mouse\Mouse.hpp" />
+    <ClInclude Include="Lobelia\Lobelia.hpp" />
+    <ClInclude Include="Lobelia\Math\Math.hpp" />
+    <ClInclude Include="Lobelia\Movie\Movie.hpp" />
+    <ClInclude Include="Lobelia\Network\Network.hpp" />
+    <ClInclude Include="Lobelia\Scene\Scene.hpp" />
+    <ClInclude Include="Lobelia\XML\XML.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Data\ShaderFile\2D\Header2D.hlsli" />
+    <None Include="Data\ShaderFile\3D\Header3D.hlsli" />
+    <None Include="Data\ShaderFile\Common\Common.hlsli" />
+    <None Include="Data\ShaderFile\GPUParticle\GPUParticleDefine.hlsli" />
+    <None Include="Data\ShaderFile\Header.hlsli" />
+    <None Include="Lobelia\Application\Application.inl" />
+    <None Include="Lobelia\Common\Timer\Timer.inl" />
+    <None Include="Lobelia\Common\Utility\FileController\FileController.inl" />
+    <None Include="Lobelia\Common\Utility\ResourceBank\ResourceBank.inl" />
+    <None Include="Lobelia\Common\Window\Window.inl" />
+    <None Include="Lobelia\Graphics\ConstantBuffer\ConstantBuffer.inl" />
+    <None Include="Lobelia\Graphics\Mesh\Mesh.inl" />
+    <None Include="Lobelia\Graphics\Origin\Origin.inl" />
+    <None Include="Lobelia\Graphics\Shader\ShaderBank.inl" />
+    <None Include="Lobelia\Input\DeviceList\DeviceManager.inl" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Data\ShaderFile\2D\PS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\2D\User.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">RasterScroll</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">RasterScroll</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\2D\VS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Main2D</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Main2D</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\PS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\VS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Main3DNoSkin</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Main3DNoSkin</EntryPointName>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\GPUParticle\GPUParticle.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Data\Icon\resource.rc" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
