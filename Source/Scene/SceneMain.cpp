@@ -11,7 +11,7 @@
 
 namespace Lobelia::Game {
 	//midiのノート番号を引数で渡すと、その周波数が返ってきます
-	float GetMIDIHz(int note) {
+	float CalcMIDIHz(int note) {
 		return 440.0f * f_cast(pow(2.0, (s_cast<double>(note) - 69.0) / 12.0f));
 	}
 	SceneMain::SceneMain() :view(std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize())) {
@@ -25,11 +25,14 @@ namespace Lobelia::Game {
 		buffer.source = new BYTE[sizeof(short)*buffer.format.nAvgBytesPerSec];
 		buffer.size = sizeof(short)*buffer.format.nAvgBytesPerSec;
 		short* temp = r_cast<short*>(buffer.source);
-		float hz = GetMIDIHz(69);
+		//ラ
+		float hz = CalcMIDIHz(69);
 		for (int i = 0; i < buffer.size / sizeof(short); i++) {
 			//音の波形のサイズは-32767.0~32767.0までなので、それを超えると波形がラリる可能性がある
 			//https://drumimicopy.com/audio-frequency/
-			temp[i] = s_cast<short>(32767.0*sinf(2.0f*PI* hz *i / s_cast<double>(buffer.format.nSamplesPerSec)));
+			temp[i] = s_cast<short>(32767.0f*sinf(2.0f*PI* hz *s_cast<float>(i) / s_cast<float>(buffer.format.nSamplesPerSec)));
+			//万に一つも超えることはないだろうが念のためクリッピング処理
+			temp[i] = std::clamp(i_cast(temp[i]), -32767, 32767);
 		}
 		Audio::EffectVoice::DisableEffect(0);
 		Audio::SourceVoice voice(buffer);

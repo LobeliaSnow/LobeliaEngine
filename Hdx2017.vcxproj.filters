@@ -685,4 +685,9 @@
       <Filter>Data\ShaderFile\3D</Filter>
     </FxCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Xml Include="Data\Config\Config.xml">
+      <Filter>リソース ファイル</Filter>
+    </Xml>
+  </ItemGroup>
 </Project>

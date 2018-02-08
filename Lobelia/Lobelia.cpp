@@ -107,6 +107,8 @@ namespace Lobelia {
 	void Bootup() {
 		srand(s_cast<unsigned>(time(NULL)));
 		if (FAILED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)))STRICT_THROW("COMの初期化に失敗しました");
+		XMLSystem::Initialize();
+		Config::LoadSetting("Data/Config/Config.xml");
 		//グラフィックドライバ周り
 		/*Graphics::GraphicDriverInfoList::Bootup();
 		int driverCount = Graphics::GraphicDriverInfoList::GetGraphicDriverCount();
@@ -135,7 +137,6 @@ namespace Lobelia {
 		CreateStencilStatePreset();
 		Network::System::Startup();
 		Network::SocketList::Initialize();
-		XMLSystem::Initialize();
 
 		Graphics::SpriteRenderer::Initialize();
 		Lobelia::Graphics::Environment::GetInstance()->SetAmbientColor(0xFFFFFFFF);

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+  <!-- アプリ関連 -->
+  <application>
+    <!-- アンチエイリアス -->
+    <msaa>
+      <count>1</count>
+      <quality>0</quality>
+    </msaa>
+    <!-- システム情報を表示するか否か -->
+    <sys_visible>1</sys_visible>
+    <!-- アプリ更新FPS -->
+    <fps>60.0</fps>
+    <!-- 表示位置 -->
+    <state_pos>
+      <x>0</x>
+      <y>0</y>
+    </state_pos>
+    <!-- 表示サイズ -->
+    <state_size>
+      <x>200</x>
+      <y>120</y>
+    </state_size>
+  </application>
+  <!-- デバッグコンソール関連 -->
+  <console>
+    <!-- アクティブ状態 -->
+    <active>1</active>
+    <!-- インフォメーションコンソールの表示 -->
+    <info_visible>1</info_visible>
+    <!-- ログコンソールの表示 -->
+    <log_visible>1</log_visible>
+    <!-- コマンドコンソールの表示 -->
+    <command_visible>1</command_visible>
+    <!-- プロセス更新処理のアクティブ状態 -->
+    <process_update>1</process_update>
+    <!-- 変数監視のアクティブ状態 -->
+    <var_analyze>1</var_analyze>
+    <!-- 変数監視のインターバル -->
+    <var_analyze_domain>1.0</var_analyze_domain>
+    <!-- インフォメーションコンソールの位置 -->
+    <info_pos>
+      <x>0</x>
+      <y>120</y>
+    </info_pos>
+    <!-- インフォメーションコンソールのサイズ -->
+    <info_size>
+      <x>200</x>
+      <y>200</y>
+    </info_size>
+    <!-- ログコンソールの位置 -->
+    <log_pos>
+      <x>640</x>
+      <y>620</y>
+    </log_pos>
+    <!-- ログコンソールのサイズ -->
+    <log_size>
+      <x>640</x>
+      <y>100</y>
+    </log_size>
+    <!-- コマンドコンソールの位置 -->
+    <command_pos>
+      <x>0</x>
+      <y>320</y>
+    </command_pos>
+    <!-- コマンドコンソールのサイズ -->
+    <command_size>
+      <x>200</x>
+      <y>200</y>
+    </command_size>
+    <!-- 先頭ログの色 -->
+    <log_first_color>
+      <red>0</red>
+      <green>255</green>
+      <blue>0</blue>
+    </log_first_color>
+    <!-- そのほかのログの色 -->
+    <log_other_color>
+      <red>255</red>
+      <green>255</green>
+      <blue>255</blue>
+    </log_other_color>
+    <!-- ログの保存件数 -->
+    <log_count>100</log_count>
+  </console>
+</config>

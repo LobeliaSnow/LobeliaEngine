@@ -85,6 +85,7 @@ namespace Lobelia {
 		void SetLog(const std::string& log);
 		void Clear();
 		void UpdateAndRender();
+		bool Save(const char* file_path);
 	};
 	//入力中一致するワードを候補として表示するのあり
 	class CommandConsole {
@@ -298,6 +299,19 @@ namespace Lobelia {
 		ImGui::End();
 		ImGui::GetStyle().Colors[ImGuiCol_Text] = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 	}
+	//現在取得できる過去ログの末尾から順に保存します
+	bool LogConsole::Save(const char* file_path) {
+		Utility::FileController fc;
+		fc.Open(file_path, Utility::FileController::OpenMode::Write);
+		if (!fc.IsOpen())return false;
+		int i = 0;
+		for (auto& log = logs.rbegin(); log != logs.rend();log++) {
+			fc.Print("%d行目: %s\n", i, log->c_str());
+			i++;
+		}
+		fc.Close();
+		return true;
+	}
 
 	CommandConsole::CommandConsole(const char* name, const Math::Vector2& pos, const Math::Vector2& size) :name(name), pos(pos), size(size), command("") {
 		CommandRegister("change fps", HostConsole::ExeStyle::ALWAYS, [&]() {
@@ -385,9 +399,9 @@ namespace Lobelia {
 	HostConsole::HostConsole() = default;
 	HostConsole::~HostConsole() = default;
 
-	bool HostConsole::IsActive() { 
+	bool HostConsole::IsActive() {
 #ifdef USE_IMGUI_AND_CONSOLE
-		return Config::GetRefPreference().consoleOption.active; 
+		return Config::GetRefPreference().consoleOption.active;
 #else
 		return false;
 #endif
@@ -406,6 +420,15 @@ namespace Lobelia {
 		Utility::SafeNew(&commander, "Command Console", option.commandPos, option.commandSize);
 		commander->CommandRegister("clear log", HostConsole::ExeStyle::BUTTON, [this]() {logs->Clear(); return true; });
 		information->SetupAnalaysis();
+		//ログ保存機能をコマンドに追加
+		CommandRegister("save log", HostConsole::ExeStyle::ALWAYS, [&]() {
+			static char filePath[256] = "log.txt";
+			ImGui::InputText("", filePath, 256);
+			if (ImGui::Button("command execute")) {
+				return logs->Save(filePath);
+			}
+			return false;
+		});
 #endif
 	}
 	void HostConsole::Shutdown() {
@@ -472,7 +495,7 @@ namespace Lobelia {
 
 	void HostConsole::SetLog(const std::string& log) {
 #ifdef USE_IMGUI_AND_CONSOLE
-		logs->SetLog(log); 
+		logs->SetLog(log);
 #endif
 	}
 	bool HostConsole::CommandRegister(const char* cmd, ExeStyle style, const std::function<bool()>& exe) {
@@ -521,7 +544,7 @@ namespace Lobelia {
 		if (!log.empty())logs->SetLog(log);
 #endif
 	}
-	void HostConsole::UpdateProcess() { 
+	void HostConsole::UpdateProcess() {
 #ifdef USE_IMGUI_AND_CONSOLE
 		if (Config::GetRefPreference().consoleOption.processUpdate)commander->UpdateProcess();
 #endif
