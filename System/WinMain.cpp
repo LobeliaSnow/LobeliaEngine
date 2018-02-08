@@ -68,7 +68,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, PSTR, int) {
 		Lobelia::Config::GetRefPreference().applicationOption.systemVisible = false;
 #endif
 #endif
-		Lobelia::Graphics::BlumePhongRenderer::Setting(Lobelia::Application::GetInstance()->GetWindow()->GetSize());
 		wp = Lobelia::Application::GetInstance()->Run();
 		Lobelia::Application::GetInstance()->Shutdown();
 		Lobelia::Graphics::EffekseerWrapper::Release();

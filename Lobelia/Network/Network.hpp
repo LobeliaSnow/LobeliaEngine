@@ -20,13 +20,13 @@ namespace Lobelia::Network {
 	private:
 		static const int SDKVersion = 2;
 		//‚à‚¤‚¿‚å‚¢‰½‚Æ‚©‚µ‚È‚¯‚ê‚Î
-		static constexpr const u_short PORT = 9305;
+		static constexpr u_short PORT = 9305;
 	private:
 		static WSADATA wsaData;
 	public:
 		static int Startup();
 		static int Cleanup();
-		static constexpr const u_short GetPort() { return PORT; }
+		static constexpr u_short GetPort() { return PORT; }
 	};
 	class Address {
 		friend class Socket;

@@ -685,9 +685,4 @@
       <Filter>Data\ShaderFile\3D</Filter>
     </FxCompile>
   </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Data\Icon\resource.rc">
-      <Filter>リソース ファイル</Filter>
-    </ResourceCompile>
-  </ItemGroup>
 </Project>

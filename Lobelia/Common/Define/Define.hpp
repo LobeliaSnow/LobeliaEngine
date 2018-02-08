@@ -1,7 +1,7 @@
 #pragma once
 #define LOBELIA_ENGINE "LobeliaEngine"
 #define ENGINE_VERSION LOBELIA_ENGINE
-#define APPLICATION_NAME "Flow of Strategy"
+#define APPLICATION_NAME "LobeliaEngine"
 
 #ifdef _DEBUG
 #define USE_IMGUI_AND_CONSOLE
@@ -9,41 +9,23 @@
 
 //デフォルトのシェーダーの登録名
 //VS
-#define D_VS2D "VS2D"
-#define D_VS2D_BATCH "VS2DINST"
 #define D_VS3D_S "VS3D"
 #define D_VS3D_D "VS3DS"
 #define D_VS3D_IS "VS3DSINST"
 #define D_VS3D_ID "VS3DDINST"
 
 //PS
-#define D_PS2D "PS2D"
 #define D_PS3D "PS3D"
 
 //デフォルトパイプラインの登録名
-#define D_PIPE2D_S "Default2DSprite"
-#define D_PIPE2D_BATCH "Default2DBatch"
 #define D_PIPE3D_S "Default3D"
 #define D_PIPE3D_D "Default3DSkin"
 #define D_PIPE3D_IS "Default3DInstNoSkin"
 #define D_PIPE3D_ID "Default3DInst"
 
-//インスタンス名...シェーダーのクラス名と同じである必要があり
-#define D_PS2D_INAME_TEX "TextureColor"
-#define D_PS2D_INAME_COLOR "VertexColor"
-#define D_PS2D_INAME_INVTEX "InvertTextureColor"
-#define D_PS2D_INAME_GRAYSTEX "GrayscaleTextureColor"
-#define D_PS2D_INAME_SEPIATEX  "SepiaTextureColor"
-
 #define D_PS3D_INAME_LAMBERT "Lambert"
 #define D_PS3D_INAME_LAMBERT_FOG "Fog"
 #define D_PS3D_INAME_PHONG "Phong"
-
-#define D_PS2D_INS_TEX_ID 0
-#define D_PS2D_INS_COL_ID 1
-#define D_PS2D_INS_INVTEX_ID 2
-#define D_PS2D_INS_GRAYTEX_ID 3
-#define D_PS2D_INS_SEPIATEX_ID 4
 
 #define D_PS3D_INS_LAMB_ID 0
 #define D_PS3D_INS_FOG_ID 1

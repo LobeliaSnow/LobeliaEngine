@@ -16,48 +16,6 @@
 
 namespace Lobelia::Graphics {
 	inline namespace Experimental {
-		//テクスチャをガウスぼかしで描画
-		class GaussianFilter {
-			ALIGN(16)struct Data {
-				Math::Vector2 size;
-			};
-			static Data data;
-			static std::unique_ptr<ConstantBuffer<Data >> constantBuffer;
-			static std::unique_ptr<RenderTarget> renderTarget;
-			static std::unique_ptr<View> view;
-		public:
-			static void Setting();
-			static void CreateBuffer(const Math::Vector2& scale);
-			static void BlurRender(View* now_view, RenderTarget* rt, Texture* tex);
-		};
-
-		//参考
-		//http://maverickproj.web.fc2.com/pg32.html
-		//blume phong
-		//モデルの更新処理は各自呼んでください
-		//使い方はPreRender->GaussianPhase->PostRender
-		class BlumePhongRenderer {
-		public:
-			static std::unique_ptr<RenderTarget> diffuse;
-			static std::unique_ptr<RenderTarget> specular;
-			static std::unique_ptr<RenderTarget> gaussian;
-			static InstanceID useNormalMap;
-			static InstanceID noUseNormalMap;
-		private:
-			static void PreRenderWakeup();
-			static char* GetPrePSName();
-		public:
-			BlumePhongRenderer();
-			~BlumePhongRenderer();
-			static void Setting(const Math::Vector2& back_buffer_size);
-			static void PreRender(Model* model, bool is_animation, bool is_normal_map = false);
-			static void PreRender(ModelInstanced* model, bool is_normal_map = false);
-			static void PreRender(ModelInstancedAnimation* model, bool is_normal_map = false);
-			static void GaussianPhase(View* now_view);
-			static void PostRender();
-			static void ClearBuffer();
-		};
-
 		using EffekseerData = ::Effekseer::Effect*;
 		using EffekseerHandle = ::Effekseer::Handle;
 		class EffekseerWrapper {

@@ -1,7 +1,7 @@
 #pragma once
 namespace Lobelia::Graphics {
 	class RenderTarget;
-	class SpriteRenderer {
+	class SpriteRenderer :private RenderableObject<SpriteRenderer> {
 	private:
 		struct Vertex {
 			Math::Vector4 pos;	//x,y,z
@@ -10,8 +10,8 @@ namespace Lobelia::Graphics {
 		};
 	private:
 		static std::unique_ptr<Mesh<Vertex>> mesh;
-		static std::unique_ptr<InputLayout> inputLayout;
 		static Math::Vector2 vertex[4];
+		static InstanceID id;
 	private:
 		static Math::Vector4 Trans2DPosition(Math::Vector2 pos);
 		static void PositionPlant(const Transform2D& transform);
@@ -21,12 +21,12 @@ namespace Lobelia::Graphics {
 		static void MeshTransform();
 	public:
 		static void Initialize();
-		static void Render(Texture* tex, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color, bool set_default_pipeline = true);
-		static void Render(Texture* tex, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color, bool default = true);
-		static void Render(Texture* tex, Utility::Color color = 0xFFFFFFFF, bool set_default_pipeline = true);
-		static void Render(RenderTarget* rt, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color, bool set_default_pipeline = true);
-		static void Render(RenderTarget* rt, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color, bool default = true);
-		static void Render(RenderTarget* rt, Utility::Color color = 0xFFFFFFFF, bool set_default_pipeline = true);
+		static void Render(Texture* tex, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color);
+		static void Render(Texture* tex, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color);
+		static void Render(Texture* tex, Utility::Color color = 0xFFFFFFFF);
+		static void Render(RenderTarget* rt, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color);
+		static void Render(RenderTarget* rt, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color);
+		static void Render(RenderTarget* rt, Utility::Color color = 0xFFFFFFFF);
 	};
 	class SpriteBatchRenderer :private RenderableObject<SpriteBatchRenderer>, public Utility::Singleton<SpriteBatchRenderer> {
 	private:
@@ -41,7 +41,7 @@ namespace Lobelia::Graphics {
 			int textureSlot;
 		};
 	private:
-		static constexpr const UINT TEXTURE_COUNT = 8;
+		static constexpr UINT TEXTURE_COUNT = 8;
 	private:
 		const int RENDER_LIMIT;
 		std::array<Texture*, TEXTURE_COUNT> textures;

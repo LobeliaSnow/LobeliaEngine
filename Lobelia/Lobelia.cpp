@@ -75,24 +75,6 @@ namespace Lobelia {
 		//Zバッファ、ステンシルテストともにオフ
 		Graphics::RenderStateBank::DepthStencilFactory(D_SOFF_ZOFF, Graphics::DepthPreset::ALWAYS, false, {}, false);
 		Graphics::RenderStateBank::RasterizerFactory("Cull Back", Graphics::RasterizerPreset::BACK);
-		Graphics::PixelShader* ps = ResourceBank<Graphics::PixelShader>::Factory(D_PS2D, "Data/ShaderFile/2D/PS.hlsl", "Main2D", Graphics::PixelShader::Model::PS_5_0, true);
-		//ここは連番で0~IDが返ってきます
-		//デフォルトのdefineは0~連番の直値ですのでここを変える場合はdefineのほうも変えてください
-		ps->GetLinkage()->CreateInstance(D_PS2D_INAME_TEX);
-		ps->GetLinkage()->CreateInstance(D_PS2D_INAME_COLOR);
-		ps->GetLinkage()->CreateInstance(D_PS2D_INAME_INVTEX);
-		ps->GetLinkage()->CreateInstance(D_PS2D_INAME_GRAYSTEX);
-		ps->GetLinkage()->CreateInstance(D_PS2D_INAME_SEPIATEX);
-		//2DSprite用パイプライン構築
-		ResourceBank<Graphics::VertexShader>::Factory(D_VS2D, "Data/ShaderFile/2D/VS.hlsl", "Main2D", Graphics::VertexShader::Model::VS_5_0);
-		//2Dインスタンシング用
-		ResourceBank<Graphics::VertexShader>::Factory(D_VS2D_BATCH, "Data/ShaderFile/2D/VS.hlsl", "Main2DInst", Graphics::VertexShader::Model::VS_5_0);
-
-		//スプライト用パイプライン構築
-		Graphics::InstanceID id = D_PS2D_INS_TEX_ID;
-		Graphics::PipelineManager::PipelineRegister(D_PIPE2D_S, new Graphics::Pipeline("Copy", "Point", D_SOFF_ZOFF, "Cull Back", D_VS2D, 0, nullptr, D_PS2D, 1, &id));
-		//バッチ用パイプライン構築
-		Graphics::PipelineManager::PipelineRegister(D_PIPE2D_BATCH, new Graphics::Pipeline("Copy", "Point", D_SOFF_ZOFF, "Cull Back", D_VS2D_BATCH, 0, nullptr, D_PS2D, 1, &id));
 		//3D用パイプライン構築
 		Graphics::RenderStateBank::SamplerFactory("Anisotropic", Graphics::SamplerPreset::ANISOTROPIC);
 		//Zバッファオン ステンシルオフ
@@ -151,7 +133,6 @@ namespace Lobelia {
 		Audio::Sound3DSystem::Setting({}, { 0.0f,0.0f,1.0f });
 		CreateDefaultPipeline();
 		CreateStencilStatePreset();
-		Graphics::GaussianFilter::Setting();
 		Network::System::Startup();
 		Network::SocketList::Initialize();
 		XMLSystem::Initialize();

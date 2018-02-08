@@ -107,8 +107,8 @@ namespace Lobelia::Graphics {
 	void TextureFileAccessor::Load(const char* file_path, Texture** texture, bool force) {
 		auto EmptyTextureCreate = [&]() {
 			DXGI_SAMPLE_DESC msaa = { 1,0 };
-			static constexpr const size_t X = 16UL;
-			static constexpr const size_t Y = 16UL;
+			static constexpr size_t X = 16UL;
+			static constexpr size_t Y = 16UL;
 			*texture = ResourceBank<Texture>::Factory(file_path, Math::Vector2(f_cast(X), f_cast(Y)), DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_BIND_SHADER_RESOURCE, msaa, Texture::ACCESS_FLAG::DYNAMIC, Texture::CPU_ACCESS_FLAG::WRITE);
 			D3D11_MAPPED_SUBRESOURCE resource;
 			Device::GetContext()->Map((*texture)->Get().Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);

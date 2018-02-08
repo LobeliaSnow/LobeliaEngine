@@ -12,26 +12,36 @@
 #include "Graphics/Material/Material.hpp"
 #include "Graphics/Mesh/Mesh.hpp"
 #include "Graphics/Transform/Transform.hpp"
-#include "Graphics/Sprite/Sprite.hpp"
-#include	 "Graphics/View/View.hpp"
 #include "Graphics/RenderState/RenderState.hpp"
-#include "Graphics/Pipeline/Pipeline.hpp"
 #include "Graphics/RenderableObject/RenderableObject.hpp"
 #include "Graphics/Renderer/Renderer.hpp"
+#include "Graphics/Sprite/Sprite.hpp"
+#include	 "Graphics/View/View.hpp"
 #include "Config/Config.hpp"
 #include "Graphics/RenderTarget/RenderTarget.hpp"
 #include "Exception/Exception.hpp"
 
 namespace Lobelia::Graphics {
 	std::unique_ptr<Mesh<SpriteRenderer::Vertex>> SpriteRenderer::mesh;
-	std::unique_ptr<InputLayout> SpriteRenderer::inputLayout;
 	//こいつが実際のスクリーンスペースの座標を所持している
 	Math::Vector2 SpriteRenderer::vertex[4] = { { -1,-1 },{ -1,0 },{ 0,-1 },{ 0,0 } };
-
+	InstanceID SpriteRenderer::id = -1;
 	void SpriteRenderer::Initialize() {
+		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, false);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::BACK);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, false, Graphics::StencilDesc(), false);
+		if (!vs)vs = std::make_shared<VertexShader>("Data/ShaderFile/2D/VS.hlsl", "Main2D", Graphics::VertexShader::Model::VS_5_0, false);
+		if (!ps)ps = std::make_shared<PixelShader>("Data/ShaderFile/2D/PS.hlsl", "Main2D", Graphics::PixelShader::Model::PS_5_0, true);
+		id = ps->GetLinkage()->CreateInstance("TextureColor");
+		ps->GetLinkage()->CreateInstance("VertexColor");
+		ps->GetLinkage()->CreateInstance("InvertTextureColor");
+		ps->GetLinkage()->CreateInstance("GrayscaleTextureColor");
+		ps->GetLinkage()->CreateInstance("SepiaTextureColor");
+
+		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
+		if (!inputLayout)inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
 		mesh = std::make_unique<Mesh<Vertex>>(4);
-		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(ResourceBank<VertexShader>::Get(D_VS2D));
-		inputLayout = std::make_unique<InputLayout>(ResourceBank<VertexShader>::Get(D_VS2D), reflector.get());
 	}
 	Math::Vector4 SpriteRenderer::Trans2DPosition(Math::Vector2 pos) {
 		//いったん仮でウインドウサイズ
@@ -78,10 +88,15 @@ namespace Lobelia::Graphics {
 			mesh->GetBuffer()[index].pos = Trans2DPosition(vertex[index]);
 		}
 	}
-	void SpriteRenderer::Render(Texture* tex, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color, bool set_default_pipeline) {
-		//少々考える
-		if (set_default_pipeline)Graphics::PipelineManager::PipelineGet(D_PIPE2D_S)->Activate(true);
-		inputLayout->Set(); tex->Set(0, ShaderStageList::PS);
+	void SpriteRenderer::Render(Texture* tex, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color) {
+		blend->Set();
+		sampler->Set();
+		rasterizer->Set();
+		depthStencil->Set();
+		inputLayout->Set();
+		vs->Set();
+		ps->Set(1, &id);
+		tex->Set(0, ShaderStageList::PS);
 		Device::GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		PositionPlant(transform);
 		if (transform.rotation != 0.0f)PositionRotation(transform);
@@ -91,31 +106,31 @@ namespace Lobelia::Graphics {
 		mesh->Set();
 		Device::GetContext()->Draw(4, 0);
 	}
-	void SpriteRenderer::Render(Texture* tex, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color, bool default) {
+	void SpriteRenderer::Render(Texture* tex, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color) {
 		Transform2D trans = {};
 		trans.position = pos;
 		trans.scale = size;
 		trans.rotation = rad;
-		Render(tex, trans, uv_begin, uv_end, color, default);
+		Render(tex, trans, uv_begin, uv_end, color);
 	}
-	void SpriteRenderer::Render(Texture* tex, Utility::Color color, bool set_default_pipeline) {
+	void SpriteRenderer::Render(Texture* tex, Utility::Color color) {
 		Transform2D trans = {};
 		trans.position = {};
 		trans.scale = View::nowSize;
 		trans.rotation = 0.0f;
-		Render(tex, trans, Math::Vector2(0.0f, 0.0f), tex->GetSize(), color, set_default_pipeline);
+		Render(tex, trans, Math::Vector2(0.0f, 0.0f), tex->GetSize(), color);
 	}
-	void SpriteRenderer::Render(RenderTarget* rt, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color, bool set_default_pipeline) {
+	void SpriteRenderer::Render(RenderTarget* rt, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color) {
 		Texture::Clean(0, ShaderStageList::PS);
-		Render(rt->GetTexture(), transform, uv_pos, uv_size, color, set_default_pipeline);
+		Render(rt->GetTexture(), transform, uv_pos, uv_size, color);
 	}
-	void SpriteRenderer::Render(RenderTarget* rt, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color, bool default) {
+	void SpriteRenderer::Render(RenderTarget* rt, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color) {
 		Texture::Clean(0, ShaderStageList::PS);
-		Render(rt->GetTexture(), pos, size, rad, uv_begin, uv_end, color, default);
+		Render(rt->GetTexture(), pos, size, rad, uv_begin, uv_end, color);
 	}
-	void SpriteRenderer::Render(RenderTarget* rt, Utility::Color color, bool set_default_pipeline) {
+	void SpriteRenderer::Render(RenderTarget* rt, Utility::Color color) {
 		Texture::Clean(0, ShaderStageList::PS);
-		Render(rt->GetTexture(), color, set_default_pipeline);
+		Render(rt->GetTexture(), color);
 	}
 
 
@@ -127,7 +142,7 @@ namespace Lobelia::Graphics {
 		if (!vs)vs = std::make_shared<VertexShader>("Data/ShaderFile/2D/VS.hlsl", "Main2DInstRenderer", Graphics::VertexShader::Model::VS_5_0, false);
 		if (!ps)ps = std::make_shared<PixelShader>("Data/ShaderFile/2D/PS.hlsl", "Main2DRenderer", Graphics::PixelShader::Model::PS_5_0, false);
 		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
-		ChangeInputLayout(std::make_unique<InputLayout>(vs.get(), reflector.get()));
+		if (!inputLayout)inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
 		BufferCreator::Create(instanceBuffer.GetAddressOf(), nullptr, sizeof(Instance)*render_limit, D3D11_USAGE_DYNAMIC, D3D11_BIND_VERTEX_BUFFER, D3D11_CPU_ACCESS_WRITE, sizeof(float));
 		mesh = std::make_unique<Mesh<Vertex>>(4);
 		mesh->GetBuffer()[0] = { { -1.0f,  +1.0f, +0.0f, +1.0f },{ 0.0f,1.0f } };

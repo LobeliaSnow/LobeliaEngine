@@ -7,61 +7,43 @@
 //TODO : トーン入出力処理(DXGI)を実装？
 //TODO : deltabaseでの飛び問題解決
 //Raypickする際に-1されていることを忘れてはならない。
+//TODO : Sound 矩形波を流し込めるようにしたりするのを簡単にする
 
 namespace Lobelia::Game {
-	//テクスチャ読み込み用変数(スマポはダメ)
-	Graphics::Texture* texture0 = nullptr;
-	Graphics::Texture* texture1 = nullptr;
-	//スプライトクラス
-	std::unique_ptr<Graphics::Sprite> sprite;
-	//スプライトバッチクラス このクラスは非推奨
-	std::unique_ptr<Graphics::SpriteBatch> batch;
-	//操作自機位置
-	Math::Vector2 pos(100, 100);
-
+	//midiのノート番号を引数で渡すと、その周波数が返ってきます
+	float GetMIDIHz(int note) {
+		return 440.0f * f_cast(pow(2.0, (s_cast<double>(note) - 69.0) / 12.0f));
+	}
 	SceneMain::SceneMain() :view(std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize())) {
-		//テクスチャロード
-		Graphics::TextureFileAccessor::Load("test.png", &texture0);
-		Graphics::TextureFileAccessor::Load("images.jpg", &texture1);
-
-		//スロットは8個、0~7まで使用可能
-		Graphics::SpriteBatchRenderer::GetInstance()->SetTexture(0, texture0);
-		Graphics::SpriteBatchRenderer::GetInstance()->SetTexture(1, texture1);
-
-		//スプライトクラスとしてテクスチャロード
-		sprite = std::make_unique<Graphics::Sprite>("test.png");
-		//スプライトバッチクラスとしてテクスチャロード、一度に描画できる最大数が第二引数
-		batch = std::make_unique<Graphics::SpriteBatch>("images.jpg", 10);
+		Audio::Buffer buffer;
+		buffer.format.nChannels = 1;
+		buffer.format.nSamplesPerSec = 44100;
+		buffer.format.wBitsPerSample = 16;
+		buffer.format.nBlockAlign = s_cast<short>(buffer.format.wBitsPerSample / 8 * buffer.format.nChannels);
+		buffer.format.nAvgBytesPerSec = buffer.format.nSamplesPerSec*buffer.format.nBlockAlign;
+		buffer.format.wFormatTag = WAVE_FORMAT_PCM;
+		buffer.source = new BYTE[sizeof(short)*buffer.format.nAvgBytesPerSec];
+		buffer.size = sizeof(short)*buffer.format.nAvgBytesPerSec;
+		short* temp = r_cast<short*>(buffer.source);
+		float hz = GetMIDIHz(69);
+		for (int i = 0; i < buffer.size / sizeof(short); i++) {
+			//音の波形のサイズは-32767.0~32767.0までなので、それを超えると波形がラリる可能性がある
+			//https://drumimicopy.com/audio-frequency/
+			temp[i] = s_cast<short>(32767.0*sinf(2.0f*PI* hz *i / s_cast<double>(buffer.format.nSamplesPerSec)));
+		}
+		Audio::EffectVoice::DisableEffect(0);
+		Audio::SourceVoice voice(buffer);
+		voice.Play(0);
+		while (voice.IsPlay());
+		voice.Stop();
+		delete[] buffer.source;
 	}
 	SceneMain::~SceneMain() {
 	}
 	void SceneMain::Initialize() {	}
 	void SceneMain::Update() {
-		//キー入力とデルタベースプログラムのサンプル
-		if (Input::GetKeyboardKey(VK_UP) == 3)pos.y -= 200.0f*Application::GetInstance()->GetProcessTime()*0.001f;
-		if (Input::GetKeyboardKey(VK_DOWN) == 3)pos.y += 200.0f*Application::GetInstance()->GetProcessTime()*0.001f;
-		if (Input::GetKeyboardKey(VK_LEFT) == 3)pos.x -= 200.0f*Application::GetInstance()->GetProcessTime()*0.001f;
-		if (Input::GetKeyboardKey(VK_RIGHT) == 3)pos.x += 200.0f*Application::GetInstance()->GetProcessTime()*0.001f;
-		//バッチレンダラクラスへの登録を開始。テクスチャの枚数が足りなくなったらこのクラスを別でインスタンス化して使用する
-		Graphics::SpriteBatchRenderer::GetInstance()->Begin();
-		//ここの前後関係が描画順に影響
-		Graphics::SpriteBatchRenderer::GetInstance()->Set(1, Math::Vector2(50, 50), texture1->GetSize(), 0.0f, Math::Vector2(), texture1->GetSize(), 0xFFFFFFFF);
-		Graphics::SpriteBatchRenderer::GetInstance()->Set(0, pos, texture0->GetSize(), 0.0f, Math::Vector2(), texture0->GetSize(), 0xFFFFFFFF);
-		Graphics::SpriteBatchRenderer::GetInstance()->End();
 	}
 	void SceneMain::Render() {
 		view->Activate();
-		//スプライトレンダラクラスで描画
-		Graphics::SpriteRenderer::Render(texture1);
-		//バッチレンダラクラスで描画
-		Graphics::SpriteBatchRenderer::GetInstance()->Render();
-		//スプライトクラスの機能で描画
-		sprite->Render(Math::Vector2(), sprite->GetTexture()->GetSize(), 0.0f, Math::Vector2(), sprite->GetTexture()->GetSize(), 0xFFFFFFFF);
-		//スプライトバッチクラスへ登録 
-		batch->BeginRender();
-		//引数めんどい。察して
-		batch->Render({}, {}, batch->GetMaterial()->GetTexture()->GetSize(), 0.0f, 0.0f, 0xFFFFFFFF);
-		batch->EndRender();
-
 	}
 }

@@ -14,11 +14,11 @@ namespace Lobelia::Graphics {
 		Sprite(const char* file_path);
 		~Sprite();
 		Texture* GetTexture();
-		void Render(const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color, bool set_default_pipeline = true);
-		void Render(const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color, bool default = true);
-		void Render(Utility::Color color = 0xFFFFFFFF, bool set_default_pipeline = true);
+		void Render(const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color);
+		void Render(const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color);
+		void Render(Utility::Color color = 0xFFFFFFFF);
 	};
-	class SpriteBatch {
+	class SpriteBatch :private RenderableObject<SpriteBatch> {
 	private:
 		struct Vertex {
 			Math::Vector4 pos;	//x,y,z
@@ -33,18 +33,18 @@ namespace Lobelia::Graphics {
 		const int RENDER_LIMIT;
 	private:
 		std::unique_ptr<Mesh<Vertex>> mesh;
-		std::unique_ptr<Material> material;
-		std::unique_ptr<InputLayout> inputLayout;
+		Texture* texture;
 		ComPtr<ID3D11Buffer> instanceBuffer;
 		Instance* instances;
 		int renderCount;
+		InstanceID id;
 	public:
-		//îÒêÑèß å√Ç¢ã@î\Ç≈Ç∑
-		[[deprecated("please use new SpriteBatchRenderer class")]]SpriteBatch(const char* file_path, int render_limit);
+		[[deprecated("please use SpriteBatchRenderer class")]]SpriteBatch(const char* file_path, int render_limit);
 		~SpriteBatch();
-		Material* GetMaterial();
-		void BeginRender();
-		void Render(const Transform2D& transform, const Math::Vector2& upos, const Math::Vector2& usize, float rotate_axis_x, float rotate_axis_y, Utility::Color color);
-		void EndRender(bool set_default_pipeline = true);
+		Texture* GetTexture();
+		void Begin();
+		void Set(const Transform2D& transform, const Math::Vector2& upos, const Math::Vector2& usize, float rotate_axis_x, float rotate_axis_y, Utility::Color color);
+		void End();
+		void Render();
 	};
 }
