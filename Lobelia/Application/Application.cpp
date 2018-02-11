@@ -13,7 +13,7 @@ namespace Lobelia {
 
 	void Application::Update() {
 		Audio::Bank::Update();
-		Input::DeviceManager::Update();
+		Input::Keyboard::GetInstance()->Update();
 		Game::GameObject2DManager::GetInstance()->Update();
 		SceneManager::GetInstance()->Update();
 	}

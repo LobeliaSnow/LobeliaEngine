@@ -8,12 +8,9 @@
 //TODO : deltabaseでの飛び問題解決
 //Raypickする際に-1されていることを忘れてはならない。
 //TODO : Sound 矩形波を流し込めるようにしたりするのを簡単にする
+//TODO : DirectInput + XInput両刀で実装
 
 namespace Lobelia::Game {
-	//midiのノート番号を引数で渡すと、その周波数が返ってきます
-	float CalcMIDIHz(int note) {
-		return 440.0f * f_cast(pow(2.0, (s_cast<double>(note) - 69.0) / 12.0f));
-	}
 	Graphics::Texture* texture = nullptr;
 	SceneMain::SceneMain() :view(std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize())) {
 	}
@@ -31,7 +28,7 @@ namespace Lobelia::Game {
 		buffer.size = sizeof(short)*buffer.format.nAvgBytesPerSec;
 		short* temp = r_cast<short*>(buffer.source);
 		//ラ
-		float hz = CalcMIDIHz(69);
+		float hz = Audio::Device::CalcMIDIHz(69);
 		for (int i = 0; i < buffer.size / sizeof(short); i++) {
 			//音の波形のサイズは-32767.0~32767.0までなので、それを超えると波形がラリる可能性がある
 			//https://drumimicopy.com/audio-frequency/

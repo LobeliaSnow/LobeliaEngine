@@ -21,4 +21,8 @@ namespace Lobelia::Audio {
 	void Device::Destroy() { device.Reset(); }
 	IXAudio2* Device::Get() { return device.Get(); }
 	const XAUDIO2_DEVICE_DETAILS& Device::GetDetails() { return details; }
+	float Device::CalcMIDIHz(int note) {
+		return 440.0f * f_cast(pow(2.0, (s_cast<double>(note) - 69.0) / 12.0f));
+	}
+
 }

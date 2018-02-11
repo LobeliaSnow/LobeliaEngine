@@ -241,16 +241,6 @@
     <ClCompile Include="Lobelia\Graphics\SwapChain\ToneCurve\ToneCurve.cpp" />
     <ClCompile Include="Lobelia\Graphics\Texture\Texture.cpp" />
     <ClCompile Include="Lobelia\Graphics\View\View.cpp" />
-    <ClCompile Include="Lobelia\Input\Controller\DS4\DS4.cpp" />
-    <ClCompile Include="Lobelia\Input\DeviceList\Device.cpp">
-      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)/Device</ObjectFileName>
-      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)/Device</ObjectFileName>
-      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)/Device</ObjectFileName>
-      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)/Device</ObjectFileName>
-    </ClCompile>
-    <ClCompile Include="Lobelia\Input\DeviceList\DeviceManager.cpp" />
-    <ClCompile Include="Lobelia\Input\Keyboard\Keyboard.cpp" />
-    <ClCompile Include="Lobelia\Input\Mouse\Mouse.cpp" />
     <ClCompile Include="Lobelia\Lobelia.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)/Lobelia/</ObjectFileName>
     </ClCompile>
@@ -329,12 +319,7 @@
     <ClInclude Include="Lobelia\Graphics\Texture\Texture.hpp" />
     <ClInclude Include="Lobelia\Graphics\Transform\Transform.hpp" />
     <ClInclude Include="Lobelia\Graphics\View\View.hpp" />
-    <ClInclude Include="Lobelia\Input\Controller\DS4\DS4.hpp" />
-    <ClInclude Include="Lobelia\Input\Data\Data.hpp" />
-    <ClInclude Include="Lobelia\Input\DeviceList\Device.hpp" />
-    <ClInclude Include="Lobelia\Input\DeviceList\DeviceManager.hpp" />
-    <ClInclude Include="Lobelia\Input\Keyboard\Keyboard.hpp" />
-    <ClInclude Include="Lobelia\Input\Mouse\Mouse.hpp" />
+    <ClInclude Include="Lobelia\Input\Input.hpp" />
     <ClInclude Include="Lobelia\Lobelia.hpp" />
     <ClInclude Include="Lobelia\Math\Math.hpp" />
     <ClInclude Include="Lobelia\Movie\Movie.hpp" />
@@ -357,7 +342,6 @@
     <None Include="Lobelia\Graphics\Mesh\Mesh.inl" />
     <None Include="Lobelia\Graphics\Origin\Origin.inl" />
     <None Include="Lobelia\Graphics\Shader\ShaderBank.inl" />
-    <None Include="Lobelia\Input\DeviceList\DeviceManager.inl" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Data\ShaderFile\2D\PS.hlsl">

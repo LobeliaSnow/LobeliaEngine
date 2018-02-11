@@ -8,13 +8,12 @@ namespace Lobelia {
 		window->ShowWindow(SW_SHOW);
 		window->UppdateWindow();
 		timer->Begin();
-		Input::DeviceManager::TakeDevices(window->GetHandle());
 		Graphics::Direct2DRenderer::Initialize();
 #ifdef USE_IMGUI_AND_CONSOLE
 		ImGui_ImplDX11_Init(window->GetHandle(), Graphics::Device::Get().Get(), Graphics::Device::GetContext().Get());
-		HostConsole::GetInstance()->ProcessRegister("command clear", [=]() {if (Input::DeviceManager::GetKey<Input::Keyboard>(VK_F2) == 1)HostConsole::GetInstance()->ClearCommand(); });
+		HostConsole::GetInstance()->ProcessRegister("command clear", [=]() {if (Input::GetKeyboardKey(VK_F2) == 1)HostConsole::GetInstance()->ClearCommand(); });
 		HostConsole::GetInstance()->ProcessRegister("console change visible", [=]() {
-			if (Input::DeviceManager::GetKey<Input::Keyboard>(VK_F1) == 1) {
+			if (Input::GetKeyboardKey(VK_F1) == 1) {
 				Config::GetRefPreference().consoleOption.active = !Config::GetRefPreference().consoleOption.active;
 				Config::GetRefPreference().applicationOption.systemVisible = !Config::GetRefPreference().applicationOption.systemVisible;
 			}
