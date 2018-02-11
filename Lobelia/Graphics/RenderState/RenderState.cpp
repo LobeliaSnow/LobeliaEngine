@@ -115,7 +115,8 @@ namespace Lobelia::Graphics {
 		desc.ComparisonFunc = D3D11_COMPARISON_GREATER_EQUAL;
 		desc.MinLOD = -FLT_MAX;
 		desc.MaxLOD = +FLT_MAX;
-		memcpy(desc.BorderColor, &DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f), sizeof(DirectX::XMFLOAT4));
+		DirectX::XMFLOAT4 block(0.0f, 0.0f, 0.0f, 0.0f);
+		memcpy(desc.BorderColor, &block, sizeof(DirectX::XMFLOAT4));
 
 		hr = Device::Get()->CreateSamplerState(&desc, state.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("サンプラーステートの作成に失敗");

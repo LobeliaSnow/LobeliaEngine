@@ -31,8 +31,6 @@ namespace Lobelia::Game {
 			//音の波形のサイズは-32767.0~32767.0までなので、それを超えると波形がラリる可能性がある
 			//https://drumimicopy.com/audio-frequency/
 			temp[i] = s_cast<short>(32767.0f*sinf(2.0f*PI* hz *s_cast<float>(i) / s_cast<float>(buffer.format.nSamplesPerSec)));
-			//万に一つも超えることはないだろうが念のためクリッピング処理
-			temp[i] = std::clamp(i_cast(temp[i]), -32767, 32767);
 		}
 		Audio::EffectVoice::DisableEffect(0);
 		Audio::SourceVoice voice(buffer);

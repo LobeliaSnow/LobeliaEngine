@@ -11,7 +11,21 @@ namespace Lobelia {
 		virtual void Update() = 0;
 		/**@brief 描画処理 純粋仮想関数*/
 		virtual void Render() = 0;
-	protected:
-	
+	};
+	//シーンを自由にレイヤー構造組めるようにしたい。
+	class SceneManager :public Utility::Singleton<SceneManager> {
+		friend class Utility::Singleton<SceneManager>;
+	private:
+		struct Layer {
+			std::shared_ptr<Scene> scene;
+		};
+	private:
+		SceneManager() = default;
+		~SceneManager() = default;
+	public:
+		SceneManager(const SceneManager&) = delete;
+		SceneManager(SceneManager&&) = delete;
+		SceneManager& operator=(const SceneManager&) = delete;
+		SceneManager& operator=(SceneManager&&) = delete;
 	};
 }
