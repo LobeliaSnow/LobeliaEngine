@@ -14,7 +14,12 @@ namespace Lobelia::Game {
 	float CalcMIDIHz(int note) {
 		return 440.0f * f_cast(pow(2.0, (s_cast<double>(note) - 69.0) / 12.0f));
 	}
+	Graphics::Texture* texture = nullptr;
 	SceneMain::SceneMain() :view(std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize())) {
+	}
+	SceneMain::~SceneMain() {
+	}
+	void SceneMain::Initialize() {	
 		Audio::Buffer buffer;
 		buffer.format.nChannels = 1;
 		buffer.format.nSamplesPerSec = 44100;
@@ -38,13 +43,14 @@ namespace Lobelia::Game {
 		while (voice.IsPlay());
 		voice.Stop();
 		delete[] buffer.source;
+		Graphics::TextureFileAccessor::Load("", &texture);
 	}
-	SceneMain::~SceneMain() {
-	}
-	void SceneMain::Initialize() {	}
+	float rad = 0.0f;
 	void SceneMain::Update() {
+		rad += 0.04f;
 	}
 	void SceneMain::Render() {
 		view->Activate();
+		Graphics::SpriteRenderer::Render(texture, Math::Vector2(), Math::Vector2(32, 32), rad, Math::Vector2(), Math::Vector2(1, 1), 0xFFFFFFFF);
 	}
 }

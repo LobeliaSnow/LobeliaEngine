@@ -10,6 +10,7 @@
 #include <future>
 #include <queue>
 #include <list>
+#include <stack>
 #include <shlwapi.h>
 #include <sstream>
 #include <iostream>

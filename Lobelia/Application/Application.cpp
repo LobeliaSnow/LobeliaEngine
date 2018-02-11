@@ -15,7 +15,7 @@ namespace Lobelia {
 		Audio::Bank::Update();
 		Input::DeviceManager::Update();
 		Game::GameObject2DManager::GetInstance()->Update();
-		if (scene)scene->Update();
+		SceneManager::GetInstance()->Update();
 	}
 
 	void Application::Render() {
@@ -23,7 +23,7 @@ namespace Lobelia {
 #ifdef USE_IMGUI_AND_CONSOLE
 		ImGui_ImplDX11_NewFrame();
 #endif
-		if (scene)scene->Render();
+		SceneManager::GetInstance()->Render();
 		Game::GameObject2DManager::GetInstance()->Render();
 		if (Config::GetRefPreference().applicationOption.systemVisible)FpsRender();
 #ifdef USE_IMGUI_AND_CONSOLE
@@ -46,19 +46,7 @@ namespace Lobelia {
 		ImGui::End();
 #endif
 	}
-	void Application::ChangeSceneExecute() {
-		if (changeScene) {
-			changeScene = false;
-			scene.reset(tempScene);
-			tempScene = nullptr;
-			scene->Initialize();
-		}
-	}
-	void Application::ChangeSceneExecute(Scene* next_scene) {
-		scene.reset(tempScene);
-	}
-	//public
-	Application::Application() : processTimer(0.0f), timer(std::make_unique<Timer>()), changeScene(false), tempScene(nullptr) {}
+	Application::Application() : processTimer(0.0f), timer(std::make_unique<Timer>())/*, changeScene(false), tempScene(nullptr) */ {}
 	Application::~Application() = default;
 	float Application::CalcFps() { return 1000.0f / processTimer; }
 
@@ -79,7 +67,6 @@ namespace Lobelia {
 				if (!IsUpdate())continue;
 				Update();
 				Render();
-				ChangeSceneExecute();
 			}
 		}
 		return msg.wParam;
@@ -87,8 +74,6 @@ namespace Lobelia {
 
 	void Application::Shutdown() {
 		swapChain->Get()->SetFullscreenState(false, nullptr);
-		scene.reset();
-		Utility::SafeDelete(tempScene);
 #ifdef USE_IMGUI_AND_CONSOLE
 		HostConsole::GetInstance()->ProcessUnRegister("command clear");
 		HostConsole::GetInstance()->CommandUnRegister("screen shot");
@@ -97,5 +82,4 @@ namespace Lobelia {
 #endif
 	}
 	float Application::GetProcessTime() { return processTimer; }
-	std::shared_ptr<Scene> Application::GetScene() { return scene; }
 }

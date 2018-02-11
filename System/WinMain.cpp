@@ -62,6 +62,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, PSTR, int) {
 				Lobelia::Graphics::TextureFileAccessor::Save(filePath, Lobelia::Application::GetInstance()->GetSwapChain()->GetRenderTarget()->GetTexture());
 			}
 		});
+		Lobelia::HostConsole::GetInstance()->ProcessRegister("pause", [=]() {
+			static bool pause = false;
+			if (Lobelia::Input::DeviceManager::GetKey<Lobelia::Input::Keyboard>(VK_F4) == 1) {
+				pause = !pause;
+				Lobelia::SceneManager::GetInstance()->Pause(pause);
+			}
+		});
+
 		//Lobelia::Application::GetInstance()->Bootup<Application::SceneRanking>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc, Lobelia::RankingData<float>("Data/Score/data.dat", 10, 999.99), Lobelia::Utility::Frand(0.0f, 0.5f));
 #else
 		Lobelia::Config::GetRefPreference().consoleOption.active = false;

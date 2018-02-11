@@ -315,8 +315,8 @@ namespace Lobelia {
 
 	CommandConsole::CommandConsole(const char* name, const Math::Vector2& pos, const Math::Vector2& size) :name(name), pos(pos), size(size), command("") {
 		CommandRegister("change fps", HostConsole::ExeStyle::ALWAYS, [&]() {
-			static int fps = Config::GetRefPreference().applicationOption.updateFPS;
-			ImGui::InputInt("", &fps);
+			static float fps = Config::GetRefPreference().applicationOption.updateFPS;
+			ImGui::InputFloat("", &fps);
 			if (ImGui::Button("command execute")) {
 				Config::GetRefPreference().applicationOption.updateFPS = fps;
 				return true;
