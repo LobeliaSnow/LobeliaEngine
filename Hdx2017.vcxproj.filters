@@ -393,6 +393,9 @@
     <ClCompile Include="Lobelia\Graphics\Experimental\Effect.cpp">
       <Filter>Lobelia\Graphics\Experimental</Filter>
     </ClCompile>
+    <ClCompile Include="Lobelia\Scene\Scene.cpp">
+      <Filter>Lobelia\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImGui\Header\imconfig.h">
