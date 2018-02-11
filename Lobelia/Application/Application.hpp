@@ -1,9 +1,7 @@
 #pragma once
 namespace Lobelia {
 	namespace Graphics { class SwapChain; }
-
 	//TODO : SceneManager‚Æ‚µ‚Ä•ª‚¯‚é
-
 	class Application :public Utility::Singleton<Application> {
 		friend class Utility::Singleton<Application>;
 	private:
