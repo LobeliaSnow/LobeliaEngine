@@ -46,7 +46,6 @@ namespace Lobelia::Graphics {
 		const int RENDER_LIMIT;
 		std::array<Texture*, TEXTURE_COUNT> textures;
 		std::unique_ptr<Mesh<Vertex>> mesh;
-		std::unique_ptr<InputLayout> inputLayout;
 		ComPtr<ID3D11Buffer> instanceBuffer;
 		Instance* instances;
 		int renderCount;

@@ -11,7 +11,6 @@
 //TODO : DirectInput + XInput両刀で実装
 //TODO : キー入力の際、何かキーを押したかとる関数がほしい
 
-
 namespace Lobelia::Game {
 	SceneMain::SceneMain() :view(std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize())) {
 		Audio::Buffer buffer;
