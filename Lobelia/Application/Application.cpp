@@ -14,6 +14,8 @@ namespace Lobelia {
 	void Application::Update() {
 		Audio::Bank::Update();
 		Input::Keyboard::GetInstance()->Update();
+		Input::Mouse::GetInstance()->Update();
+		Input::Joystick::GetInstance()->Update();
 		Game::GameObject2DManager::GetInstance()->Update();
 		SceneManager::GetInstance()->Update();
 	}

@@ -57,13 +57,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, PSTR, int) {
 #if defined( _DEBUG)
 		Lobelia::HostConsole::GetInstance()->ProcessRegister("ss", [=]() {
 			static char filePath[256] = { "SS.png" };
-			if (Lobelia::Input::GetKeyboardKey(VK_F3) == 1) {
+			if (Lobelia::Input::GetKeyboardKey(DIK_F3) == 1) {
 				Lobelia::Graphics::TextureFileAccessor::Save(filePath, Lobelia::Application::GetInstance()->GetSwapChain()->GetRenderTarget()->GetTexture());
 			}
 		});
 		Lobelia::HostConsole::GetInstance()->ProcessRegister("pause", [=]() {
 			static bool pause = false;
-			if (Lobelia::Input::GetKeyboardKey(VK_F4) == 1) {
+			if (Lobelia::Input::GetKeyboardKey(DIK_F4) == 1) {
 				pause = !pause;
 				Lobelia::SceneManager::GetInstance()->Pause(pause);
 			}

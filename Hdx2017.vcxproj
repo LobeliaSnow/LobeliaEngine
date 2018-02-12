@@ -241,6 +241,10 @@
     <ClCompile Include="Lobelia\Graphics\SwapChain\ToneCurve\ToneCurve.cpp" />
     <ClCompile Include="Lobelia\Graphics\Texture\Texture.cpp" />
     <ClCompile Include="Lobelia\Graphics\View\View.cpp" />
+    <ClCompile Include="Lobelia\Input\Input.cpp" />
+    <ClCompile Include="Lobelia\Input\Joystick\Joystick.cpp" />
+    <ClCompile Include="Lobelia\Input\Keyboard\Keyboard.cpp" />
+    <ClCompile Include="Lobelia\Input\Mouse\Mouse.cpp" />
     <ClCompile Include="Lobelia\Lobelia.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)/Lobelia/</ObjectFileName>
     </ClCompile>
@@ -320,6 +324,9 @@
     <ClInclude Include="Lobelia\Graphics\Transform\Transform.hpp" />
     <ClInclude Include="Lobelia\Graphics\View\View.hpp" />
     <ClInclude Include="Lobelia\Input\Input.hpp" />
+    <ClInclude Include="Lobelia\Input\Joystick\Joystick.hpp" />
+    <ClInclude Include="Lobelia\Input\Keyboard\Keyboard.hpp" />
+    <ClInclude Include="Lobelia\Input\Mouse\Mouse.hpp" />
     <ClInclude Include="Lobelia\Lobelia.hpp" />
     <ClInclude Include="Lobelia\Math\Math.hpp" />
     <ClInclude Include="Lobelia\Movie\Movie.hpp" />

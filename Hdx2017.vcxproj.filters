@@ -220,6 +220,15 @@
     <Filter Include="Lobelia\Graphics\RenderableObject">
       <UniqueIdentifier>{cea52096-8af5-45fe-b270-ef009dfcf609}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Lobelia\Input\Keyboard">
+      <UniqueIdentifier>{c627240c-8332-4a0b-ad68-72c65377c695}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lobelia\Input\Mouse">
+      <UniqueIdentifier>{22c175ce-ddba-405c-bcd4-deaf53743cba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lobelia\Input\Joystick">
+      <UniqueIdentifier>{37d734e5-f172-417f-aba9-a14297786d9c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="System\WinMain.cpp">
@@ -362,6 +371,18 @@
     </ClCompile>
     <ClCompile Include="Lobelia\Scene\Scene.cpp">
       <Filter>Lobelia\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Input\Input.cpp">
+      <Filter>Lobelia\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Input\Keyboard\Keyboard.cpp">
+      <Filter>Lobelia\Input\Keyboard</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Input\Mouse\Mouse.cpp">
+      <Filter>Lobelia\Input\Mouse</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Input\Joystick\Joystick.cpp">
+      <Filter>Lobelia\Input\Joystick</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -571,6 +592,15 @@
     </ClInclude>
     <ClInclude Include="Lobelia\Input\Input.hpp">
       <Filter>Lobelia\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Input\Keyboard\Keyboard.hpp">
+      <Filter>Lobelia\Input\Keyboard</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Input\Mouse\Mouse.hpp">
+      <Filter>Lobelia\Input\Mouse</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Input\Joystick\Joystick.hpp">
+      <Filter>Lobelia\Input\Joystick</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

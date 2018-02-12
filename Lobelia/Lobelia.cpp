@@ -109,6 +109,7 @@ namespace Lobelia {
 		if (FAILED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)))STRICT_THROW("COMの初期化に失敗しました");
 		XMLSystem::Initialize();
 		Config::LoadSetting("Data/Config/Config.xml");
+		Input::DirectInput::GetInstance()->Initialize();
 		//グラフィックドライバ周り
 		/*Graphics::GraphicDriverInfoList::Bootup();
 		int driverCount = Graphics::GraphicDriverInfoList::GetGraphicDriverCount();

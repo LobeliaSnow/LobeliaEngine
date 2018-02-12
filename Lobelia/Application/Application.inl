@@ -2,6 +2,9 @@
 namespace Lobelia {
 	template<class Scene, class ...Args> void Application::Bootup(const Math::Vector2& size, const char* window_name, std::function<LRESULT(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)>wnd_proc, Args... args) {
 		window = std::make_shared<Window>(size, window_name, wnd_proc, WS_OVERLAPPEDWINDOW);
+		Input::Keyboard::GetInstance()->Initialize(window->GetHandle());
+		Input::Mouse::GetInstance()->Initialize(window->GetHandle());
+		Input::Joystick::GetInstance()->Initialize(window->GetHandle());
 		swapChain = std::make_unique<Graphics::SwapChain>(window.get(), Config::GetRefPreference().msaa);
 		SceneManager::GetInstance()->ChangeReserve<Scene>(std::forward<Args>(args)...);
 		SceneManager::GetInstance()->ChangeExecute();
@@ -11,9 +14,9 @@ namespace Lobelia {
 		Graphics::Direct2DRenderer::Initialize();
 #ifdef USE_IMGUI_AND_CONSOLE
 		ImGui_ImplDX11_Init(window->GetHandle(), Graphics::Device::Get().Get(), Graphics::Device::GetContext().Get());
-		HostConsole::GetInstance()->ProcessRegister("command clear", [=]() {if (Input::GetKeyboardKey(VK_F2) == 1)HostConsole::GetInstance()->ClearCommand(); });
+		HostConsole::GetInstance()->ProcessRegister("command clear", [=]() {if (Input::GetKeyboardKey(DIK_F2) == 1)HostConsole::GetInstance()->ClearCommand(); });
 		HostConsole::GetInstance()->ProcessRegister("console change visible", [=]() {
-			if (Input::GetKeyboardKey(VK_F1) == 1) {
+			if (Input::GetKeyboardKey(DIK_F1) == 1) {
 				Config::GetRefPreference().consoleOption.active = !Config::GetRefPreference().consoleOption.active;
 				Config::GetRefPreference().applicationOption.systemVisible = !Config::GetRefPreference().applicationOption.systemVisible;
 			}

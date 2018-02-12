@@ -17,7 +17,7 @@ namespace Lobelia {
 		virtual ~Scene() = default;
 		/**@brief 更新処理 純粋仮想関数*/
 		virtual void Update() = 0;
-		/**@brief 一時停止中更新処理 純粋仮想関数*/
+		/**@brief 一時停止中更新処理 仮想関数*/
 		virtual void PauseUpdate() {}
 		/**@brief 描画処理 純粋仮想関数*/
 		virtual void Render() = 0;

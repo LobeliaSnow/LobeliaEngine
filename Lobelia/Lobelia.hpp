@@ -43,6 +43,8 @@
 #include "Graphics/Direct2D/Direct2DSystem.hpp"
 #include "Input/Input.hpp"
 #include "Input/Keyboard/Keyboard.hpp"
+#include "Input/Mouse/Mouse.hpp"
+#include "Input/Joystick/Joystick.hpp"
 #include "Scene/Scene.hpp"
 #include "Application/Application.hpp"
 #include "Graphics/Experimental/Effect.hpp"
