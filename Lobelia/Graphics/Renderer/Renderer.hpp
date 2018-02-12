@@ -55,7 +55,7 @@ namespace Lobelia::Graphics {
 		void SetTexture(int slot, Texture* texture);
 		void Begin();
 		void Set(int slot, const Transform2D& transform, const Math::Vector2& upos, const Math::Vector2& usize, Utility::Color color);
-		void Set(int slot, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color, bool default = true);
+		void Set(int slot, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color);
 		void Set(int slot, Utility::Color color = 0xFFFFFFFF);
 		void End();
 		void Render();

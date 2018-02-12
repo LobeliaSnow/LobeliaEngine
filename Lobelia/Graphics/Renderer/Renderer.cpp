@@ -197,7 +197,7 @@ namespace Lobelia::Graphics {
 
 		renderCount++;
 	}
-	void SpriteBatchRenderer::Set(int slot, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color, bool default) {
+	void SpriteBatchRenderer::Set(int slot, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color) {
 		Transform2D trans = {};
 		trans.position = pos;
 		trans.scale = size;
