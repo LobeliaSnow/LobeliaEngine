@@ -15,5 +15,8 @@ namespace Lobelia::Audio {
 		static void Destroy();
 		static IXAudio2* Get();
 		static const XAUDIO2_DEVICE_DETAILS& GetDetails();
+		//midi‚Ìƒm[ƒg”Ô†‚ğˆø”‚Å“n‚·‚ÆA‚»‚Ìü”g”‚ª•Ô‚Á‚Ä‚«‚Ü‚·
+		static float CalcMIDIHz(int note);
+
 	};
 }

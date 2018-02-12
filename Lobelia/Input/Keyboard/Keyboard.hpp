@@ -1,13 +1,21 @@
 #pragma once
 namespace Lobelia::Input {
-	//どうやら十字キーが取れていない？
-	class Keyboard :public Device {
+	class Keyboard :protected InputDevice, public Utility::Singleton<Keyboard> {
+		friend class Utility::Singleton<Keyboard>;
 	private:
-		KeyboardData data;
+		BYTE buffer[256];
+		bool isPushAnyKey;
 	public:
-		Keyboard(HANDLE handle);
-		~Keyboard();
-		void Update(const KeyboardData& data);
-		int GetKey(int key_code);
+		void Initialize(HWND hwnd, bool fore_ground = true, bool exclusive = false);
+		void Update();
+		BYTE GetKey(int key_code);
+		bool IsPushAnyKey();
+	private:
+		Keyboard();
+		~Keyboard() = default;
+		Keyboard(const Keyboard&) = delete;
+		Keyboard(Keyboard&&) = delete;
+		Keyboard& operator =(const Keyboard&) = delete;
+		Keyboard& operator =(Keyboard&&) = delete;
 	};
 }

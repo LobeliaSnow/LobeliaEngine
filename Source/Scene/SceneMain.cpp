@@ -8,12 +8,10 @@
 //TODO : deltabaseでの飛び問題解決
 //Raypickする際に-1されていることを忘れてはならない。
 //TODO : Sound 矩形波を流し込めるようにしたりするのを簡単にする
+//TODO : DirectInput + XInput両刀で実装
+//TODO : キー入力の際、何かキーを押したかとる関数がほしい
 
 namespace Lobelia::Game {
-	//midiのノート番号を引数で渡すと、その周波数が返ってきます
-	float CalcMIDIHz(int note) {
-		return 440.0f * f_cast(pow(2.0, (s_cast<double>(note) - 69.0) / 12.0f));
-	}
 	SceneMain::SceneMain() :view(std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize())) {
 		Audio::Buffer buffer;
 		buffer.format.nChannels = 1;
@@ -26,10 +24,8 @@ namespace Lobelia::Game {
 		buffer.size = sizeof(short)*buffer.format.nAvgBytesPerSec;
 		short* temp = r_cast<short*>(buffer.source);
 		//ラ
-		float hz = CalcMIDIHz(75);
-		int loopCount = buffer.size / sizeof(short);
-		for (int i = 0; i < loopCount; i++) {
-			if (i == loopCount / 2)hz = CalcMIDIHz(69);
+		float hz = Audio::Device::CalcMIDIHz(69);
+		for (int i = 0; i < buffer.size / sizeof(short); i++) {
 			//音の波形のサイズは-32767.0~32767.0までなので、それを超えると波形がラリる可能性がある
 			//https://drumimicopy.com/audio-frequency/
 			temp[i] = s_cast<short>(32767.0f*sinf(2.0f*PI* hz *s_cast<float>(i) / s_cast<float>(buffer.format.nSamplesPerSec)));
@@ -43,7 +39,8 @@ namespace Lobelia::Game {
 	}
 	SceneMain::~SceneMain() {
 	}
-	void SceneMain::Initialize() {	}
+	void SceneMain::Initialize() {
+	}
 	void SceneMain::Update() {
 	}
 	void SceneMain::Render() {

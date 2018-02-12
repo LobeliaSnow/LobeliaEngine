@@ -211,24 +211,6 @@
     <Filter Include="Lobelia\Input">
       <UniqueIdentifier>{e81b2203-2fa2-413e-95a5-e6d092479fbc}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Lobelia\Input\Controller">
-      <UniqueIdentifier>{68e56297-9459-4a88-b438-c931c0d200ef}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Lobelia\Input\Controller\DS4">
-      <UniqueIdentifier>{eb1b3faf-f391-4e86-9e3d-1392e2c3e474}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Lobelia\Input\Data">
-      <UniqueIdentifier>{222819d6-ff92-4181-903c-ed1f7c604d9e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Lobelia\Input\DeviceList">
-      <UniqueIdentifier>{28f36e7b-ba19-4eff-bf78-93278240b88c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Lobelia\Input\Keyboard">
-      <UniqueIdentifier>{8c0efb54-cffb-4462-9bb1-71a6b26b6d52}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Lobelia\Input\Mouse">
-      <UniqueIdentifier>{f8b0d499-0da0-4acb-9f72-029565d53eb5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Lobelia\XML">
       <UniqueIdentifier>{175930ec-4cb1-48ba-9c8f-9c21e98671a8}</UniqueIdentifier>
     </Filter>
@@ -237,6 +219,15 @@
     </Filter>
     <Filter Include="Lobelia\Graphics\RenderableObject">
       <UniqueIdentifier>{cea52096-8af5-45fe-b270-ef009dfcf609}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lobelia\Input\Keyboard">
+      <UniqueIdentifier>{c627240c-8332-4a0b-ad68-72c65377c695}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lobelia\Input\Mouse">
+      <UniqueIdentifier>{22c175ce-ddba-405c-bcd4-deaf53743cba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lobelia\Input\Joystick">
+      <UniqueIdentifier>{37d734e5-f172-417f-aba9-a14297786d9c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -336,21 +327,6 @@
     <ClCompile Include="Lobelia\Graphics\View\View.cpp">
       <Filter>Lobelia\Graphics\View</Filter>
     </ClCompile>
-    <ClCompile Include="Lobelia\Input\Controller\DS4\DS4.cpp">
-      <Filter>Lobelia\Input\Controller\DS4</Filter>
-    </ClCompile>
-    <ClCompile Include="Lobelia\Input\DeviceList\DeviceManager.cpp">
-      <Filter>Lobelia\Input\DeviceList</Filter>
-    </ClCompile>
-    <ClCompile Include="Lobelia\Input\DeviceList\Device.cpp">
-      <Filter>Lobelia\Input\DeviceList</Filter>
-    </ClCompile>
-    <ClCompile Include="Lobelia\Input\Keyboard\Keyboard.cpp">
-      <Filter>Lobelia\Input\Keyboard</Filter>
-    </ClCompile>
-    <ClCompile Include="Lobelia\Input\Mouse\Mouse.cpp">
-      <Filter>Lobelia\Input\Mouse</Filter>
-    </ClCompile>
     <ClCompile Include="Lobelia\Movie\Movie.cpp">
       <Filter>Lobelia\Movie</Filter>
     </ClCompile>
@@ -395,6 +371,18 @@
     </ClCompile>
     <ClCompile Include="Lobelia\Scene\Scene.cpp">
       <Filter>Lobelia\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Input\Input.cpp">
+      <Filter>Lobelia\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Input\Keyboard\Keyboard.cpp">
+      <Filter>Lobelia\Input\Keyboard</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Input\Mouse\Mouse.cpp">
+      <Filter>Lobelia\Input\Mouse</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Input\Joystick\Joystick.cpp">
+      <Filter>Lobelia\Input\Joystick</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -551,24 +539,6 @@
     <ClInclude Include="Lobelia\Graphics\View\View.hpp">
       <Filter>Lobelia\Graphics\View</Filter>
     </ClInclude>
-    <ClInclude Include="Lobelia\Input\Controller\DS4\DS4.hpp">
-      <Filter>Lobelia\Input\Controller\DS4</Filter>
-    </ClInclude>
-    <ClInclude Include="Lobelia\Input\Data\Data.hpp">
-      <Filter>Lobelia\Input\Data</Filter>
-    </ClInclude>
-    <ClInclude Include="Lobelia\Input\DeviceList\Device.hpp">
-      <Filter>Lobelia\Input\DeviceList</Filter>
-    </ClInclude>
-    <ClInclude Include="Lobelia\Input\DeviceList\DeviceManager.hpp">
-      <Filter>Lobelia\Input\DeviceList</Filter>
-    </ClInclude>
-    <ClInclude Include="Lobelia\Input\Keyboard\Keyboard.hpp">
-      <Filter>Lobelia\Input\Keyboard</Filter>
-    </ClInclude>
-    <ClInclude Include="Lobelia\Input\Mouse\Mouse.hpp">
-      <Filter>Lobelia\Input\Mouse</Filter>
-    </ClInclude>
     <ClInclude Include="Lobelia\Math\Math.hpp">
       <Filter>Lobelia\Math</Filter>
     </ClInclude>
@@ -620,6 +590,18 @@
     <ClInclude Include="Lobelia\Graphics\RenderableObject\RenderableObject.hpp">
       <Filter>Lobelia\Graphics\RenderableObject</Filter>
     </ClInclude>
+    <ClInclude Include="Lobelia\Input\Input.hpp">
+      <Filter>Lobelia\Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Input\Keyboard\Keyboard.hpp">
+      <Filter>Lobelia\Input\Keyboard</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Input\Mouse\Mouse.hpp">
+      <Filter>Lobelia\Input\Mouse</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Input\Joystick\Joystick.hpp">
+      <Filter>Lobelia\Input\Joystick</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\ShaderFile\Header.hlsli">
@@ -657,9 +639,6 @@
     </None>
     <None Include="Lobelia\Graphics\Shader\ShaderBank.inl">
       <Filter>Lobelia\Graphics\Shader</Filter>
-    </None>
-    <None Include="Lobelia\Input\DeviceList\DeviceManager.inl">
-      <Filter>Lobelia\Input\DeviceList</Filter>
     </None>
     <None Include="Data\ShaderFile\Common\Common.hlsli">
       <Filter>Data\ShaderFile\Common</Filter>
