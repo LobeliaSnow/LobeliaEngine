@@ -15,10 +15,15 @@ namespace Lobelia {
 	//シーンを自由にレイヤー構造組めるようにしたい。
 	class SceneManager :public Utility::Singleton<SceneManager> {
 		friend class Utility::Singleton<SceneManager>;
+		using SceneObjcet = std::pair<std::string, std::shared_ptr<Scene>>;
 	private:
-		struct Layer {
-			std::shared_ptr<Scene> scene;
-		};
+		std::vector<SceneObjcet> scenes;
+	public:
+		int GetSceneCount();
+		void PushBack(const char* scene_name, std::shared_ptr<Scene>&& scene);
+		void PushFront(const char* scene_name, std::shared_ptr<Scene>&& scene);
+		void Insert(int index, const char* scene_name, std::shared_ptr<Scene>&& scene);
+		void Erase(const char* scene_name);
 	private:
 		SceneManager() = default;
 		~SceneManager() = default;
