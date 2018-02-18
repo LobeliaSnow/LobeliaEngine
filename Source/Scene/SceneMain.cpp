@@ -8,8 +8,7 @@
 //TODO : deltabaseでの飛び問題解決
 //Raypickする際に-1されていることを忘れてはならない。
 //TODO : Sound 矩形波を流し込めるようにしたりするのを簡単にする
-//TODO : DirectInput + XInput両刀で実装
-//TODO : キー入力の際、何かキーを押したかとる関数がほしい
+//TODO : Audio::Bank実装しなおし
 
 namespace Lobelia::Game {
 	SceneMain::SceneMain() :view(std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize())) {
