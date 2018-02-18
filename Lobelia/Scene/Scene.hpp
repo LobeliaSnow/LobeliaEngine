@@ -1,12 +1,4 @@
 namespace Lobelia {
-	//class Layer {
-	//private:
-	//public:
-	//	Layer() = default;
-	//	virtual ~Layer() = default;
-	//	virtual void Update() = 0;
-	//	virtual void Render() = 0;
-	//};
 	class Scene {
 	public:
 		/**@brief コンストラクタ*/
@@ -55,6 +47,7 @@ namespace Lobelia {
 			}
 			ChangeExecute();
 		}
+		void ClearStack() { while (stack.size() != 0)stack.pop(); }
 		void Render() { if (scene)scene->Render(); }
 		void Pause(bool flag) { pause = flag; }
 	private:

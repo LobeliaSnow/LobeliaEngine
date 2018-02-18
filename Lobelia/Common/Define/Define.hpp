@@ -70,3 +70,5 @@
 
 /**@brief forÉ}ÉNÉç*/
 #define FOR(index, max_value) for(int index = 0; index < max_value; index++)
+
+#define USE_XINPUT

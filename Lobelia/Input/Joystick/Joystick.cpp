@@ -18,11 +18,6 @@ namespace Lobelia::Input {
 		BSTR sysClassName = nullptr;
 		BSTR sysDeviceID = nullptr;
 		bool isXinputDevice = false;
-		auto FreeBSTR = [&]()->void {
-			if (sysNameSpace)SysFreeString(sysNameSpace);
-			if (sysDeviceID)SysFreeString(sysDeviceID);
-			if (sysClassName)SysFreeString(sysClassName);
-		};
 #define RELEASE_THROW throw 1
 		try {//何かあればthrowで解放処理へ飛ばす
 			ComPtr<IWbemLocator> locator;
@@ -46,7 +41,7 @@ namespace Lobelia::Input {
 			while (true) {
 				hr = enumDevices->Next(10000, 20, storage, &returned);
 				//ComPtrへ移譲
-				for (int i = 0; i < returned; i++) { devices[i] = storage[i]; }
+				for (int i = 0; i < i_cast(returned); i++) { devices[i] = storage[i]; }
 				if (FAILED(hr) || returned == 0)RELEASE_THROW;
 				for (int i = 0; i < i_cast(returned); i++) {
 					VARIANT var;
@@ -68,13 +63,18 @@ namespace Lobelia::Input {
 		}
 		catch (...) {}
 		//解放処理
-		FreeBSTR();
+		if (sysNameSpace)SysFreeString(sysNameSpace);
+		if (sysDeviceID)SysFreeString(sysDeviceID);
+		if (sysClassName)SysFreeString(sysClassName);
 		return isXinputDevice;
 	}
 	BOOL CALLBACK Joystick::EnumJoysticksCallback(const DIDEVICEINSTANCE* inst, VOID* context) {
-		//XInputデバイスだった場合無視する
+#ifdef USE_XINPUT
+		//XInputデバイスだった場合
 		if (IsXInputDevice(&inst->guidProduct)) xInputDeviceCount++;
-		else {
+		else
+#endif
+		{
 			//デバイスの追加
 			DIDEVICEINSTANCE temp = {};
 			memcpy_s(&temp, sizeof(DIDEVICEINSTANCE), inst, sizeof(DIDEVICEINSTANCE));
@@ -82,20 +82,60 @@ namespace Lobelia::Input {
 		}
 		return DIENUM_CONTINUE;
 	}
-	Joystick::Controller::Controller(bool is_xinput) :isXinput(is_xinput), button{} {}
+	Joystick::Controller::Controller(bool is_xinput, const char* device_name) :isXinput(is_xinput), button{}, deviceName(device_name), deadZone(200), pushKey(-1){}
 	Joystick::DirectInputController::DirectInputController(HWND hwnd, const GUID& guid, const DIDATAFORMAT& format, bool fore_ground, bool exclusive) {
 		InputDevice::Initialize(hwnd, guid, format, fore_ground, exclusive);
-		//DIPROPDWORD property = {};
-		//property.diph.dwSize = sizeof(DIPROPDWORD);
-		//property.diph.dwHeaderSize = sizeof(property.diph);
-		//property.diph.dwObj = 0;
-		//property.diph.dwHow = DIPH_DEVICE;
-		//property.dwData = DIPROPAUTOCENTER_OFF;
-		//HRESULT hr = GetDevice()->SetProperty(DIPROP_AUTOCENTER, &property.diph);
-		//if (FAILED(hr))STRICT_THROW("プロパティの設定に失敗");
-		HRESULT hr = GetDevice()->EnumObjects(DirectInputController::EnumAxis, GetDevice().Get(), DIDFT_AXIS);
+		HRESULT hr = S_OK;
+		hr = GetDevice()->EnumObjects(DirectInputController::EnumAxis, GetDevice().Get(), DIDFT_AXIS);
 		if (FAILED(hr))STRICT_THROW("軸設定の失敗");
+		DIDEVICEINSTANCE info = {};
+		info.dwSize = sizeof(info);
+		hr = GetDevice()->GetDeviceInfo(&info);
+		if (FAILED(hr))STRICT_THROW("コントローラー情報取得に失敗");
+		deviceName = info.tszProductName;
 		Acquire();
+		CreateEffect();
+	}
+	void Joystick::DirectInputController::CreateEffect() {
+		//振動エフェクト設定
+		DIEFFECT effectInfo = {};
+		effectInfo.dwSize = sizeof(DIEFFECT);
+		effectInfo.dwFlags = DIEFF_OBJECTOFFSETS;
+		effectInfo.dwDuration = 0;
+		effectInfo.dwSamplePeriod = 0;
+		effectInfo.dwGain = DI_FFNOMINALMAX;
+		//トリガー設定
+		effectInfo.dwTriggerButton = DIEB_NOTRIGGER;
+		effectInfo.dwTriggerRepeatInterval = 0;
+		//エフェクト軸設定
+		effectInfo.dwFlags |= DIEFF_POLAR;
+		//エフェクト軸
+		DWORD axis[] = { DIJOFS_X,DIJOFS_Y };
+		//エフェクト方向
+		LONG direction[] = { 1,0 };
+		effectInfo.cAxes = 2;
+		effectInfo.rgdwAxes = axis;
+		effectInfo.rglDirection = direction;
+		//周期設定
+		DIPERIODIC period = {};
+		period.dwMagnitude = DI_FFNOMINALMAX;
+		period.lOffset = 0;
+		period.dwPhase = 0;
+		period.dwPeriod = s_cast<DWORD>(0.5f*DI_SECONDS);
+		//適用
+		effectInfo.lpEnvelope = nullptr;
+		effectInfo.cbTypeSpecificParams = sizeof(DIPERIODIC);
+		effectInfo.lpvTypeSpecificParams = &period;
+		GetDevice()->CreateEffect(GUID_Square, &effectInfo, effect.GetAddressOf(), nullptr);
+		if (!effect)return;
+		//自動センタリング機能をオフ
+		DIPROPDWORD property = {};
+		property.diph.dwSize = sizeof(DIPROPDWORD);
+		property.diph.dwHeaderSize = sizeof(property.diph);
+		property.diph.dwObj = 0;
+		property.diph.dwHow = DIPH_DEVICE;
+		property.dwData = DIPROPAUTOCENTER_OFF;
+		GetDevice()->SetProperty(DIPROP_AUTOCENTER, &property.diph);
 	}
 	BOOL CALLBACK Joystick::DirectInputController::EnumAxis(LPCDIDEVICEOBJECTINSTANCE inst, LPVOID ref) {
 		DIPROPRANGE range = {};
@@ -107,6 +147,7 @@ namespace Lobelia::Input {
 		range.lMax = 1000;
 		HRESULT hr = r_cast<LPDIRECTINPUTDEVICE8>(ref)->SetProperty(DIPROP_RANGE, &range.diph);
 		if (FAILED(hr))STRICT_THROW("プロパティの設定に失敗");
+		return true;
 	}
 	bool Joystick::DirectInputController::Poll() {
 		HRESULT hr = GetDevice()->Poll();
@@ -147,37 +188,51 @@ namespace Lobelia::Input {
 		axis[0] = state.lX;		axis[1] = state.lY;		axis[2] = state.lZ;
 		axis[3] = state.lRx;	axis[4] = state.lRy;	axis[5] = state.lRz;
 		//適用
-		data->leftAxis.x = axis[asignMap[0]];
-		data->leftAxis.y = axis[asignMap[1]];
-		data->rightAxis.x = axis[asignMap[2]];
-		data->rightAxis.y = axis[asignMap[3]];
+		data->leftAxis.x = f_cast(axis[asignMap[0]]);
+		data->leftAxis.y = f_cast(axis[asignMap[1]]);
+		data->rightAxis.x = f_cast(axis[asignMap[2]]);
+		data->rightAxis.y = f_cast(axis[asignMap[3]]);
 		//十字キー判定
 		int angle = 8;//何も押されていない状態を表す
 		constexpr int POV_KEY[9] = { 0x01 ,0x09, 0x08, 0x0A, 0x02, 0x06, 0x04, 0x05, 0x00 };
 		//8方向取得
 		if (LOWORD(state.rgdwPOV[0]) != 0xFFFF)angle = state.rgdwPOV[0] / 4500;
 		//適用
-		data->isPushAnyKey = false;
+		data->pushKey = -1;
 		for (int direction = 0; direction < 4; direction++) {
 			data->button[direction] <<= 1;
 			data->button[direction] |= (POV_KEY[angle] & (0x01 << direction));
-			if (data->button[direction] == 1)data->isPushAnyKey = true;
+			if (data->pushKey == -1 && data->button[direction] == 1)data->pushKey = direction;
 		}
 		//ボタン
 		for (int i = 4; i < 16; i++) {
 			data->button[i] <<= 1;
 			data->button[i] |= (state.rgbButtons[asignMap[i]] != 0);
-			if (data->button[i] == 1)data->isPushAnyKey = true;
+			if (data->pushKey == -1 && data->button[i] == 1)data->pushKey = i;
 		}
 	}
-
+	void Joystick::DirectInputController::Vibration(int gain, float period) {
+		//対応コントローラーではないとき
+		if (!effect)return;
+		effect->Stop();
+		if (gain == 0)return;
+		DIEFFECT effectInfo = {};
+		effectInfo.dwSize = sizeof(DIEFFECT);
+		effectInfo.dwFlags = DIEFF_POLAR | DIEFF_OBJECTOFFSETS;
+		effectInfo.dwGain = gain;
+		//適用
+		effect->SetParameters(&effectInfo, DIEP_DURATION | DIEP_GAIN);
+		//振動
+		effect->Start(1, 0);
+	}
+	const std::string& Joystick::DirectInputController::GetDeviceName() { return deviceName; }
 	void Joystick::Initialize(HWND hwnd, bool fore_ground, bool exclusive) {
 		//デフォルトのキーアサイン作成(PS4準拠)
 		defaultPadSet = DirectInputPadSet{ 0,1,2,5,2,3,1,4,7,5,11,8,6,12,9,10 };
 		defaultPadSet.LEFT_X = 0;		defaultPadSet.LEFT_Y = 1;
 		defaultPadSet.RIGHT_X = 2;	defaultPadSet.RIGHT_Y = 5;
-		defaultPadSet.A = 3;				defaultPadSet.B = 2;
-		defaultPadSet.X = 4;					defaultPadSet.Y = 1;
+		defaultPadSet.A = 2;				defaultPadSet.B = 3;
+		defaultPadSet.X = 1;					defaultPadSet.Y = 4;
 		defaultPadSet.L1 = 5;				defaultPadSet.L2 = 7;
 		defaultPadSet.L3 = 11;				defaultPadSet.R1 = 6;
 		defaultPadSet.R2 = 8;				defaultPadSet.R3 = 12;
@@ -190,27 +245,28 @@ namespace Lobelia::Input {
 		if (FAILED(hr))STRICT_THROW("DirectInput対応コントローラー検出に失敗");
 		CreateDirectInputController(hwnd, fore_ground, exclusive);
 		for (int i = 0; i < xInputDeviceCount; i++) {
-			controllers.push_back(Controller(true));
+			controllers.push_back(Controller(true, "XInput Controller"));
 		}
-		controllerCount = controllers.size();
+		controllerCount = i_cast(controllers.size());
 	}
 	void Joystick::CreateDirectInputController(HWND hwnd, bool fore_ground, bool exclusive) {
-		dinputDeviceCount = deviceList.size();
+		dinputDeviceCount = i_cast(deviceList.size());
 		dinputControllers.resize(dinputDeviceCount);
 		for (int i = 0; i < dinputDeviceCount; i++) {
 			dinputControllers[i] = std::make_unique<DirectInputController>(hwnd, deviceList[i].guidInstance, c_dfDIJoystick2, fore_ground, exclusive);
 			dinputControllers[i]->SetPadSet(defaultPadSet);
-			controllers.push_back(Controller(false));
+			controllers.push_back(Controller(false, dinputControllers[i]->GetDeviceName().c_str()));
 		}
 	}
 	void Joystick::SetDirectInputPadSet(int index, const DirectInputPadSet& padset) {
 		if (index >= dinputDeviceCount) return;
+		if (index == -1)defaultPadSet = padset;
 		dinputControllers[index]->SetPadSet(padset);
 	}
 	void Joystick::XInputUpdate() {
 		auto Push = [=](BYTE* button, bool push) ->void {
 			(*button) <<= 1;
-			(*button) |= push;
+			(*button) |= i_cast(push);
 		};
 		for (int i = 0; i < xInputDeviceCount; i++) {
 			XINPUT_STATE state = {};
@@ -241,11 +297,18 @@ namespace Lobelia::Input {
 	}
 	void Joystick::Update() {
 		int i = 0;
-		for each(auto& controller in dinputControllers) {
+		for each(auto&& controller in dinputControllers) {
 			controller->Update(&controllers[i]);
 			i++;
 		}
 		XInputUpdate();
+		//デッドゾーンの判定
+		for (int i = 0; i < controllerCount; i++) {
+			if (fabsf(controllers[i].leftAxis.x) < f_cast(controllers[i].deadZone))controllers[i].leftAxis.x = 0.0f;
+			if (fabsf(controllers[i].leftAxis.y) < f_cast(controllers[i].deadZone))controllers[i].leftAxis.y = 0.0f;
+			if (fabsf(controllers[i].rightAxis.x) < f_cast(controllers[i].deadZone))controllers[i].rightAxis.x = 0.0f;
+			if (fabsf(controllers[i].rightAxis.y) < f_cast(controllers[i].deadZone))controllers[i].rightAxis.y = 0.0f;
+		}
 	}
 	void Joystick::CheckIndex(int index) {
 		if (s_cast<UINT>(index) > s_cast<UINT>(controllerCount))STRICT_THROW("範囲外の値です");
@@ -257,8 +320,9 @@ namespace Lobelia::Input {
 	}
 	bool Joystick::IsPushAnyKey(int index) {
 		CheckIndex(index);
-		return controllers[index].isPushAnyKey;
+		return (controllers[index].pushKey != -1);
 	}
+	int Joystick::PushKeyNo(int index) { return controllers[index].pushKey; }
 	const Math::Vector2& Joystick::GetLeftAxis(int index) {
 		CheckIndex(index);
 		return controllers[index].leftAxis;
@@ -267,6 +331,26 @@ namespace Lobelia::Input {
 		CheckIndex(index);
 		return controllers[index].rightAxis;
 	}
-
-
+	const std::string& Joystick::GetDeviceName(int index) {
+		CheckIndex(index);
+		return controllers[index].deviceName;
+	}
+	void Joystick::Vibration(int index, float power) {
+		CheckIndex(index);
+		if (power > 65535.0f)STRICT_THROW("範囲外の値です");
+		if (index < dinputDeviceCount) {
+			float bias = power / 65535.0f;
+			dinputControllers[index]->Vibration(i_cast(f_cast(DI_FFNOMINALMAX)*bias), 0);
+		}
+		else {
+			XINPUT_VIBRATION vibration = {};
+			vibration.wLeftMotorSpeed = s_cast<WORD>(power);
+			vibration.wRightMotorSpeed = s_cast<WORD>(power);
+			XInputSetState(index - dinputDeviceCount, &vibration);
+		}
+	}
+	void Joystick::SetDeadZone(int index, int dead_zone) {
+		CheckIndex(index);
+		controllers[index].deadZone = dead_zone;
+	}
 }

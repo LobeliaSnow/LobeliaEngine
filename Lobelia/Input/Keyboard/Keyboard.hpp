@@ -4,12 +4,13 @@ namespace Lobelia::Input {
 		friend class Utility::Singleton<Keyboard>;
 	private:
 		BYTE buffer[256];
-		bool isPushAnyKey;
+		int pushKeyNo;
 	public:
 		void Initialize(HWND hwnd, bool fore_ground = true, bool exclusive = false);
 		void Update();
 		BYTE GetKey(int key_code);
 		bool IsPushAnyKey();
+		int PushKeyNo();
 	private:
 		Keyboard();
 		~Keyboard() = default;
