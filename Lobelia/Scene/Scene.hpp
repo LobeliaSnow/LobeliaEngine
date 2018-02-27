@@ -50,6 +50,7 @@ namespace Lobelia {
 		void ClearStack() { while (stack.size() != 0)stack.pop(); }
 		void Render() { if (scene)scene->Render(); }
 		void Pause(bool flag) { pause = flag; }
+		void Clear() { scene.reset(); }
 	private:
 		SceneManager() :pause(false) {}
 		~SceneManager() = default;

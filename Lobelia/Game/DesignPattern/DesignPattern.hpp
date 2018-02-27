@@ -14,7 +14,7 @@ namespace Lobelia::Game {
 	//	Observerパターン
 	//---------------------------------------------------------------------------------------------
 	//通知受け取る 意味 観察者
-	template<class Type, class Key = std::string>class Observer Interface {
+	template<class Type, class Key = std::string> class Observer Interface {
 		template<class Type, class Key> friend class Observable;
 	private:
 		//更新

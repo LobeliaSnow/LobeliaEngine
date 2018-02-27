@@ -76,6 +76,7 @@ namespace Lobelia {
 
 	void Application::Shutdown() {
 		swapChain->Get()->SetFullscreenState(false, nullptr);
+		SceneManager::GetInstance()->Clear();
 #ifdef USE_IMGUI_AND_CONSOLE
 		HostConsole::GetInstance()->ProcessUnRegister("command clear");
 		HostConsole::GetInstance()->CommandUnRegister("screen shot");

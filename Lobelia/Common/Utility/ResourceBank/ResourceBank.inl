@@ -1,10 +1,10 @@
 namespace Lobelia {
 	template<class T, class Key> __forceinline ResourceBank<T, Key>::ResourceBank()noexcept = default;
 	template<class T, class Key> __forceinline ResourceBank<T, Key>::~ResourceBank()noexcept = default;
-	template<class T, class Key>template<class U, class... Args> __forceinline T* ResourceBank<T, Key>::Factory(Key key, Args... args) {
+	template<class T, class Key> template<class U, class... Args> __forceinline T* ResourceBank<T, Key>::Factory(Key key, Args... args) {
 		try {
 			if (IsExist(key)) 	return resource[key].get();
-			resource[key] = std::make_shared<U>(args...);
+			resource[key] = std::make_shared<U>(std::forward<Args>(args)...);
 			return resource[key].get();
 		}
 		catch (...) {
