@@ -229,6 +229,9 @@
     <Filter Include="Lobelia\Input\Joystick">
       <UniqueIdentifier>{37d734e5-f172-417f-aba9-a14297786d9c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Lobelia\Game\PathPlanner">
+      <UniqueIdentifier>{399bbd24-968e-4c18-92bd-03e0a6fc5b9b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="System\WinMain.cpp">
@@ -601,6 +604,9 @@
     </ClInclude>
     <ClInclude Include="Lobelia\Input\Joystick\Joystick.hpp">
       <Filter>Lobelia\Input\Joystick</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Game\PathPlanner\PathPlanner.hpp">
+      <Filter>Lobelia\Game\PathPlanner</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

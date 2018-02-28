@@ -24,10 +24,12 @@ namespace Lobelia::Game {
 		};
 	public:
 		NaviMeshGraph(const char* model_path, const char* mt_path);
+		NaviMeshGraph(const char* navi_path);
 		~NaviMeshGraph() = default;
 		void ConnectNode(int index0, int index1);
 		void DisconnectNode(int index0, int index1);
-		void AddNode(const Math::Vector3& node);
+		//第二引数は特に意図がなければtrueのままで大丈夫です
+		void AddNode(const Math::Vector3& node, bool update = true);
 		bool EraseNode(int index);
 		int GetTriangleCount() { return triangleCount; }
 		int GetEdgeCount() { return i_cast(edgeList.size()); }
@@ -37,6 +39,8 @@ namespace Lobelia::Game {
 		const std::list<Node>& GetNodeList() { return nodeList; }
 		void CreateVectorNodeList(std::vector<NaviMeshGraph::Node>& node_list);
 	private:
+		void NodeLoad(Utility::FileController& fc);
+		void EdgeLoad(Utility::FileController& fc);
 		void ConnectionUnique();
 		//ノードにインデックスを割り振る
 		void UpdateNode();

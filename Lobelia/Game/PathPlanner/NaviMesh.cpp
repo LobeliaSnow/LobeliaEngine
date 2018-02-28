@@ -28,6 +28,38 @@ namespace Lobelia::Game {
 		//エッジの構築
 		BuildEdge();
 	}
+	NaviMeshGraph::NaviMeshGraph(const char* navi_path) {
+		Utility::FileController fc = {};
+		fc.Open(navi_path, Utility::FileController::OpenMode::Read);
+		char command[10] = {};
+		while (true) {
+			int ret = i_cast(fc.Scan("%s", command, 10));
+			if (ret == EOF)return;
+			if (strcmp(command, "Node") == 0)NodeLoad(fc);
+			else if (strcmp(command, "Edge") == 0)EdgeLoad(fc);
+		}
+	}
+	void NaviMeshGraph::NodeLoad(Utility::FileController& fc) {
+		char temp[6] = {};
+		fc.Scan("%s %d", temp, 6, &nodeCount);
+		for (int i = 0; i < nodeCount; i++) {
+			Math::Vector3 node = {};
+			fc.Scan("%f %f %f", &node.x, &node.y, &node.z);
+			AddNode(node, false);
+		}
+		//インデックスを割り振る
+		UpdateNode();
+	}
+	void NaviMeshGraph::EdgeLoad(Utility::FileController& fc) {
+		char temp[6] = {};
+		int edgeCount = -1;
+		fc.Scan("%s %d", temp, 6, &edgeCount);
+		for (int i = 0; i < edgeCount; i++) {
+			int index0 = -1, index1 = -1;
+			fc.Scan("%d %d", &index0, &index1);
+			ConnectNode(index0, index1);
+		}
+	}
 	void NaviMeshGraph::ConnectionUnique() {
 		edgeList.sort();
 		edgeList.unique();
@@ -48,10 +80,10 @@ namespace Lobelia::Game {
 		if (index0 == index1)return;
 		edgeList.erase(std::remove(edgeList.begin(), edgeList.end(), Edge(index0, index1)), edgeList.end());
 	}
-	void NaviMeshGraph::AddNode(const Math::Vector3& node) {
+	void NaviMeshGraph::AddNode(const Math::Vector3& node, bool update) {
 		nodeList.push_back(Node(node, -1));
 		//インデックス再割り振り
-		UpdateNode();
+		if (update)UpdateNode();
 	}
 	bool NaviMeshGraph::EraseNode(int index) {
 		if (index >= nodeCount)return false;

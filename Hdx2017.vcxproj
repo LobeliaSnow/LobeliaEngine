@@ -291,6 +291,7 @@
     <ClInclude Include="Lobelia\Game\Collision\Collision.hpp" />
     <ClInclude Include="Lobelia\Game\DesignPattern\DesignPattern.hpp" />
     <ClInclude Include="Lobelia\Game\GameObject\GameObject.hpp" />
+    <ClInclude Include="Lobelia\Game\PathPlanner\PathPlanner.hpp" />
     <ClInclude Include="Lobelia\Game\Ranking.hpp" />
     <ClInclude Include="Lobelia\Game\SelectModule.hpp" />
     <ClInclude Include="Lobelia\Game\StringView.hpp" />
