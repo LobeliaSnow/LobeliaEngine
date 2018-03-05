@@ -5,6 +5,12 @@ namespace Lobelia {
 		Input::Keyboard::GetInstance()->Initialize(window->GetHandle());
 		Input::Mouse::GetInstance()->Initialize(window->GetHandle());
 		Input::Joystick::GetInstance()->Initialize(window->GetHandle());
+		//æ“¾o—ˆ‚½Joystick‚Ì—ñ‹“
+		for (int i = 0; i < Input::Joystick::GetInstance()->GetControllerCount(); i++) {
+			std::string name = Input::Joystick::GetInstance()->GetDeviceName(i);
+			HostConsole::GetInstance()->SetLog(name);
+		}
+		HostConsole::GetInstance()->Printf("joystick count : %d", Input::Joystick::GetInstance()->GetControllerCount());
 		swapChain = std::make_unique<Graphics::SwapChain>(window.get(), Config::GetRefPreference().msaa);
 		SceneManager::GetInstance()->ChangeReserve<Scene>(std::forward<Args>(args)...);
 		SceneManager::GetInstance()->ChangeExecute();

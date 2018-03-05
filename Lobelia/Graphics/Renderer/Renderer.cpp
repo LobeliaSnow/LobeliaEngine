@@ -132,8 +132,7 @@ namespace Lobelia::Graphics {
 		Texture::Clean(0, ShaderStageList::PS);
 		Render(rt->GetTexture(), color);
 	}
-
-
+	
 	SpriteBatchRenderer::SpriteBatchRenderer(int render_limit) :RENDER_LIMIT(render_limit) {
 		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, false);
 		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
@@ -151,8 +150,12 @@ namespace Lobelia::Graphics {
 		mesh->GetBuffer()[3] = { { +1.0f, -1.0f, +0.0f, +1.0f },{ 1.0f,0.0f } };
 		mesh->Update();
 	}
+	const Texture* SpriteBatchRenderer::GetTexture(int index) {
+		if (s_cast<UINT>(index) >= TEXTURE_COUNT)STRICT_THROW("slotが限界値を超えています");
+		return textures[index];
+	}
 	void SpriteBatchRenderer::SetTexture(int slot, Texture* texture) {
-		if (slot >= TEXTURE_COUNT)STRICT_THROW("slotが限界値を超えています");
+		if (s_cast<UINT>(slot) >= TEXTURE_COUNT)STRICT_THROW("slotが限界値を超えています");
 		textures[slot] = texture;
 	}
 	void SpriteBatchRenderer::Begin() {
@@ -162,7 +165,7 @@ namespace Lobelia::Graphics {
 		instances = static_cast<Instance*>(mapResource.pData);
 		renderCount = 0;
 	}
-	void SpriteBatchRenderer::Set(int slot, const Transform2D& transform, const Math::Vector2& upos, const Math::Vector2& usize, /*float rotate_axis_x, float rotate_axis_y, */Utility::Color color) {
+	void SpriteBatchRenderer::Set(int slot, const Transform2D& transform, const Math::Vector2& uv_begin, const Math::Vector2& uv_size, /*float rotate_axis_x, float rotate_axis_y, */Utility::Color color) {
 		if (s_cast<UINT>(slot) >= s_cast<UINT>(TEXTURE_COUNT) || !textures[slot])STRICT_THROW("存在しないテクスチャです");
 		Math::Vector2 view(2.0f / View::nowSize.x, -2.0f / View::nowSize.y);
 		Math::Vector2 rotate(cosf(transform.rotation), sinf(transform.rotation));
@@ -188,21 +191,21 @@ namespace Lobelia::Graphics {
 		instances[renderCount].col.z = color.GetNormalizedB();
 		instances[renderCount].col.w = color.GetNormalizedA();
 		Math::Vector2 size = textures[slot]->GetSize();
-		instances[renderCount].uvTrans.x = static_cast<float>(upos.x) / static_cast<float>(size.x);
-		instances[renderCount].uvTrans.y = static_cast<float>(upos.y) / static_cast<float>(size.y);
-		instances[renderCount].uvTrans.z = static_cast<float>(usize.x) / static_cast<float>(size.x);
-		instances[renderCount].uvTrans.w = static_cast<float>(usize.y) / static_cast<float>(size.y);
+		instances[renderCount].uvTrans.x = static_cast<float>(uv_begin.x) / static_cast<float>(size.x);
+		instances[renderCount].uvTrans.y = static_cast<float>(uv_begin.y) / static_cast<float>(size.y);
+		instances[renderCount].uvTrans.z = static_cast<float>(uv_size.x) / static_cast<float>(size.x);
+		instances[renderCount].uvTrans.w = static_cast<float>(uv_size.y) / static_cast<float>(size.y);
 
 		instances[renderCount].textureSlot = slot;
 
 		renderCount++;
 	}
-	void SpriteBatchRenderer::Set(int slot, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color) {
+	void SpriteBatchRenderer::Set(int slot, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_size, Utility::Color color) {
 		Transform2D trans = {};
 		trans.position = pos;
 		trans.scale = size;
 		trans.rotation = rad;
-		Set(slot, trans, uv_begin, uv_end, color);
+		Set(slot, trans, uv_begin, uv_size, color);
 	}
 	void SpriteBatchRenderer::Set(int slot, Utility::Color color) {
 		Transform2D trans = {};

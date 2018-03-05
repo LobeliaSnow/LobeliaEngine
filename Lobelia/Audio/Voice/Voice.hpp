@@ -130,6 +130,5 @@ namespace Lobelia::Audio {
 		bool SetSpeed(Voice3DHandle handle, const Math::Vector3& speed);
 		void Update();
 		size_t TakeSize();
-
 	};
 }

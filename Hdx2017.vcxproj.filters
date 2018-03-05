@@ -384,6 +384,9 @@
     <ClCompile Include="Lobelia\Input\Joystick\Joystick.cpp">
       <Filter>Lobelia\Input\Joystick</Filter>
     </ClCompile>
+    <ClCompile Include="Lobelia\Network\NetworkObject.cpp">
+      <Filter>Lobelia\Network</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImGui\Header\imconfig.h">
@@ -601,6 +604,9 @@
     </ClInclude>
     <ClInclude Include="Lobelia\Input\Joystick\Joystick.hpp">
       <Filter>Lobelia\Input\Joystick</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Network\NetworkObject.hpp">
+      <Filter>Lobelia\Network</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

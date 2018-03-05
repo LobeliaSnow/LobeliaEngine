@@ -8,12 +8,13 @@ namespace Lobelia::Input {
 		int wheel;
 		Math::Vector2 clientPos;
 		Math::Vector2 screenPos;
-		bool isPushAnyKey;
+		int pushKeyNo;
 	public:
 		void Initialize(HWND hwnd, bool fore_ground = true, bool exclusive = false);
 		void Update();
 		BYTE GetKey(int key_code);
 		bool IsPushAnyKey();
+		int PushKeyNo();
 		const Math::Vector2& GetMove();
 		int GetWheel();
 		const Math::Vector2& GetClientPos();

@@ -8,6 +8,7 @@
 //TODO : abstarct interface final const noexcept等、指定子を付けていく。
 #include "Network/Network.hpp"
 #include "Common/Common.hpp"
+#include "Network/NetworkObject.hpp"
 #include "Graphics/Origin/Origin.hpp"
 #include "Graphics/BufferCreator/BufferCreator.h"
 #include "Exception/Exception.hpp"

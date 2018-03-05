@@ -1,7 +1,7 @@
 #include "Lobelia.hpp"
 
 namespace Lobelia::Input {
-	Mouse::Mouse() :buffer{}, move(), wheel(0), isPushAnyKey(false){}
+	Mouse::Mouse() :buffer{}, move(), wheel(0), pushKeyNo(-1){}
 	void Mouse::Initialize(HWND hwnd, bool fore_ground, bool exclusive) {
 		InputDevice::Initialize(hwnd, GUID_SysMouse, c_dfDIMouse2, fore_ground, exclusive);
 		//軸モードを相対値モードに設定
@@ -22,11 +22,11 @@ namespace Lobelia::Input {
 			HRESULT hr = GetDevice()->GetDeviceState(sizeof(DIMOUSESTATE2), &state);
 			if (FAILED(hr))STRICT_THROW("入力デバイスの情報取得に失敗");
 		}
-		isPushAnyKey = false;
+		pushKeyNo = -1;
 		for (int i = 0; i < 3; i++) {
 			buffer[i] <<= 1;
 			buffer[i] |= (state.rgbButtons[i] != 0);
-			if (buffer[i])isPushAnyKey = true;
+			if (pushKeyNo == -1 && buffer[i])pushKeyNo = i;
 		}
 		move.x = f_cast(state.lX);
 		move.y = f_cast(state.lY);
@@ -44,7 +44,8 @@ namespace Lobelia::Input {
 		if (s_cast<UINT>(key_code) > 3)STRICT_THROW("範囲外のキーコードが設定されました");
 		return buffer[key_code] & 3;
 	}
-	bool Mouse::IsPushAnyKey() { return isPushAnyKey; }
+	bool Mouse::IsPushAnyKey() { return (pushKeyNo != -1); }
+	int Mouse::PushKeyNo() { return pushKeyNo; }
 	const Math::Vector2& Mouse::GetMove() { return move; }
 	int Mouse::GetWheel() { return wheel; }
 	const Math::Vector2& Mouse::GetClientPos() { return clientPos; }

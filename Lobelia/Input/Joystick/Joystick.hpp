@@ -32,8 +32,11 @@ namespace Lobelia::Input {
 			Math::Vector2 rightAxis;
 			//ボタン
 			std::array<BYTE, 20> button;
-			bool isPushAnyKey;
-			Controller(bool is_xinput);
+			//個のフレーム押された瞬間のID
+			int pushKey;
+			std::string deviceName;
+			int deadZone;
+			Controller(bool is_xinput, const char* device_name);
 		};
 		class DirectInputController :public InputDevice {
 		private:
@@ -41,13 +44,20 @@ namespace Lobelia::Input {
 		private:
 			int asignMap[16];
 			int pov[4];
+			std::string deviceName;
+			ComPtr<IDirectInputEffect> effect;
 		private:
 			bool Poll();
+		private:
+			void CreateEffect();
 		public:
 			DirectInputController(HWND hwnd, const GUID& guid, const DIDATAFORMAT& format, bool fore_ground, bool exclusive);
 			~DirectInputController() = default;
 			void SetPadSet(const DirectInputPadSet& padset);
 			void Update(Controller* data);
+			//フォースフィードバック対応コントローラーのみ
+			void Vibration(int gain, float period);
+			const std::string& GetDeviceName();
 		};
 	private:
 		int dinputDeviceCount;
@@ -68,8 +78,14 @@ namespace Lobelia::Input {
 		int GetControllerCount();
 		BYTE GetKey(int index, KeyCode code);
 		bool IsPushAnyKey(int index);
+		int PushKeyNo(int index);
 		const Math::Vector2& GetLeftAxis(int index);
 		const Math::Vector2& GetRightAxis(int index);
+		const std::string& GetDeviceName(int index);
+		//powerの範囲は0~65535までです
+		void Vibration(int index, float power);
+		//0~1000まで
+		void SetDeadZone(int index, int dead_zone);
 	private:
 		Joystick() = default;
 		~Joystick() = default;

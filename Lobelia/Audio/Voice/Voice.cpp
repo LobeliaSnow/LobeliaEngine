@@ -283,9 +283,7 @@ namespace Lobelia::Audio {
 	}
 	size_t Player::TakeSize() { return voices.size(); }
 
-	Voice3DPlayer::Voice3DPlayer(const Buffer& buffer) :buffer(buffer) {
-
-	}
+	Voice3DPlayer::Voice3DPlayer(const Buffer& buffer) :buffer(buffer) {}
 	Voice3DPlayer::~Voice3DPlayer() {
 		for each(auto& voice in voices) {
 			voice.second.voice->Stop();

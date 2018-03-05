@@ -255,6 +255,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Lobelia\Network\Network.cpp" />
+    <ClCompile Include="Lobelia\Network\NetworkObject.cpp" />
     <ClCompile Include="Lobelia\Scene\Scene.cpp" />
     <ClCompile Include="Lobelia\XML\XML.cpp" />
     <ClCompile Include="Source\Scene\SceneMain.cpp" />
@@ -331,6 +332,7 @@
     <ClInclude Include="Lobelia\Math\Math.hpp" />
     <ClInclude Include="Lobelia\Movie\Movie.hpp" />
     <ClInclude Include="Lobelia\Network\Network.hpp" />
+    <ClInclude Include="Lobelia\Network\NetworkObject.hpp" />
     <ClInclude Include="Lobelia\Scene\Scene.hpp" />
     <ClInclude Include="Lobelia\XML\XML.hpp" />
   </ItemGroup>
