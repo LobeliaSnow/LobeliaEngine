@@ -1,6 +1,9 @@
 #pragma once
+#ifdef USE_XINPUT
 #include <Xinput.h>
-#pragma comment (lib, "xinput.lib")
+//#pragma comment (lib, "xinput.lib")
+#pragma comment(lib,"Xinput9_1_0.lib")
+#endif
 
 namespace Lobelia::Input {
 	class Joystick :public Utility::Singleton<Joystick> {
@@ -68,7 +71,9 @@ namespace Lobelia::Input {
 		int controllerCount;
 	private:
 		void CreateDirectInputController(HWND hwnd, bool fore_ground, bool exclusive);
+#ifdef USE_XINPUT
 		void XInputUpdate();
+#endif
 		void CheckIndex(int index);
 	public:
 		void Initialize(HWND hwnd, bool fore_ground = true, bool exclusive = false);

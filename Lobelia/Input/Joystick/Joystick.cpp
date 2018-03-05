@@ -263,6 +263,7 @@ namespace Lobelia::Input {
 		if (index == -1)defaultPadSet = padset;
 		dinputControllers[index]->SetPadSet(padset);
 	}
+#ifdef USE_XINPUT
 	void Joystick::XInputUpdate() {
 		auto Push = [=](BYTE* button, bool push) ->void {
 			(*button) <<= 1;
@@ -295,13 +296,16 @@ namespace Lobelia::Input {
 			controllers[index].rightAxis.y = f_cast(pad.sThumbRY) / 32768.0f*1000.0f;
 		}
 	}
+#endif
 	void Joystick::Update() {
 		int i = 0;
 		for each(auto&& controller in dinputControllers) {
 			controller->Update(&controllers[i]);
 			i++;
 		}
+#ifdef USE_XINPUT
 		XInputUpdate();
+#endif
 		//デッドゾーンの判定
 		for (int i = 0; i < controllerCount; i++) {
 			if (fabsf(controllers[i].leftAxis.x) < f_cast(controllers[i].deadZone))controllers[i].leftAxis.x = 0.0f;
@@ -342,12 +346,14 @@ namespace Lobelia::Input {
 			float bias = power / 65535.0f;
 			dinputControllers[index]->Vibration(i_cast(f_cast(DI_FFNOMINALMAX)*bias), 0);
 		}
+#ifdef USE_XINPUT
 		else {
 			XINPUT_VIBRATION vibration = {};
 			vibration.wLeftMotorSpeed = s_cast<WORD>(power);
 			vibration.wRightMotorSpeed = s_cast<WORD>(power);
 			XInputSetState(index - dinputDeviceCount, &vibration);
 		}
+#endif
 	}
 	void Joystick::SetDeadZone(int index, int dead_zone) {
 		CheckIndex(index);
