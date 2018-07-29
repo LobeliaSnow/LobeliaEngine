@@ -28,6 +28,7 @@ namespace Lobelia::Graphics {
 		data.eye = DirectX::XMVectorSet(1.0f, 0.0f, 0.0f, 1.0f);
 		CreateView(data);
 	}
+	View::~View() = default;
 	void View::SetEyePos(const Math::Vector3& pos) {
 		data.eye = DirectX::XMVectorSet(pos.x, pos.y, pos.z, 1.0f);
 		buffer.pos.x = pos.x;
@@ -37,16 +38,14 @@ namespace Lobelia::Graphics {
 	}
 	void View::SetEyeTarget(const Math::Vector3& target) { data.at = DirectX::XMVectorSet(target.x, target.y, target.z, 1.0f); }
 	void View::SetEyeUpDirection(const Math::Vector3& up_direction) { data.up = DirectX::XMVectorSet(up_direction.x, up_direction.y, up_direction.z, 1.0f); }
-	View::~View() = default;
+	void View::SetFov(float fov_rad) { fov = fov_rad; }
+	void View::SetNear(float near_z) { nearZ = near_z; }
+	void View::SetFar(float far_z) { farZ = far_z; }
 	void View::ChangeViewport(const Math::Vector2& pos, const Math::Vector2& size) { CreateViewport(pos, size); }
 	void View::Activate() {
 		CreateProjection(fov, aspect, nearZ, farZ);
 		CreateView(data);
 		CreateBillboardMat(data);
-		//buffer.pos.x = DirectX::XMVectorGetX(data.eye);
-		//buffer.pos.y = DirectX::XMVectorGetY(data.eye);
-		//buffer.pos.z = DirectX::XMVectorGetZ(data.eye);
-		//buffer.pos.w = DirectX::XMVectorGetW(data.eye);
 		constantBuffer->Activate(buffer);
 		Device::GetContext()->RSSetViewports(1, &viewport);
 		nowSize = size;
@@ -75,6 +74,7 @@ namespace Lobelia::Graphics {
 		viewport.MaxDepth = 1.0f;
 		viewport.TopLeftX = static_cast<FLOAT>(pos.x);
 		viewport.TopLeftY = static_cast<FLOAT>(pos.y);
+		aspect = static_cast<float>(size.x) / static_cast<float>(size.y);
 	}
 	//TODO : å„ÇŸÇ«ä÷êîï™ÇØ
 	void View::CreateFrustum() {
@@ -163,12 +163,24 @@ namespace Lobelia::Graphics {
 	}
 	DirectX::XMMATRIX View::GetColumnViewMatrix() { return buffer.view; }
 	DirectX::XMMATRIX View::GetColumnProjectionMatrix() { return buffer.projection; }
-	DirectX::XMMATRIX View::GetRawViewMatrix() { return DirectX::XMMatrixTranspose(buffer.view); }
-	DirectX::XMMATRIX View::GetRawProjectionMatrix() { return DirectX::XMMatrixTranspose(buffer.projection); }
+	DirectX::XMMATRIX View::GetRowViewMatrix() { return DirectX::XMMatrixTranspose(buffer.view); }
+	DirectX::XMMATRIX View::GetRowProjectionMatrix() { return DirectX::XMMatrixTranspose(buffer.projection); }
+	DirectX::XMMATRIX View::CreateViewportMatrix(const Math::Vector2& size) {
+		DirectX::XMFLOAT4X4 storageViewport = {};
+		memset(&storageViewport, 0, sizeof(storageViewport));
+		storageViewport._11 = size.x / 2;
+		storageViewport._22 = -size.y / 2;
+		storageViewport._33 = 1.0f;
+		storageViewport._41 = size.x / 2;
+		storageViewport._42 = size.y / 2;
+		storageViewport._44 = 1.0f;
+		DirectX::XMMATRIX calcViewport;
+		return DirectX::XMLoadFloat4x4(&storageViewport);
+	}
 
 	DirectX::XMMATRIX View::GetNowColumnViewMatrix() { return nowView; }
 	DirectX::XMMATRIX View::GetNowColumnProjectionMatrix() { return nowProjection; }
-	DirectX::XMMATRIX View::GetNowRawViewMatrix() { return DirectX::XMMatrixTranspose(nowView); }
-	DirectX::XMMATRIX View::GetNowRawProjectionMatrix() { return DirectX::XMMatrixTranspose(nowProjection); }
+	DirectX::XMMATRIX View::GetNowRowViewMatrix() { return DirectX::XMMatrixTranspose(nowView); }
+	DirectX::XMMATRIX View::GetNowRowProjectionMatrix() { return DirectX::XMMatrixTranspose(nowProjection); }
 
 }

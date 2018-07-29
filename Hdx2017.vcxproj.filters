@@ -133,9 +133,6 @@
     <Filter Include="Lobelia\Graphics\Origin">
       <UniqueIdentifier>{78c97518-a884-4910-b1c1-c46a45e8b7fe}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Lobelia\Graphics\Pipeline">
-      <UniqueIdentifier>{5b418c56-83fc-49be-b86c-a6f30403a0d8}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Lobelia\Graphics\Renderer">
       <UniqueIdentifier>{3ca5b6e9-e29b-4828-8c99-dfb45c70a631}</UniqueIdentifier>
     </Filter>
@@ -199,12 +196,6 @@
     <Filter Include="Lobelia\Game">
       <UniqueIdentifier>{2f923bf2-d769-46ff-a733-8fb5e54259cb}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Lobelia\Game\GameObject">
-      <UniqueIdentifier>{1108f43a-2c87-45ee-bbef-80ce3adc0f30}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Lobelia\Game\Collision">
-      <UniqueIdentifier>{adf5272f-eba0-4766-b509-0c3f463ca5e4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Lobelia\Game\DesignPattern">
       <UniqueIdentifier>{f0d93c4d-707e-4bfa-96cd-1bda9b354400}</UniqueIdentifier>
     </Filter>
@@ -231,6 +222,9 @@
     </Filter>
     <Filter Include="Lobelia\Game\PathPlanner">
       <UniqueIdentifier>{399bbd24-968e-4c18-92bd-03e0a6fc5b9b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lobelia\Common\Utility\PerformanceCounter">
+      <UniqueIdentifier>{47abf5f0-4ffd-4399-ac41-dc18d7ef4f14}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -297,9 +291,6 @@
     <ClCompile Include="Lobelia\Graphics\Model\Model.cpp">
       <Filter>Lobelia\Graphics\Model</Filter>
     </ClCompile>
-    <ClCompile Include="Lobelia\Graphics\Pipeline\Pipeline.cpp">
-      <Filter>Lobelia\Graphics\Pipeline</Filter>
-    </ClCompile>
     <ClCompile Include="Lobelia\Graphics\Renderer\Renderer.cpp">
       <Filter>Lobelia\Graphics\Renderer</Filter>
     </ClCompile>
@@ -357,12 +348,6 @@
     <ClCompile Include="Lobelia\Graphics\Direct2D\Direct2DSystem.cpp">
       <Filter>Lobelia\Graphics\Direct2D</Filter>
     </ClCompile>
-    <ClCompile Include="Lobelia\Game\GameObject\GameObject.cpp">
-      <Filter>Lobelia\Game\GameObject</Filter>
-    </ClCompile>
-    <ClCompile Include="Lobelia\Game\Collision\Collision.cpp">
-      <Filter>Lobelia\Game\Collision</Filter>
-    </ClCompile>
     <ClCompile Include="Lobelia\Game\DesignPattern\DesignPattern.cpp">
       <Filter>Lobelia\Game\DesignPattern</Filter>
     </ClCompile>
@@ -386,6 +371,9 @@
     </ClCompile>
     <ClCompile Include="Lobelia\Input\Joystick\Joystick.cpp">
       <Filter>Lobelia\Input\Joystick</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Common\Utility\PerformanceCounter\PerformanceCounter.cpp">
+      <Filter>Lobelia\Common\Utility\PerformanceCounter</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -503,9 +491,6 @@
     <ClInclude Include="Lobelia\Graphics\Origin\Origin.hpp">
       <Filter>Lobelia\Graphics\Origin</Filter>
     </ClInclude>
-    <ClInclude Include="Lobelia\Graphics\Pipeline\Pipeline.hpp">
-      <Filter>Lobelia\Graphics\Pipeline</Filter>
-    </ClInclude>
     <ClInclude Include="Lobelia\Graphics\Renderer\Renderer.hpp">
       <Filter>Lobelia\Graphics\Renderer</Filter>
     </ClInclude>
@@ -572,12 +557,6 @@
     <ClInclude Include="Lobelia\Game\Ranking.hpp">
       <Filter>Lobelia\Game</Filter>
     </ClInclude>
-    <ClInclude Include="Lobelia\Game\GameObject\GameObject.hpp">
-      <Filter>Lobelia\Game\GameObject</Filter>
-    </ClInclude>
-    <ClInclude Include="Lobelia\Game\Collision\Collision.hpp">
-      <Filter>Lobelia\Game\Collision</Filter>
-    </ClInclude>
     <ClInclude Include="Lobelia\Game\DesignPattern\DesignPattern.hpp">
       <Filter>Lobelia\Game\DesignPattern</Filter>
     </ClInclude>
@@ -607,6 +586,9 @@
     </ClInclude>
     <ClInclude Include="Lobelia\Game\PathPlanner\PathPlanner.hpp">
       <Filter>Lobelia\Game\PathPlanner</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Common\Utility\PerformanceCounter\PerformanceCounter.hpp">
+      <Filter>Lobelia\Common\Utility\PerformanceCounter</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

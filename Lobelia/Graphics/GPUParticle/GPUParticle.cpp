@@ -77,6 +77,16 @@ namespace Lobelia::Graphics {
 	const std::string GPUParticleSystem::BLEND_LIST[4] = { "Copy" ,"Add" ,"Sub" ,"Screen" };
 	//ブレンドプリセット
 	GPUParticleSystem::GPUParticleSystem() :textureList{} {
+		blendList[i_cast(BlendMode::Copy)] = std::make_shared<BlendState>(BlendPreset::COPY, true, false);
+		blendList[i_cast(BlendMode::Add)] = std::make_shared<BlendState>(BlendPreset::ADD, true, false);
+		blendList[i_cast(BlendMode::Sub)] = std::make_shared<BlendState>(BlendPreset::SUB, true, false);
+		blendList[i_cast(BlendMode::Screen)] = std::make_shared<BlendState>(BlendPreset::SCREEN, true, false);
+		if (!blend)blend = blendList[i_cast(BlendMode::Add)];
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
+		if (!rasterizer)rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::NONE);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, false, StencilDesc{}, false);
+		if (!vs)vs = std::make_shared<VertexShader>("Data/ShaderFile/GPUParticle/GPUParticle.hlsl", "GPUParticleVS", VertexShader::Model::VS_4_0);
+		if (!ps)ps = std::make_shared<PixelShader>("Data/ShaderFile/GPUParticle/GPUParticle.hlsl", "GPUParticlePS", PixelShader::Model::PS_5_0);
 		//バッファ作成
 		infoCBuffer = std::make_unique<ConstantBuffer<Info>>(0, ShaderStageList::CS);
 		appendData = std::make_unique<RWByteAddressBuffer>(appendParticles, s_cast<UINT>(sizeof(Particle)), APPEND_PARTICLE_MAX, false, false, false);
@@ -94,17 +104,10 @@ namespace Lobelia::Graphics {
 		updateCS = std::make_unique<ComputeShader>("Data/ShaderFile/GPUParticle/GPUParticle.hlsl", "UpdateParticle");
 		//GeometryShader作成
 		gs = std::make_unique<GeometryShader>("Data/ShaderFile/GPUParticle/GPUParticle.hlsl", "GPUParticleGS");
-		//VertexShader,PixelShader作成
-		ShaderBank::Register<VertexShader>("GPUParticle", "Data/ShaderFile/GPUParticle/GPUParticle.hlsl", "GPUParticleVS", VertexShader::Model::VS_4_0);
-		VertexShader* vs = ShaderBank::Get<VertexShader>("GPUParticle");
 		//リフレクション開始
-		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs);
+		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
 		//入力レイアウト作成
-		inputLayout = std::make_unique<InputLayout>(vs, reflector.get());
-
-		ShaderBank::Register<PixelShader>("GPUParticle", "Data/ShaderFile/GPUParticle/GPUParticle.hlsl", "GPUParticlePS", PixelShader::Model::PS_5_0);
-		//パイプライン構築
-		pipeline = std::make_unique<Pipeline>("Add", "Point", D_SOFF_ZOFF, "Cull None", "GPUParticle", 0, nullptr, "GPUParticle", 0, nullptr);
+		inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
 	}
 	GPUParticleSystem::~GPUParticleSystem() = default;
 	void GPUParticleSystem::SetTexture(int slot, Texture* texture) {
@@ -156,7 +159,7 @@ namespace Lobelia::Graphics {
 	}
 	void GPUParticleSystem::Update(float time_scale) {
 		//経過時間更新
-		info.elapsedTime = Application::GetInstance()->GetProcessTime()*time_scale / 1000.0f;
+		info.elapsedTime = Application::GetInstance()->GetProcessTimeMili()*time_scale / 1000.0f;
 		//定数バッファ更新
 		infoCBuffer->Activate(info);
 		//パーティクル追加されていない場合はスルー GPUへのパーティクル追加実行
@@ -171,12 +174,12 @@ namespace Lobelia::Graphics {
 		}
 		UINT stride = sizeof(Particle);
 		UINT offset = 0;
-		pipeline->BlendSet(BLEND_LIST[i_cast(mode)]);
 		//重要
 		Device::GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
 		Device::GetContext()->IASetVertexBuffers(0, 1, dataBuffer->buffer.GetAddressOf(), &stride, &offset);
 		Device::GetContext()->IASetIndexBuffer(indexBuffer->buffer.Get(), DXGI_FORMAT_R32_UINT, offset);
-		pipeline->Activate(true);
+		blend = blendList[i_cast(mode)];
+		Activate();
 		gs->Set();
 		inputLayout->Set();
 		Device::GetContext()->DrawIndexedInstancedIndirect(indirectArgs->buffer.Get(), 0);

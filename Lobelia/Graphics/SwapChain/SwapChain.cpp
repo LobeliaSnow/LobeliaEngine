@@ -63,7 +63,7 @@ namespace Lobelia::Graphics {
 	}
 	RenderTarget* SwapChain::GetRenderTarget() { return renderTarget.get(); }
 	void SwapChain::Clear(Utility::Color color) { renderTarget->Clear(color); }
-	void SwapChain::Present() { swapChain->Present(0, 0); }
+	void SwapChain::Present() { swapChain->Present(Config::GetRefPreference().useVSync, 0); }
 	void SwapChain::ResizeBuffer(const Math::Vector2& size) {
 		renderTarget.reset();
 		DXGI_SWAP_CHAIN_DESC desc = {};

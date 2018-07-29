@@ -158,3 +158,16 @@ PS_IN Main3DInstancing(VS_INSTANCING_ANIMATION_IN vs_in)
     return ps_out;
 }
 
+PS_IN_POLYGON MainPolygon(VS_IN_POLYGON vs_in)
+{
+	PS_IN_POLYGON ps_out = (PS_IN_POLYGON)0;
+	ps_out.pos = mul(vs_in.pos, world);
+	ps_out.pos = mul(ps_out.pos, view);
+	ps_out.pos = mul(ps_out.pos, projection);
+	ps_out.tex = vs_in.tex;
+	//float4 halfLambert = DirectionalLight(vs_in.normal, (float3) lightDirection, world)*0.5f + 0.5f;
+	//halfLambert.a = 1.0f;
+	ps_out.color = vs_in.color/**halfLambert*/;
+	return ps_out;
+}
+

@@ -57,21 +57,11 @@ namespace Lobelia::Graphics {
 		return instanceCount++;
 	}
 
-	Shader::Shader(const char* file_path, const char* entry_point, const char* shader_model, ShaderLinkage* linkage) :linkage(linkage) {
+	Shader::Shader(const char* file_path, const char* entry_point, const char* shader_model, ShaderLinkage* linkage) :linkage(linkage), instanceCount(0) {
 		ShaderCompiler::CompileShaderFromFile(file_path, entry_point, shader_model, blob.GetAddressOf());
 	}
 	Shader::~Shader() = default;
-	static void ShaderSet(std::function<void(int, ID3D11ClassInstance**)> functor, ShaderLinkage* linkage, int instance_count, InstanceID* instance_no) {
-		ID3D11ClassInstance** renderTransform = nullptr;
-		if (instance_count > 0) {
-			renderTransform = new  ID3D11ClassInstance*[instance_count];
-			for (int i = 0; i < instance_count; i++) {
-				renderTransform[i] = linkage->instances[instance_no[i]]->Get().Get();
-			}
-		}
-		functor(instance_count, renderTransform);
-		Utility::SafeDelete(renderTransform);
-	}
+
 	ShaderLinkage* Shader::GetLinkage() { return linkage.get(); }
 	VertexShader::VertexShader(const char* file_path, const char* entry_point, Model shader_model, bool use_linkage) :Shader(file_path, entry_point, ConverteShaderModelString(shader_model).c_str(), use_linkage ? new ShaderLinkage() : nullptr) {
 		HRESULT hr = Device::Get()->CreateVertexShader(blob->GetBufferPointer(), blob->GetBufferSize(), linkage ? linkage->classLinkage.Get() : nullptr, vs.GetAddressOf());
@@ -92,9 +82,7 @@ namespace Lobelia::Graphics {
 		return "";
 	}
 
-	void VertexShader::Set(int instance_count, InstanceID* instances) {
-		ShaderSet([this](int instance_count, ID3D11ClassInstance** render_transform) { Device::GetContext()->VSSetShader(vs.Get(), render_transform, instance_count); }, linkage.get(), instance_count, instances);
-	}
+	void VertexShader::Set() { Device::GetContext()->VSSetShader(vs.Get(), instances.data(), instanceCount); }
 
 	PixelShader::PixelShader(const char* file_path, const char* entry_point, Model shader_model, bool use_linkage) :Shader(file_path, entry_point, ConverteShaderModelString(shader_model).c_str(), use_linkage ? new ShaderLinkage() : nullptr) {
 		HRESULT hr = Device::Get()->CreatePixelShader(blob->GetBufferPointer(), blob->GetBufferSize(), linkage ? linkage->classLinkage.Get() : nullptr, ps.GetAddressOf());
@@ -113,16 +101,40 @@ namespace Lobelia::Graphics {
 		}
 		return "";
 	}
-	void PixelShader::Set(int instance_count, InstanceID* instances) {
-		ShaderSet([this](int instance_count, ID3D11ClassInstance** render_transform) { Device::GetContext()->PSSetShader(ps.Get(), render_transform, instance_count); }, linkage.get(), instance_count, instances);
-	}
+	void PixelShader::Set() { Device::GetContext()->PSSetShader(ps.Get(), instances.data(), instanceCount); }
 	GeometryShader::GeometryShader(const char* file_path, const char* entry_point) :Shader(file_path, entry_point, "gs_5_0", nullptr) {
 		HRESULT hr = Device::Get()->CreateGeometryShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, gs.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("頂点シェーダーの作成に失敗");
 	}
 	GeometryShader::~GeometryShader() = default;
 	void GeometryShader::Set() {
-		Device::GetContext()->GSSetShader(gs.Get(), nullptr, 0);
+		Device::GetContext()->GSSetShader(gs.Get(), instances.data(), instanceCount);
+	}
+	void GeometryShader::Clean() {
+		Device::GetContext()->GSSetShader(nullptr, nullptr, 0);
+	}
+	HullShader::HullShader(const char* file_path, const char* entry_point) :Shader(file_path, entry_point, "hs_5_0", nullptr) {
+		HRESULT hr = Device::Get()->CreateHullShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, hs.GetAddressOf());
+		if (FAILED(hr))STRICT_THROW("頂点シェーダーの作成に失敗");
+	}
+	HullShader::~HullShader() = default;
+	void HullShader::Set() {
+		Device::GetContext()->HSSetShader(hs.Get(), instances.data(), instanceCount);
+	}
+	void HullShader::Clean() {
+		Device::GetContext()->HSSetShader(nullptr, nullptr, 0);
+	}
+	DomainShader::DomainShader(const char* file_path, const char* entry_point) :Shader(file_path, entry_point, "ds_5_0", nullptr) {
+		HRESULT hr = Device::Get()->CreateDomainShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, ds.GetAddressOf());
+		if (FAILED(hr))STRICT_THROW("頂点シェーダーの作成に失敗");
+	}
+	DomainShader::~DomainShader() = default;
+	void DomainShader::Set() {
+		Device::GetContext()->DSSetShader(ds.Get(), instances.data(), instanceCount);
+	}
+	void DomainShader::Clean() {
+		Device::GetContext()->DSSetShader(nullptr, nullptr, 0);
+
 	}
 	namespace _ {
 		///////////////////////////////////////////////////////////////////////////////////////////////////

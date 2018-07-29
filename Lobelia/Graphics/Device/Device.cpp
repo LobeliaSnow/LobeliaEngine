@@ -6,6 +6,8 @@
 namespace Lobelia::Graphics {
 	ComPtr<ID3D11Device> Device::device;
 	ComPtr<ID3D11DeviceContext> Device::context;
+	std::map<DWORD, ComPtr<ID3D11DeviceContext>> Device::deferredContexts;
+	DWORD Device::threadID = 0;
 
 	void Device::Create(UINT device_flag, GraphicDriverInfo* info) {
 		Destroy();
@@ -20,13 +22,23 @@ namespace Lobelia::Graphics {
 		}
 		hr = D3D11CreateDevice(adapter, driverType, nullptr, device_flag, featureLevels, ARRAYSIZE(featureLevels), D3D11_SDK_VERSION, device.GetAddressOf(), nullptr, context.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("デバイスの作成に失敗しました");
+		threadID = GetCurrentThreadId();
 	}
 	void Device::Destroy() {
 		device.Reset();
 	}
 
 	ComPtr<ID3D11Device>& Device::Get() { return device; }
-	ComPtr<ID3D11DeviceContext>& Device::GetContext() { return context; }
+	ComPtr<ID3D11DeviceContext>& Device::GetContext() {
+		DWORD nowThreadID = GetCurrentThreadId();
+		if (nowThreadID == threadID)return context;
+		if (deferredContexts.find(nowThreadID) != deferredContexts.end())return deferredContexts[nowThreadID];
+		else {
+			ComPtr<ID3D11DeviceContext> deferredContext;
+			device->CreateDeferredContext(0, deferredContext.GetAddressOf());
+			return deferredContexts[nowThreadID] = deferredContext;
+		}
+	}
 
 
 }

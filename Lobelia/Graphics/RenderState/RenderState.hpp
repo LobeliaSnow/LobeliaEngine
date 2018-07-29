@@ -43,7 +43,7 @@ namespace Lobelia::Graphics {
 		ComPtr<ID3D11SamplerState> state;
 	public:
 		//çÏê¨Ç…é∏îsÇµÇΩèÍçáÅAExceptionå^Ç≈ó·äOÇìäÇ∞Ç‹Ç∑
-		SamplerState(SamplerPreset preset, int max_anisotropy);
+		SamplerState(SamplerPreset preset, int max_anisotropy, bool is_border = false);
 		~SamplerState();
 		void SettingPreset(D3D11_SAMPLER_DESC* desc, int preset)const;
 		void Set(bool force_set = false)noexcept;
@@ -69,18 +69,6 @@ namespace Lobelia::Graphics {
 		~DepthStencilState();
 		void SettingPreset(D3D11_DEPTH_STENCIL_DESC* desc, int preset)const;
 		void Set(bool force_set = false)noexcept;
-	};
-
-	class RenderStateBank final {
-	public:
-		RenderStateBank() = delete;
-		~RenderStateBank() = delete;
-		RenderStateBank(const RenderStateBank&) = delete;
-		RenderStateBank(RenderStateBank&&) = delete;
-		static void BlendFactory(std::string key, BlendPreset p, bool blend_enable, bool alpha_coverage)noexcept;
-		static void SamplerFactory(std::string key, SamplerPreset p, int max_anisotropy = 16);
-		static void RasterizerFactory(std::string key, RasterizerPreset p, bool wire_frame = false);
-		static void DepthStencilFactory(std::string key, DepthPreset p, bool depth, StencilDesc desc, bool stencil);
 	};
 
 }

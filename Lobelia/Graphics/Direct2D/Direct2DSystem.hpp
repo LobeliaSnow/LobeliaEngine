@@ -59,9 +59,9 @@ namespace Lobelia::Graphics {
 		static void SquareRender(const RECT& rect, float stroke_width = 1.0f);
 		static void SquareRender(const Math::Vector2& pos, const Math::Vector2& size, float stroke_width = 1.0f);
 		static void FontRender(Font* font, const Math::Vector2& pos, const char* str);
-		template<class... Args> static void FontRender(Font* font, const Math::Vector2& pos, const char* format, Args... args) {
+		template<class... Args> static void FontRender(Font* font, const Math::Vector2& pos, const char* format, Args&&... args) {
 			char buffer[256] = {};
-			sprintf_s(buffer, format, args...);
+			sprintf_s(buffer, format, std::forward<Args>(args)...);
 			FontRender(font, pos, buffer);
 		}
 		static void EndRender();

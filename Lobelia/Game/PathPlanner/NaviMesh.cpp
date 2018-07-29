@@ -104,7 +104,7 @@ namespace Lobelia::Game {
 		std::vector<TriPolygon> triangleStorage = triangleList;
 		int triCount = -1; int nodeCount = 0;
 		//算出していない三角形がなくなるまで
-		while (triCount = triangleStorage.size()) {
+		while (triCount = i_cast(triangleStorage.size())) {
 			int index = -1; float length = 9999.0f;
 			for (int i = 1; i < triCount; i++) {
 				Math::Vector3 dist = triangleStorage[0].center - triangleStorage[i].center;
@@ -119,6 +119,7 @@ namespace Lobelia::Game {
 			Node node;
 			if (index == -1)node.pos = triangleStorage[0].center;
 			else node.pos = (triangleStorage[0].center + triangleStorage[index].center) / 2.0f;
+			node.buildLength = length * 1.5f;
 			nodeList.push_back(node);
 			//今回出たペアの削除
 			triangleStorage.erase(std::find(triangleStorage.begin(), triangleStorage.end(), triangleStorage[index]));
@@ -130,7 +131,7 @@ namespace Lobelia::Game {
 			for each(auto&& node1 in nodeList) {
 				if (node0.index == node1.index)continue;
 				Math::Vector3 dist = node0.pos - node1.pos;
-				if (dist.Length() < 1.0f)ConnectNode(node0.index, node1.index);
+				if (dist.Length() < node0.buildLength + node1.buildLength)ConnectNode(node0.index, node1.index);
 			}
 		}
 		ConnectionUnique();
@@ -141,6 +142,25 @@ namespace Lobelia::Game {
 		for each(auto&& node in nodeList) {
 			node_list[i] = node;
 			i++;
+		}
+	}
+	void NaviMeshGraph::CreateVectorEdgeList(std::vector<NaviMeshGraph::Edge>& edge_list) {
+		edge_list.resize(edgeList.size());
+		int i = 0;
+		for each(auto&& edge in edgeList) {
+			edge_list[i] = edge;
+			i++;
+		}
+
+	}
+	void ApplyNaviToDijkstra::Apply(DijkstraEngineVector3* engine, NaviMeshGraph* graph, float scale) {
+		for each(auto&& node in graph->GetNodeList()) {
+			engine->AddNode(node.pos*scale);
+		}
+		std::vector<NaviMeshGraph::Node> nodeList = {};
+		graph->CreateVectorNodeList(nodeList);
+		for each(auto&& edge in graph->GetEdgeList()) {
+			engine->ConnectNode(nodeList[edge.index0].pos*scale, nodeList[edge.index1].pos*scale);
 		}
 	}
 }

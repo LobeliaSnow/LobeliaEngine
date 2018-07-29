@@ -36,5 +36,14 @@ namespace Lobelia::Game {
 			select--;
 			Limitter();
 		}
+		int operator++() {
+			Next();
+			return GetSelect();
+		}
+		int operator--() {
+			Previous();
+			return GetSelect();
+		}
+		operator int() { return GetSelect(); }
 	};
 }

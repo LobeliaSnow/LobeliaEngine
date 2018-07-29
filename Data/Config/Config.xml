@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <config>
   <!-- アプリ関連 -->
   <application>
@@ -7,10 +7,15 @@
       <count>1</count>
       <quality>0</quality>
     </msaa>
-    <!-- システム情報を表示するか否か -->
-    <sys_visible>1</sys_visible>
     <!-- アプリ更新FPS -->
     <fps>60.0</fps>
+    <!-- VSyncを使用する -->
+    <vsync>1</vsync>
+  </application>
+  <!-- デバッグコンソール関連 -->
+  <console>
+    <!-- システム情報を表示するか否か -->
+    <sys_visible>1</sys_visible>
     <!-- 表示位置 -->
     <state_pos>
       <x>0</x>
@@ -19,11 +24,8 @@
     <!-- 表示サイズ -->
     <state_size>
       <x>200</x>
-      <y>120</y>
+      <y>200</y>
     </state_size>
-  </application>
-  <!-- デバッグコンソール関連 -->
-  <console>
     <!-- アクティブ状態 -->
     <active>1</active>
     <!-- インフォメーションコンソールの表示 -->
@@ -38,15 +40,17 @@
     <var_analyze>1</var_analyze>
     <!-- 変数監視のインターバル -->
     <var_analyze_domain>1.0</var_analyze_domain>
+    <!-- メモリとCPU使用率の更新インターバル -->
+    <memory_cpu_usage_domain>1.0</memory_cpu_usage_domain>
     <!-- インフォメーションコンソールの位置 -->
     <info_pos>
       <x>0</x>
-      <y>120</y>
+      <y>200</y>
     </info_pos>
     <!-- インフォメーションコンソールのサイズ -->
     <info_size>
       <x>200</x>
-      <y>200</y>
+      <y>120</y>
     </info_size>
     <!-- ログコンソールの位置 -->
     <log_pos>

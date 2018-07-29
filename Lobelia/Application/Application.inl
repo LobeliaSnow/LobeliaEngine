@@ -1,13 +1,21 @@
 #pragma once
 namespace Lobelia {
-	template<class Scene, class ...Args> void Application::Bootup(const Math::Vector2& size, const char* window_name, std::function<LRESULT(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)>wnd_proc, Args... args) {
+	template<class Scene, class ...Args> void Application::Bootup(const Math::Vector2& size, const char* window_name, std::function<LRESULT(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)>wnd_proc, Args&&... args) {
+#ifdef _DEBUG
+		debugRender = true;
+		HostConsole::GetInstance()->ProcessRegister("debug render on off", [this]() {if (Input::GetKeyboardKey(DIK_F6) == 1) debugRender = !debugRender; });
+		Graphics::DebugRenderer::GetInstance()->Initialize();
+#endif
 		window = std::make_shared<Window>(size, window_name, wnd_proc, WS_OVERLAPPEDWINDOW);
 		Input::Keyboard::GetInstance()->Initialize(window->GetHandle());
 		Input::Mouse::GetInstance()->Initialize(window->GetHandle());
 		Input::Joystick::GetInstance()->Initialize(window->GetHandle());
+		HostConsole::GetInstance()->Printf("controller count : %d", Input::Joystick::GetInstance()->GetControllerCount());
+		for (int i = 0; i < Input::Joystick::GetInstance()->GetControllerCount(); i++) {
+			HostConsole::GetInstance()->Printf("%s", Input::Joystick::GetInstance()->GetDeviceName(i).c_str());
+		}
 		swapChain = std::make_unique<Graphics::SwapChain>(window.get(), Config::GetRefPreference().msaa);
 		SceneManager::GetInstance()->ChangeReserve<Scene>(std::forward<Args>(args)...);
-		SceneManager::GetInstance()->ChangeExecute();
 		window->ShowWindow(SW_SHOW);
 		window->UppdateWindow();
 		timer->Begin();
@@ -18,7 +26,7 @@ namespace Lobelia {
 		HostConsole::GetInstance()->ProcessRegister("console change visible", [=]() {
 			if (Input::GetKeyboardKey(DIK_F1) == 1) {
 				Config::GetRefPreference().consoleOption.active = !Config::GetRefPreference().consoleOption.active;
-				Config::GetRefPreference().applicationOption.systemVisible = !Config::GetRefPreference().applicationOption.systemVisible;
+				Config::GetRefPreference().consoleOption.systemVisible = !Config::GetRefPreference().consoleOption.systemVisible;
 			}
 		});
 		HostConsole::GetInstance()->CommandRegister("screen shot", HostConsole::ExeStyle::ALWAYS, [=]() {

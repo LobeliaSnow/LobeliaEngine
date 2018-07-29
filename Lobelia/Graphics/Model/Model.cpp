@@ -14,10 +14,11 @@
 #include "Graphics/Texture/Texture.hpp"
 #include "Graphics/Material/Material.hpp"
 #include "Graphics/Shader/Reflection/Reflection.hpp"
-#include "Graphics/Model/Model.hpp"
 #include "Config/Config.hpp"
 #include "Graphics/RenderState/RenderState.hpp"
-#include "Graphics/Pipeline/Pipeline.hpp"
+#include "Graphics/RenderableObject/RenderableObject.hpp"
+#include "Graphics/Model/Model.hpp"
+#include "Graphics/Renderer/Renderer.hpp"
 
 namespace Lobelia::Graphics {
 #define EXCEPTION_FC(fc)		if (!fc)STRICT_THROW("ファイル操作に失敗しました");
@@ -276,18 +277,34 @@ namespace Lobelia::Graphics {
 	void Animation::ResetTime() {
 		this->time = 0.0f;
 	}
-	void Animation::Update(int meshIndex) {
+	void Animation::Update(int mesh_index) {
 		//補間等ごちゃごちゃしないといけない
-		for (int i = 0; i < clusterCount[meshIndex]; i++) {
-			DirectX::XMMATRIX renderTransform = DirectX::XMLoadFloat4x4(&keyFrames[meshIndex][i][static_cast<int>(time / (1000 / framePerCount))]);
-			renderTransform = DirectX::XMMatrixTranspose(renderTransform);
+		for (int i = 0; i < clusterCount[mesh_index]; i++) {
 			//本当はここで補間
+			DirectX::XMMATRIX renderTransform = DirectX::XMLoadFloat4x4(&keyFrames[mesh_index][i][static_cast<int>(time / (1000 / framePerCount))]);
+			renderTransform = DirectX::XMMatrixTranspose(renderTransform);
 			DirectX::XMStoreFloat4x4(&buffer.keyFrame[i], renderTransform);
 		}
 		constantBuffer->Activate(buffer);
 	}
 	const std::string& Animation::GetName() { return name; }
-
+	float Animation::GetMaxTime() {
+		return f_cast(frameCount - 1)*(1000 / framePerCount);
+	}
+	void Animation::CalcAnimationMatrix(int bone_index, DirectX::XMFLOAT4X4* anim) {
+		int boneCount = 0, meshIndex = -1;
+		//どのメッシュに属しているか調べる
+		for (int i = 0; i < meshCount; i++) {
+			if (bone_index < boneCount + clusterCount[i]) {
+				meshIndex = i;
+				break;
+			}
+			boneCount += clusterCount[i];
+		}
+		//そのメッシュからのインデックスへ変換
+		bone_index -= boneCount;
+		*anim = keyFrames[meshIndex][bone_index][i_cast(time / (1000 / framePerCount))];
+	}
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -416,7 +433,20 @@ namespace Lobelia::Graphics {
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Model
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	Model::Model(const char* dxd_path, const char* mt_path) :animationCount(0), allMeshVertexCountSum(0), world() {
+	Model::Model(const char* dxd_path, const char* mt_path) :animationCount(0), allMeshVertexCountSum(0), world(), boneCount(0) {
+		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, true);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::FRONT);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, true, Graphics::StencilDesc(), false);
+		if (!vs)vs = std::make_shared<VertexShader>("Data/Shaderfile/3D/VS.hlsl", "Main3DNoSkin", Graphics::VertexShader::Model::VS_4_0);
+		vsAnim = std::make_shared<VertexShader>("Data/Shaderfile/3D/VS.hlsl", "Main3D", Graphics::VertexShader::Model::VS_4_0);
+		if (!ps) {
+			ps = std::make_shared<PixelShader>("Data/Shaderfile/3D/PS.hlsl", "Main3D", Graphics::PixelShader::Model::PS_5_0, true);
+			ps->GetLinkage()->CreateInstance("Lambert");
+			ps->GetLinkage()->CreateInstance("Fog");
+			ps->GetLinkage()->CreateInstance("Phong");
+			ps->SetLinkage(0);
+		}
 		StateInitialize();
 		std::shared_ptr<DxdImporter> dxd = std::make_unique<DxdImporter>(dxd_path);
 		std::shared_ptr<MaterialImporter> mt = std::make_unique<MaterialImporter>(mt_path);
@@ -440,18 +470,20 @@ namespace Lobelia::Graphics {
 			renderIndexMaterial[i] = materials[dxd->GetMesh(i).materialName].get();
 		}
 		SetTransformAndCalcMatrix(transform);
-		CalculationWorldMatrix();
+		CalcWorldMatrix();
+		int boneSize = bones.size();
+		for (int i = 0; i < boneSize; i++) {
+			boneCount += bones[i].clusterCount;
+		}
 	}
 	Model::~Model() = default;
 	void Model::StateInitialize() {
 		//アクティブなアニメーションは無し(-1)
 		activeAnimation = -1;
-		//デフォルトの頂点シェーダー取得
-		VertexShader* vs = ShaderBank::Get<VertexShader>(D_VS3D_S);
 		//リフレクション開始
-		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs);
+		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
 		//入力レイアウト作成
-		inputLayout = std::make_unique<InputLayout>(vs, reflector.get());
+		inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
 		//コンスタントバッファ作成
 		constantBuffer = std::make_unique<ConstantBuffer<DirectX::XMMATRIX>>(1, Config::GetRefPreference().systemCBActiveStage);
 		//親は設定されていない
@@ -536,6 +568,7 @@ namespace Lobelia::Graphics {
 		Translation(transform.position);
 		RotationRollPitchYow(transform.rotation);
 		Scalling(transform.scale);
+		CalcWorldMatrix();
 	}
 	const Transform3D& Model::GetTransform() { return transform; }
 	void Model::LinkParent(Model* model) { parent = model; }
@@ -588,7 +621,7 @@ namespace Lobelia::Graphics {
 		CalcScallingMatrix();
 	}
 	//更新処理
-	void Model::CalculationWorldMatrix() {
+	void Model::CalcWorldMatrix() {
 		//親子関係あるさいは自分のtransformは親から見たものになるが、ワールドの状態でも欲しいかな？
 		world = scalling;
 		world *= rotation;
@@ -636,6 +669,19 @@ namespace Lobelia::Graphics {
 		DirectX::XMVECTOR arg = {};
 		*inv_world = DirectX::XMMatrixInverse(&arg, world);
 	}
+	int Model::GetBoneCount() { return boneCount; }
+	const DirectX::XMMATRIX& Model::GetBone(int index) {
+		if (index >= boneCount)STRICT_THROW("インデックスがボーンの数を超えています");
+		int counter = 0;
+		int boneSize = bones.size();
+		for (int i = 0; i < boneSize; i++) {
+			int nowLocation = counter;
+			if (index >= counter && index < (counter += bones[i].clusterCount)) {
+				int accessIndex = index - nowLocation;
+				return bones[i].initPoseMatrices[accessIndex];
+			}
+		}
+	}
 	AnimationNo Model::AnimationLoad(const char* file_path) {
 		animations.push_back(std::make_unique<Animation>(file_path));
 		return animationCount++;
@@ -651,14 +697,28 @@ namespace Lobelia::Graphics {
 		activeAnimation = -1;
 	}
 	const std::string& Model::GetAnimationName(AnimationNo index) { return animations[index]->GetName(); }
+	std::string Model::GetMaterialName(int poly_index) {
+		for each(auto&& subset in subsets) {
+			if (subset.ThisIsMyVertex(poly_index)) return renderIndexMaterial[subset.index]->GetName();
+		}
+		return "none material";
+	}
+	float Model::GetAnimationTime(AnimationNo index) { return animations[index]->GetMaxTime(); }
+	void Model::CalcAnimationMatrix(AnimationNo index, int bone_index, DirectX::XMFLOAT4X4* anim) { return animations[index]->CalcAnimationMatrix(bone_index, anim); }
 	void Model::AnimationUpdate(float elapsed_time) { if (activeAnimation != -1)animations[activeAnimation]->AddElapsedTime(elapsed_time); }
-	void Model::Render(bool no_set) {
+	Material* Model::GetMaterial(const char* mt_name) { return materials[mt_name].get(); }
+	void Model::Render(D3D_PRIMITIVE_TOPOLOGY topology, bool no_set) {
+		blend->Set(true);
+		sampler->Set(true);
+		rasterizer->Set(true);
+		depthStencil->Set(true);
+		ps->Set();
 		mesh->Set(); inputLayout->Set(); constantBuffer->Activate(DirectX::XMMatrixTranspose(world));
-		Device::GetContext()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		Device::GetContext()->IASetPrimitiveTopology(topology);
 		if (!no_set) {
 			//スキニングするか否か
-			if (activeAnimation > -1) Graphics::PipelineManager::PipelineGet(D_PIPE3D_D)->Activate(true);
-			else Graphics::PipelineManager::PipelineGet(D_PIPE3D_S)->Activate(true);
+			if (activeAnimation > -1) vsAnim->Set();
+			else vs->Set();
 		}
 		int meshIndex = 0;
 		for each(auto subset in subsets) {
@@ -666,6 +726,92 @@ namespace Lobelia::Graphics {
 			subset.Render(this);
 			meshIndex++;
 		}
+	}
+	//そのうちモデルデータとの共存を考える
+	int Model::RayPickWorld(Math::Vector3* out_pos, Math::Vector3* out_normal, const Math::Vector3& ray_pos, const Math::Vector3& ray_vec, float dist) {
+#ifdef _DEBUG
+		Math::Vector3 debugDeirection = ray_vec; debugDeirection.Normalize();
+		Graphics::DebugRenderer::GetInstance()->SetLine(ray_pos, ray_pos + debugDeirection * dist, 0xFFFFFFFF);
+#endif
+		DirectX::XMMATRIX inverseWorld = {};
+		//ワールド変換行列の逆行列取得
+		CalcInverseWorldMatrix(&inverseWorld);
+		//カメラ位置
+		DirectX::XMVECTOR eye = DirectX::XMVectorSet(ray_pos.x, ray_pos.y, ray_pos.z, 1.0f);
+		//レイの進行ベクトル
+		DirectX::XMVECTOR ray = DirectX::XMVectorSet(ray_vec.x, ray_vec.y, ray_vec.z, 0.0f);
+		//モデルのローカル空間に連れていく
+		eye = DirectX::XMVector4Transform(eye, inverseWorld);
+		ray = DirectX::XMVector4Transform(ray, inverseWorld);
+		//Math::Vector3へ変換
+		Math::Vector3 rayPos(DirectX::XMVectorGetX(eye), DirectX::XMVectorGetY(eye), DirectX::XMVectorGetZ(eye));
+		Math::Vector3 rayVec(DirectX::XMVectorGetX(ray), DirectX::XMVectorGetY(ray), DirectX::XMVectorGetZ(ray));
+		//レイピック
+		int ret = RayPickLocal(out_pos, out_normal, rayPos, rayVec, dist);
+		//当たっていないならこの先の計算は必要ないので返す
+		if (ret < 0)return ret;
+		//DirectX::XMVECTORへ変換
+		DirectX::XMVECTOR outPos = DirectX::XMVectorSet(out_pos->x, out_pos->y, out_pos->z, 1.0f);
+		DirectX::XMVECTOR outNormal = DirectX::XMVectorSet(out_normal->x, out_normal->y, out_normal->z, 0.0f);
+		//ワールド座標へ戻す
+		outPos = DirectX::XMVector3Transform(outPos, world);
+		outNormal = DirectX::XMVector3Transform(outNormal, world);
+		//Math::Vector3へ変換
+		out_pos->x = DirectX::XMVectorGetX(outPos); out_pos->y = DirectX::XMVectorGetY(outPos); out_pos->z = DirectX::XMVectorGetZ(outPos);
+		out_normal->x = DirectX::XMVectorGetX(outNormal); out_normal->y = DirectX::XMVectorGetY(outNormal); out_normal->z = DirectX::XMVectorGetZ(outNormal);
+#ifdef _DEBUG
+		Graphics::DebugRenderer::GetInstance()->SetLine(*out_pos, *out_pos + *out_normal, 0xFF00FFFF);
+#endif
+		return ret;
+	}
+	int Model::RayPickLocal(Math::Vector3* out_pos, Math::Vector3* out_normal, const Math::Vector3& ray_pos, const Math::Vector3& ray_vec, float dist) {
+		//三角形の数算出
+		int faceSum = allMeshVertexCountSum / 3;
+		for (int face = 0; face < faceSum; face++) {
+			//三角形の頂点取得
+			Math::Vector3 pos[3] = {};
+			for (int tri = 0; tri < 3; tri++) {
+				pos[tri] = mesh->GetBuffer()[face * 3 + tri].pos.xyz;
+			}
+			//辺算出
+			Math::Vector3 edge[3] = {};
+			for (int tri = 0; tri < 3; tri++) {
+				int temp = tri + 1 > 2 ? 0 : tri + 1;
+				edge[tri] = pos[temp] - pos[tri];
+			}
+			//法線算出
+			Math::Vector3 normal = {};
+			normal = Math::Vector3::Cross(edge[0], edge[1]);
+			//ベクトルの向きによる表裏判定
+			float dot = Math::Vector3::Dot(ray_vec, normal);
+			if (dot >= 0.0f)continue;
+			//ポリゴンまでの最短距離算出
+			Math::Vector3 posFromRay = pos[0] - ray_pos;
+			float nearLength = Math::Vector3::Dot(normal, posFromRay) / dot;
+			//距離がマイナスであれば反対の向きにあるため弾き、指定した距離よりも遠ければ当たらないので弾く
+			if (nearLength < 0.0f || nearLength > dist)continue;
+			//レイの向きにポリゴンまでの最短で移動した点を算出(交点)
+			Math::Vector3 rayPoint = ray_vec * nearLength + ray_pos;
+			//内点判定開始
+			bool isInside = true;
+			for (int i = 0; i < 3; i++) {
+				Math::Vector3 pointVec = pos[i] - rayPoint;
+				//このベクトルの向きが重要
+				Math::Vector3 testVec = Math::Vector3::Cross(pointVec, edge[i]);
+				//ベクトルの向きが法線方向と反対だった場合、外側
+				if (Math::Vector3::Dot(testVec, normal) < 0.0f) {
+					isInside = false;
+					break;
+				}
+			}
+			//ポリゴンの内側に点がなかった場合次へ
+			if (!isInside)continue;
+			//当たった！
+			*out_pos = rayPoint;
+			*out_normal = normal;
+			return face;
+		}
+		return -1;
 	}
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -725,7 +871,7 @@ namespace Lobelia::Graphics {
 		CalcScallingMatrix();
 	}
 	//更新処理
-	void Transformer::CalculationWorldMatrix() {
+	void Transformer::CalcWorldMatrix() {
 		//親子関係あるさいは自分のtransformは親から見たものになるが、ワールドの状態でも欲しいかな？
 		world = scalling;
 		world *= rotation;
@@ -800,6 +946,18 @@ namespace Lobelia::Graphics {
 	//	ModelInstanced
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	ModelInstanced::ModelInstanced(const char* dxd_path, const char* mt_path, const int instance_count) :mapBuffer(nullptr), renderCount(0) {
+		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, true);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::FRONT);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, true, Graphics::StencilDesc(), false);
+		if (!vs)vs = std::make_shared<VertexShader>("Data/Shaderfile/3D/VS.hlsl", "Main3DInstancingNoSkin", Graphics::VertexShader::Model::VS_4_0);
+		if (!ps) {
+			ps = std::make_shared<PixelShader>("Data/Shaderfile/3D/PS.hlsl", "Main3D", Graphics::PixelShader::Model::PS_5_0, true);
+			ps->GetLinkage()->CreateInstance("Lambert");
+			ps->GetLinkage()->CreateInstance("Fog");
+			ps->GetLinkage()->CreateInstance("Phong");
+			ps->SetLinkage(0);
+		}
 		instancingEngine = std::make_unique<InstancingEngine>(instance_count);
 		modelData = ResourceBank<ModelData>::Factory(std::string(dxd_path) + mt_path, dxd_path, mt_path);
 		mesh = std::make_unique<Mesh<Vertex>>(modelData->allMeshVertexCountSum);
@@ -823,12 +981,10 @@ namespace Lobelia::Graphics {
 			renderIndexMaterial[i] = materials[modelData->subsets[i].materialName].get();
 			subsets[i] = { modelData->subsets[i].index,modelData->subsets[i].start,modelData->subsets[i].sum };
 		}
-		//デフォルトの頂点シェーダー取得
-		VertexShader* vs = ShaderBank::Get<VertexShader>(D_VS3D_IS);
 		//リフレクション開始
-		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs);
+		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
 		//入力レイアウト作成
-		inputLayout = std::make_unique<InputLayout>(vs, reflector.get());
+		inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
 	}
 	ModelInstanced::~ModelInstanced() = default;
 	void ModelInstanced::Begin() {
@@ -848,7 +1004,13 @@ namespace Lobelia::Graphics {
 		if (mapBuffer)STRICT_THROW("Unmapを行ってください");
 		inputLayout->Set();
 		Device::GetContext()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		Graphics::PipelineManager::PipelineGet(D_PIPE3D_IS)->Activate(true);
+		blend->Set(true);
+		sampler->Set(true);
+		rasterizer->Set(true);
+		depthStencil->Set(true);
+		inputLayout->Set();
+		vs->Set();
+		ps->Set();
 		ID3D11Buffer* buffers[2] = { mesh->GetVertexBuffer().Get() , instancingEngine->GetBuffer().Get() };
 		UINT stride[2] = { sizeof(Vertex), sizeof(InstancedData) };
 		UINT offset[2] = { 0, 0 };
@@ -874,6 +1036,7 @@ namespace Lobelia::Graphics {
 		}
 		return animationCount++;
 	}
+	float InstancingAnimationEngine::AnimationTimeMax(AnimationNo animation_index) { return f_cast(animationData[animationCount]->frameCount - 1)*(1000 / animationData[animationCount]->framePerCount); }
 	void InstancingAnimationEngine::CreateTexture() {
 		//全アニメーションタイミングでもクラスターが入り切るように
 		//全モデルが入り切るように
@@ -914,6 +1077,20 @@ namespace Lobelia::Graphics {
 		}
 		Device::GetContext()->Unmap(animationFrames->Get().Get(), 0);
 	}
+	void InstancingAnimationEngine::CalcAnimationMatrix(AnimationNo animation_index, float time, int bone_index, DirectX::XMFLOAT4X4* anim) {
+		int boneCount = 0, meshIndex = -1;
+		//どのメッシュに属しているか調べる
+		for (int i = 0; i < animationData[animation_index]->meshCount; i++) {
+			if (bone_index < boneCount + animationData[animation_index]->clusterCount[i]) {
+				meshIndex = i;
+				break;
+			}
+			boneCount += animationData[animation_index]->clusterCount[i];
+		}
+		//そのメッシュからのインデックスへ変換
+		bone_index -= boneCount;
+		*anim = animationData[animation_index]->keyFrames[meshIndex][bone_index][i_cast(time / (1000 / animationData[animation_index]->framePerCount))];
+	}
 	void InstancingAnimationEngine::Activate() {
 		animationFrames->Set(3, ShaderStageList::VS);
 	}
@@ -923,7 +1100,19 @@ namespace Lobelia::Graphics {
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	// ModelInstancedAnimation
 	///////////////////////////////////////////////////////////////////////////////////////////////////
-	ModelInstancedAnimation::ModelInstancedAnimation(const char* dxd_path, const char* mt_path, const int instance_count) {
+	ModelInstancedAnimation::ModelInstancedAnimation(const char* dxd_path, const char* mt_path, const int instance_count) :mapBuffer(nullptr),renderCount(0) {
+		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, true);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::FRONT);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, true, Graphics::StencilDesc(), false);
+		if (!vs)vs = std::make_shared<VertexShader>("Data/Shaderfile/3D/VS.hlsl", "Main3DInstancing", Graphics::VertexShader::Model::VS_4_0);
+		if (!ps) {
+			ps = std::make_shared<PixelShader>("Data/Shaderfile/3D/PS.hlsl", "Main3D", Graphics::PixelShader::Model::PS_5_0, true);
+			ps->GetLinkage()->CreateInstance("Lambert");
+			ps->GetLinkage()->CreateInstance("Fog");
+			ps->GetLinkage()->CreateInstance("Phong");
+			ps->SetLinkage(0);
+		}
 		//ここも何かしらの方法でフラッシュ出来るように
 		ModelData* modelData = ResourceBank<ModelData>::Factory(std::string(dxd_path) + mt_path, dxd_path, mt_path);
 		instancingEngine = std::make_unique<InstancingEngine>(instance_count);
@@ -952,12 +1141,10 @@ namespace Lobelia::Graphics {
 			renderIndexMaterial[i] = materials[modelData->subsets[i].materialName].get();
 			subsets[i] = { modelData->subsets[i].index,modelData->subsets[i].start,modelData->subsets[i].sum };
 		}
-		//デフォルトの頂点シェーダー取得
-		VertexShader* vs = ShaderBank::Get<VertexShader>(D_VS3D_ID);
 		//リフレクション開始
-		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs);
+		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
 		//入力レイアウト作成
-		inputLayout = std::make_unique<InputLayout>(vs, reflector.get());
+		inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
 
 	}
 	ModelInstancedAnimation::~ModelInstancedAnimation() = default;
@@ -967,6 +1154,8 @@ namespace Lobelia::Graphics {
 	void ModelInstancedAnimation::CreateAnimationFramesTexture() {
 		animationEngine->CreateTexture();
 	}
+	float ModelInstancedAnimation::GetAnimationTimeMax(AnimationNo animation_index) { return animationEngine->AnimationTimeMax(animation_index); }
+	void ModelInstancedAnimation::CalcAnimationMatrix(AnimationNo animation_index, float time, int bone_index, DirectX::XMFLOAT4X4* anim) { animationEngine->CalcAnimationMatrix(animation_index, time, bone_index, anim); }
 	void ModelInstancedAnimation::Begin() {
 		mapBuffer = instancingEngine->Map();
 		renderCount = 0;
@@ -985,17 +1174,58 @@ namespace Lobelia::Graphics {
 		if (mapBuffer)STRICT_THROW("Unmapを行ってください");
 		inputLayout->Set();
 		Device::GetContext()->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		Graphics::PipelineManager::PipelineGet(D_PIPE3D_IS)->Activate(true);
+		Activate();
 		ID3D11Buffer* buffers[2] = { mesh->GetVertexBuffer().Get() , instancingEngine->GetBuffer().Get() };
 		UINT stride[2] = { sizeof(Vertex), sizeof(InstancedData) };
 		UINT offset[2] = { 0, 0 };
 		Device::GetContext()->IASetVertexBuffers(0, 2, buffers, stride, offset);
 		animationEngine->Activate();
-		Graphics::PipelineManager::PipelineGet(D_PIPE3D_ID)->Activate(true);
 		for each(auto subset in subsets) {
 			subset.Render(this);
 		}
 	}
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////
+	MultiTextureModel::MultiTextureModel(const char* dxd_path, const char* mt_path, const int instance_count) :ModelInstancedAnimation(dxd_path, mt_path, instance_count) {
+		//Texture(const Math::Vector2& size, DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag = ACCESS_FLAG::DEFAULT, CPU_ACCESS_FLAG cpu_flag = CPU_ACCESS_FLAG::NONE, int array_count = 1);
+		//std::make_unique<Texture>(size, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_BIND_SHADER_RESOURCE, desc, Texture::ACCESS_FLAG::DYNAMIC, Texture::CPU_ACCESS_FLAG::WRITE);
+		DXGI_SAMPLE_DESC desc = { 1,0 };
+		texture = std::make_unique<Texture>(Math::Vector2(instance_count, 1), DXGI_FORMAT_R32_UINT, D3D11_BIND_SHADER_RESOURCE, desc, Texture::ACCESS_FLAG::DYNAMIC, Texture::CPU_ACCESS_FLAG::WRITE);
+		buffer = nullptr;
+	}
+	void MultiTextureModel::SetMultiTexture(const char* texture_path, int tex_slot)  {
+		Lobelia::Graphics::TextureFileAccessor::Load(texture_path, &subTexture);
+		/*TexInfo texInfo;
+		Lobelia::Graphics::TextureFileAccessor::Load(texture_path, &texInfo.texture);
+		texInfo.slot = tex_slot;
+		textures.push_back(texInfo);*/
+	}
+	void MultiTextureModel::Begin() {
+		ModelInstancedAnimation::Begin();
+		renderCount = 0;
+		HRESULT hr = Device::GetContext()->Map(texture->Get().Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
+		buffer = static_cast<UINT*>(resource.pData);
+		if (FAILED(hr)) STRICT_THROW("みすってるーーーー");
+	}
+	void MultiTextureModel::Set(const InstancedData& data, int animationIndex, float* time, int type) {
+		ModelInstancedAnimation::Set(data, animationIndex, time);
+		buffer[renderCount] = type;
+		renderCount++;
+	}
+	void MultiTextureModel::End() {
+		ModelInstancedAnimation::End();
+		Device::GetContext()->Unmap(texture->Get().Get(), 0);
+		buffer = nullptr;
+	}
+	void MultiTextureModel::Render() {
+	/*	for (auto&& textureInfo : textures) {
+			textureInfo.texture->Set(textureInfo.slot,Lobelia::Graphics::ShaderStageList::PS);
+		}*/
+		subTexture->Set(7, ShaderStageList::PS);
+		texture->Set(17, ShaderStageList::VS);
+
+		ModelInstancedAnimation::Render();
+	}
+
 }
+

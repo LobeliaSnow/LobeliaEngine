@@ -2,11 +2,10 @@
 #include "../Data/ShaderFile/GPUParticle/GPUParticleDefine.hlsli"
 
 namespace Lobelia::Graphics {
-	class Pipeline;
 	//インスタンス生成少し時間かかる可能性あり
 	//生成はCPUで、更新、描画はGPUで
 	//TODO : 後に値が不変のものは、staticにしてまとめる
-	class GPUParticleSystem {
+	class GPUParticleSystem :public RenderableObject<GPUParticleSystem> {
 	public:
 		enum class BlendMode { Copy, Add, Sub, Screen };
 	private:
@@ -73,6 +72,7 @@ namespace Lobelia::Graphics {
 		static const int TEXTURE_COUNT = 8;
 		static const std::string BLEND_LIST[4];
 	private:
+		std::array<std::shared_ptr<BlendState>, 4> blendList;
 		std::unique_ptr<ConstantBuffer<Info>> infoCBuffer;
 		Info info;
 		std::unique_ptr<RWByteAddressBuffer> appendData;
@@ -83,8 +83,6 @@ namespace Lobelia::Graphics {
 		std::unique_ptr<ComputeShader> sortCS;
 		std::unique_ptr<ComputeShader> updateCS;
 		std::unique_ptr<GeometryShader> gs;
-		std::unique_ptr<Pipeline> pipeline;
-		std::unique_ptr<InputLayout> inputLayout;
 		Texture* textureList[TEXTURE_COUNT];
 		Particle appendParticles[APPEND_PARTICLE_MAX];
 	private:

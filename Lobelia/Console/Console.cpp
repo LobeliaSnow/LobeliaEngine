@@ -7,11 +7,6 @@
 #include "Exception/Exception.hpp"
 
 //TODO : 関数分け、及び最適化
-//案
-//登録されたデータを監視して、変更があった瞬間にログに記録
-//commandのいろいろ追加
-//そのほかにもログの外部保存やその他もろもろ追加予定
-//欲しい案を募集します。
 
 namespace Lobelia {
 #ifdef USE_IMGUI_AND_CONSOLE
@@ -71,6 +66,7 @@ namespace Lobelia {
 		void UpdateAndRender();
 	};
 	//外部ファイルに出力する機能もつけていいかも
+	//外部システムにも...(?)
 	class LogConsole {
 	private:
 		std::list<std::string> logs;
@@ -109,6 +105,19 @@ namespace Lobelia {
 		void ProcessUnRegister(const char* key);
 		void ClearCommandBox();
 		std::string UpdateAndRender();
+	};
+	class SystemConsole {
+	public:
+		SystemConsole();
+		~SystemConsole();
+		void SetProcessTime(float process_time);
+		void Render();
+	private:
+		float elapsedTime;
+		float processTime;
+		float cpuUsage;
+		std::unique_ptr<Utility::CPUPerformanceCounter> cpuCounter;
+		std::unique_ptr<Utility::MemoryPerformanceCounter> memoryCounter;
 	};
 	InformationConsole::InformationConsole(const char* name, const Math::Vector2& pos, const Math::Vector2& size) :name(name), pos(pos), size(size), selectItem(0), counter(0), addTable(false) {}
 	InformationConsole::~InformationConsole() {
@@ -263,7 +272,7 @@ namespace Lobelia {
 	}
 
 	void InformationConsole::UpdateAndRender() {
-		counter += Application::GetInstance()->GetProcessTime() / 1000.0f;
+		counter += Application::GetInstance()->GetProcessTimeMili() / 1000.0f;
 		BeginRender();
 		InformationRender();
 		EndRender();
@@ -272,7 +281,13 @@ namespace Lobelia {
 	LogConsole::LogConsole(const char* name, const Math::Vector2& pos, const Math::Vector2& size) :name(name), pos(pos), size(size) {
 
 	}
-	LogConsole::~LogConsole() = default;
+	LogConsole::~LogConsole() {
+		time_t date = time(nullptr);
+		tm* lt = localtime(&date);
+		std::stringstream stream;
+		stream << "Log/20" << lt->tm_year - 100 << lt->tm_mon + 1 << lt->tm_mday << lt->tm_hour << lt->tm_min << lt->tm_sec << ".txt";
+		Save(stream.str().c_str());
+	}
 	void LogConsole::LogLimitCheck() { while (logs.size() > Config::GetRefPreference().consoleOption.logMax)logs.pop_back(); }
 	void LogConsole::SetLog(const std::string& log) {
 		logs.push_front(log);
@@ -305,7 +320,7 @@ namespace Lobelia {
 		fc.Open(file_path, Utility::FileController::OpenMode::Write);
 		if (!fc.IsOpen())return false;
 		int i = 0;
-		for (auto& log = logs.rbegin(); log != logs.rend();log++) {
+		for (auto& log = logs.rbegin(); log != logs.rend(); log++) {
 			fc.Print("%d行目: %s\n", i, log->c_str());
 			i++;
 		}
@@ -315,10 +330,10 @@ namespace Lobelia {
 
 	CommandConsole::CommandConsole(const char* name, const Math::Vector2& pos, const Math::Vector2& size) :name(name), pos(pos), size(size), command("") {
 		CommandRegister("change fps", HostConsole::ExeStyle::ALWAYS, [&]() {
-			static float fps = Config::GetRefPreference().applicationOption.updateFPS;
+			static float fps = Config::GetRefPreference().updateFPS;
 			ImGui::InputFloat("", &fps);
 			if (ImGui::Button("command execute")) {
-				Config::GetRefPreference().applicationOption.updateFPS = fps;
+				Config::GetRefPreference().updateFPS = fps;
 				return true;
 			}
 			return false;
@@ -394,6 +409,34 @@ namespace Lobelia {
 		ImGui::End();
 		return ret;
 	}
+	SystemConsole::SystemConsole() :processTime(-1.0f), cpuUsage(0.0f), elapsedTime(0.0f) {
+		cpuCounter = std::make_unique<Utility::CPUPerformanceCounter>();
+		memoryCounter = std::make_unique<Utility::MemoryPerformanceCounter>();
+	}
+	SystemConsole::~SystemConsole() = default;
+	void SystemConsole::SetProcessTime(float process_time) { processTime = process_time; }
+	void SystemConsole::Render() {
+		elapsedTime += processTime * 0.001f;
+		if (elapsedTime > Config::GetRefPreference().consoleOption.memoryCpuUsageDomain) {
+			elapsedTime = 0.0f;
+			//メモリの使用率更新
+			memoryCounter->Update();
+			//CPUの使用率更新
+			cpuUsage = cpuCounter->TakeValue();
+		}
+		const Math::Vector2& pos = Config::GetRefPreference().consoleOption.systemPos;
+		const Math::Vector2& size = Config::GetRefPreference().consoleOption.systemSize;
+		ImGui::SetNextWindowPos(ImVec2(pos.x, pos.y), ImGuiCond_Always);
+		ImGui::SetNextWindowSize(ImVec2(size.x, size.y), ImGuiCond_Always);
+		ImGui::Begin("System State", nullptr, ImGuiWindowFlags_ShowBorders | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings);
+		if (ImGui::CollapsingHeader("FPS", ImGuiTreeNodeFlags_DefaultOpen))	ImGui::Text("FPS -> %.3f", 1000.0f / processTime);
+		if (ImGui::CollapsingHeader("Process Time", ImGuiTreeNodeFlags_DefaultOpen))	ImGui::Text("Time -> %.3f mili sec", processTime);
+		if (ImGui::CollapsingHeader("CPU Usage", ImGuiTreeNodeFlags_DefaultOpen))	ImGui::Text("Usage -> %.3f %c", cpuUsage, '%');
+		if (ImGui::CollapsingHeader("Memory Info", ImGuiTreeNodeFlags_DefaultOpen)) {
+			ImGui::Text("Working Size -> %d KB", memoryCounter->GetWorkingSetSize() / 1024);
+		}
+		ImGui::End();
+	}
 #endif
 
 	HostConsole::HostConsole() = default;
@@ -418,6 +461,7 @@ namespace Lobelia {
 		Utility::SafeNew(&information, "Information Console", option.informationPos, option.informationSize);
 		Utility::SafeNew(&logs, "Log Console", option.logPos, option.logSize);
 		Utility::SafeNew(&commander, "Command Console", option.commandPos, option.commandSize);
+		Utility::SafeNew(&system);
 		commander->CommandRegister("clear log", HostConsole::ExeStyle::BUTTON, [this]() {logs->Clear(); return true; });
 		information->SetupAnalaysis();
 		//ログ保存機能をコマンドに追加
@@ -436,6 +480,7 @@ namespace Lobelia {
 		Utility::SafeDelete(information);
 		Utility::SafeDelete(logs);
 		Utility::SafeDelete(commander);
+		Utility::SafeDelete(system);
 #endif
 	}
 	void HostConsole::StringRegister(const char* key, const char* label, char* data) {
@@ -498,6 +543,16 @@ namespace Lobelia {
 		logs->SetLog(log);
 #endif
 	}
+	void HostConsole::SaveLog(const char* file_path) { 
+#ifdef USE_IMGUI_AND_CONSOLE
+		logs->Save(file_path);
+#endif
+	}
+	void HostConsole::SetProcessTime(float process_time) {
+#ifdef USE_IMGUI_AND_CONSOLE
+		system->SetProcessTime(process_time);
+#endif
+	}
 	bool HostConsole::CommandRegister(const char* cmd, ExeStyle style, const std::function<bool()>& exe) {
 #ifdef USE_IMGUI_AND_CONSOLE
 		if (!IsActive())return false;
@@ -542,6 +597,7 @@ namespace Lobelia {
 		std::string log;
 		if (option.variableAnalyze)information->Analaysis(&log);
 		if (!log.empty())logs->SetLog(log);
+		system->Render();
 #endif
 	}
 	void HostConsole::UpdateProcess() {

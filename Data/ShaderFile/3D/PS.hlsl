@@ -192,3 +192,8 @@ float4 Main3D(PS_IN ps_in) : SV_Target0
 {
 	return ps.GetColor(ps_in);
 }
+
+float4 MainPolygon(PS_IN_POLYGON ps_in) : SV_Target0
+{
+	return GetDiffuseMap(ps_in.tex) * ps_in.color * ambientColor;
+}

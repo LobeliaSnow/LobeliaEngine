@@ -1,5 +1,5 @@
 namespace Lobelia::Graphics {
-	template<class ShaderElement, class ...Args> void ShaderBank::Register(const std::string& key, Args ...args) {
+	template<class ShaderElement, class ...Args> void ShaderBank::Register(const std::string& key, Args&& ...args) {
 		ResourceBank<ShaderElement>::Factory(key, args...);
 	}
 	template<class ShaderElement> void ShaderBank::UnRegister(const std::string& key) {

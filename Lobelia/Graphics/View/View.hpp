@@ -46,18 +46,21 @@ namespace Lobelia::Graphics {
 		void SetEyePos(const Math::Vector3& pos);
 		void SetEyeTarget(const Math::Vector3& target);
 		void SetEyeUpDirection(const Math::Vector3& up_direction);
+		void SetFov(float fov_rad);
+		void SetNear(float near_z);
+		void SetFar(float far_z);
 		void ChangeViewport(const Math::Vector2& pos, const Math::Vector2& size);
 		void CreateFrustum();
 		bool IsFrustumRange(const Math::Vector3& pos, float rad);
 		void Activate();
 		DirectX::XMMATRIX GetColumnViewMatrix();
 		DirectX::XMMATRIX GetColumnProjectionMatrix();
-		DirectX::XMMATRIX GetRawViewMatrix();
-		DirectX::XMMATRIX GetRawProjectionMatrix();
+		DirectX::XMMATRIX GetRowViewMatrix();
+		DirectX::XMMATRIX GetRowProjectionMatrix();
+		static DirectX::XMMATRIX CreateViewportMatrix(const Math::Vector2& size);
 		static DirectX::XMMATRIX GetNowColumnViewMatrix();
 		static DirectX::XMMATRIX GetNowColumnProjectionMatrix();
-		static DirectX::XMMATRIX GetNowRawViewMatrix();
-		static DirectX::XMMATRIX GetNowRawProjectionMatrix();
-
+		static DirectX::XMMATRIX GetNowRowViewMatrix();
+		static DirectX::XMMATRIX GetNowRowProjectionMatrix();
 	};
 }

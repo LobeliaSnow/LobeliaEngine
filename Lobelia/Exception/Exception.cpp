@@ -1,6 +1,8 @@
 #include "Common/Common.hpp"
 #include "Exception.hpp"
 #include "Console/Console.hpp"
+#include <iomanip> 
+#include <sstream> 
 
 namespace Lobelia {
 	std::string Exception::CreateMessage()const noexcept {
@@ -13,6 +15,11 @@ namespace Lobelia {
 	void Exception::OutputLog()const noexcept {
 #ifdef USE_IMGUI_AND_CONSOLE
 		HostConsole::GetInstance()->SetLog(CreateMessage());
+		time_t date = time(nullptr);
+		tm* lt = localtime(&date);
+		std::stringstream stream;
+		stream << "Log/20" << lt->tm_year - 100 << lt->tm_mon + 1 << lt->tm_mday << lt->tm_hour << lt->tm_min << lt->tm_sec << ".txt";
+		HostConsole::GetInstance()->SaveLog(stream.str().c_str());
 #endif
 	}
 	Exception::Exception(std::string filename, std::string func_name, int exe_line) noexcept :Exception(filename, func_name, exe_line, "") {}

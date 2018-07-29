@@ -201,19 +201,14 @@
     </ClCompile>
     <ClCompile Include="Lobelia\Common\Utility\FileController\FileController.cpp" />
     <ClCompile Include="Lobelia\Common\Utility\FilePathControl\FilePathControl.cpp" />
+    <ClCompile Include="Lobelia\Common\Utility\PerformanceCounter\PerformanceCounter.cpp" />
     <ClCompile Include="Lobelia\Common\Window\Window.cpp" />
     <ClCompile Include="Lobelia\Config\Config.cpp" />
     <ClCompile Include="Lobelia\Console\Console.cpp" />
     <ClCompile Include="Lobelia\Exception\Exception.cpp" />
-    <ClCompile Include="Lobelia\Game\Collision\Collision.cpp">
-      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)/Lobleia/</ObjectFileName>
-      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)/Lobelia/</ObjectFileName>
-      <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)/Lobelia/</ObjectFileName>
-    </ClCompile>
     <ClCompile Include="Lobelia\Game\DesignPattern\DesignPattern.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="Lobelia\Game\GameObject\GameObject.cpp" />
     <ClCompile Include="Lobelia\Graphics\BufferCreator\BufferCreator.cpp" />
     <ClCompile Include="Lobelia\Graphics\Device\Device.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)/Graphics</ObjectFileName>
@@ -230,7 +225,6 @@
     <ClCompile Include="Lobelia\Graphics\InputLayout\InputLayout.cpp" />
     <ClCompile Include="Lobelia\Graphics\Material\Material.cpp" />
     <ClCompile Include="Lobelia\Graphics\Model\Model.cpp" />
-    <ClCompile Include="Lobelia\Graphics\Pipeline\Pipeline.cpp" />
     <ClCompile Include="Lobelia\Graphics\Renderer\Renderer.cpp" />
     <ClCompile Include="Lobelia\Graphics\RenderState\RenderState.cpp" />
     <ClCompile Include="Lobelia\Graphics\RenderTarget\RenderTarget.cpp" />
@@ -281,6 +275,7 @@
     <ClInclude Include="Lobelia\Common\Utility\Color.hpp" />
     <ClInclude Include="Lobelia\Common\Utility\FileController\FileController.hpp" />
     <ClInclude Include="Lobelia\Common\Utility\FilePathControl\FilePathControl.hpp" />
+    <ClInclude Include="Lobelia\Common\Utility\PerformanceCounter\PerformanceCounter.hpp" />
     <ClInclude Include="Lobelia\Common\Utility\ResourceBank\ResourceBank.hpp" />
     <ClInclude Include="Lobelia\Common\Utility\Singleton.hpp" />
     <ClInclude Include="Lobelia\Common\Utility\Utility.hpp" />
@@ -288,9 +283,7 @@
     <ClInclude Include="Lobelia\Config\Config.hpp" />
     <ClInclude Include="Lobelia\Console\Console.hpp" />
     <ClInclude Include="Lobelia\Exception\Exception.hpp" />
-    <ClInclude Include="Lobelia\Game\Collision\Collision.hpp" />
     <ClInclude Include="Lobelia\Game\DesignPattern\DesignPattern.hpp" />
-    <ClInclude Include="Lobelia\Game\GameObject\GameObject.hpp" />
     <ClInclude Include="Lobelia\Game\PathPlanner\PathPlanner.hpp" />
     <ClInclude Include="Lobelia\Game\Ranking.hpp" />
     <ClInclude Include="Lobelia\Game\SelectModule.hpp" />
@@ -310,7 +303,6 @@
     <ClInclude Include="Lobelia\Graphics\Mesh\Mesh.hpp" />
     <ClInclude Include="Lobelia\Graphics\Model\Model.hpp" />
     <ClInclude Include="Lobelia\Graphics\Origin\Origin.hpp" />
-    <ClInclude Include="Lobelia\Graphics\Pipeline\Pipeline.hpp" />
     <ClInclude Include="Lobelia\Graphics\RenderableObject\RenderableObject.hpp" />
     <ClInclude Include="Lobelia\Graphics\Renderer\Renderer.hpp" />
     <ClInclude Include="Lobelia\Graphics\RenderState\RenderState.hpp" />

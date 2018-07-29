@@ -71,9 +71,9 @@ namespace Lobelia::Math {
 			}
 		}
 		/**@brief ‹——£(•½•ûª‚ ‚è)*/
-		__forceinline float Length() { return sqrtf(x*x + y * y); }
+		__forceinline float Length()const { return sqrtf(x*x + y * y); }
 		/**@brief ‹——£(•½•ûª‚È‚µ)*/
-		__forceinline float LengthSq() { return (x*x + y * y); }
+		__forceinline float LengthSq()const { return (x*x + y * y); }
 		/**@brief ³‹K‰»*/
 		__forceinline void Normalize() {
 			float l = Length();
@@ -148,9 +148,9 @@ namespace Lobelia::Math {
 			}
 		}
 		/**@brief ‹——£(•½•ûª‚ ‚è)*/
-		__forceinline float Length() { return sqrtf(x*x + y * y + z * z); }
+		__forceinline float Length()const { return sqrtf(x*x + y * y + z * z); }
 		/**@brief ‹——£(•½•ûª‚È‚µ)*/
-		__forceinline float LengthSq() { return (x*x + y * y + z * z); }
+		__forceinline float LengthSq()const { return (x*x + y * y + z * z); }
 		/**@brief ³‹K‰»*/
 		__forceinline void Normalize() {
 			float l = Length();
@@ -188,8 +188,12 @@ namespace Lobelia::Math {
 		__forceinline bool operator !=(const Vector3& v) { return !IsEqual(v); }
 	};
 	__forceinline Vector3 operator *(float scala, const Vector3& v) { return Vector3(v.x * scala, v.y * scala, v.z * scala); }
+	__forceinline Vector3 operator *(const Vector3& v, float scala) { return Vector3(v.x * scala, v.y * scala, v.z * scala); }
 	__forceinline Vector3 operator -(float scala, const Vector3& v) { return Vector3(scala - v.x, scala - v.y, scala - v.z); }
+	__forceinline Vector3 operator -(const Vector3& v0, const Vector3& v1) { return Vector3(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z); }
+	__forceinline Vector3 operator +(const Vector3& v0, const Vector3& v1) { return Vector3(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z); }
 	__forceinline Vector3 operator -(const Vector3& v) { return Vector3(-v.x, -v.y, -v.z); }
+	__forceinline bool operator ==(const Vector3& v0, const Vector3& v1) { return (v0.x == v1.x&&v0.y == v1.y&&v0.z == v1.z); }
 
 	struct Vector4 {
 	public:
@@ -227,9 +231,9 @@ namespace Lobelia::Math {
 			}
 		}
 		/**@brief ‹——£(•½•ûª‚ ‚è)*/
-		__forceinline float Length() { return sqrtf(x*x + y * y + z * z + w * w); }
+		__forceinline float Length()const { return sqrtf(x*x + y * y + z * z + w * w); }
 		/**@brief ‹——£(•½•ûª‚È‚µ)*/
-		__forceinline float LengthSq() { return (x*x + y * y + z * z + w * w); }
+		__forceinline float LengthSq()const { return (x*x + y * y + z * z + w * w); }
 		/**@brief ³‹K‰»*/
 		__forceinline void Normalize() {
 			float l = Length();
@@ -264,10 +268,156 @@ namespace Lobelia::Math {
 
 	__forceinline float CalcRadianToVectors(const Vector2& v1, const Vector2& v2)noexcept {
 		Vector2 temp1 = v1, temp2 = v2;
-		float cosƒÆ = Vector2::Dot(temp1, temp2) / (temp1.Length()*temp2.Length());
-		float rad = acosf(cosƒÆ);
+		float cosTheata = Vector2::Dot(temp1, temp2) / (temp1.Length()*temp2.Length());
+		float rad = acosf(cosTheata);
 		float cross = Vector2::Cross(temp1, temp2);
 		if (cross < 0.0f)rad *= -1;
 		return rad;
+	}
+	//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+		// ü•ª‚Æ“_‚ÌÅ’Z‹——£‚ğ‹‚ß‚é
+	__forceinline float CalcPointSegmentLength(const Math::Vector3& p0, const Math::Vector3& sp, const Math::Vector3& ep) {
+		Lobelia::Math::Vector3 sp_ep = ep - sp;
+		Lobelia::Math::Vector3 sp_p0 = p0 - sp;
+		Lobelia::Math::Vector3 ep_p0 = p0 - ep;
+		// ü•ª‚ªk‘Ş‚µ‚Ä‚¢‚éê‡
+		if (sp_ep.Length() <= .0f) 
+			return (p0 - sp).Length();
+		if (Lobelia::Math::Vector3::Dot(sp_ep, sp_p0) < 0)  return sp_p0.Length();
+		if (Lobelia::Math::Vector3::Dot(-sp_ep, ep_p0) < 0) return ep_p0.Length();
+		return (Lobelia::Math::Vector3::Cross(sp_ep, sp_p0).Length() / sp_ep.Length());
+	}
+	// ü•ª‚Æ“_‚ÌÅ’Z‹——£‚ğ‹‚ß‚é(‚ü‚Ì‘«À•Wæ“¾ver,ŒvZƒRƒXƒg‚Í‚¿‚å‚¢‚‚¢)
+	__forceinline float CalcPointSegmentLength(const Math::Vector3& p0, const Math::Vector3& sp, const Math::Vector3& ep, Lobelia::Math::Vector3* h_position) {
+		Lobelia::Math::Vector3 sp_ep = ep - sp;
+		Lobelia::Math::Vector3 sp_p0 = p0 - sp;
+		Lobelia::Math::Vector3 ep_p0 = p0 - ep;
+		if (Lobelia::Math::Vector3::Dot(sp_ep, sp_p0) < 0) {
+			*h_position = sp;
+			return sp_p0.Length();
+		}
+		if (Lobelia::Math::Vector3::Dot(-sp_ep, ep_p0) < 0) {
+			*h_position = ep;
+			return ep_p0.Length();
+		}
+		Lobelia::Math::Vector3 sp_ep_normalize = sp_ep;
+		sp_ep_normalize.Normalize();
+		float t = Lobelia::Math::Vector3::Dot(sp_p0, sp_ep_normalize);
+		*h_position = sp + sp_ep_normalize * t;
+		return (*h_position - p0).Length();
+	}
+	// ü•ª‚Æü•ª‚ÌÅ’Z‹——£‚ğ‹‚ß‚é
+	__forceinline float CalcSegmentSegmentLength(const Math::Vector3& sp0, const Math::Vector3& ep0, const Math::Vector3& sp1, const Math::Vector3& ep1) {
+		// 0~1‚ÌŠÔ‚ÉƒNƒ‰ƒ“ƒv‚·‚é
+		auto Saturate = [](float val)->float {
+			float ret = val;
+			if (ret >= 1.0f) ret = 1.0f;
+			else if (ret <= .0f)  ret = .0f;
+			return ret;
+		};
+		// Šeü•ª‚ÌƒxƒNƒgƒ‹
+		Math::Vector3 sp0_ep0 = ep0 - sp0;
+		Math::Vector3 sp0_ep0_n = sp0_ep0; sp0_ep0_n.Normalize();
+		Math::Vector3 sp1_ep1 = ep1 - sp1;
+		Math::Vector3 sp1_ep1_n = sp1_ep1; sp1_ep1_n.Normalize();
+		// ‚ü‚Ì‘«
+		Lobelia::Math::Vector3 p1, p2;
+		// ƒxƒNƒgƒ‹ŒW”
+		float t1, t2;
+
+		// ü•ª0‚ªk‘Ş‚µ‚Ä‚¢‚éê‡
+		if (sp0_ep0.Length() < FLT_EPSILON) {
+			if (sp1_ep1.Length() < FLT_EPSILON) return (sp1 - sp0).Length();
+			else return CalcPointSegmentLength(sp0, sp1, ep1);
+		}
+		// ü•ª1‚ªk‘Ş‚µ‚Ä‚¢‚éê‡
+		else if (sp1_ep1.Length() < FLT_EPSILON) return CalcPointSegmentLength(sp1, sp0, ep0);  // “_‚Æü•ª‚Ì‹——£”»’è
+
+		// ü•ª“¯m‚ª•½s‚Èê‡
+		if (FloatEqual(Math::Vector3::Cross(sp0_ep0, sp1_ep1).Length(), .0f)) {
+			Math::Vector3 h(.0f, .0f, .0f);
+			float length = CalcPointSegmentLength(sp0, sp1, ep1, &h);
+			// ƒxƒNƒgƒ‹ŒW”‚ğŒvZ
+			t2 = (h - sp1).Length() / sp1_ep1.Length();
+			if (.0f <= t2 && t2 <= 1.0f) return length;
+		}
+		// ü•ª“¯m‚ª‚Ë‚¶‚ê‚ÌŠÖŒW‚É‚ ‚éê‡
+		else {
+			float dot_v1v2 = Math::Vector3::Dot(sp0_ep0_n, sp1_ep1);
+			Math::Vector3 sp0_sp1 = sp1 - sp0;
+			// ƒxƒNƒgƒ‹ŒW”1‚ğŒvZ
+			t1 = (dot_v1v2 * Math::Vector3::Dot(sp1_ep1, sp0_sp1)
+				- sp1_ep1.LengthSq() * Math::Vector3::Dot(sp0_ep0, sp0_sp1)) / (sp0_ep0.LengthSq() * sp1_ep1.LengthSq() - dot_v1v2 * dot_v1v2);
+			// ƒxƒNƒgƒ‹ŒW”2‚ğŒvZ
+			Lobelia::Math::Vector3 point1 = sp0 + sp0_ep0_n * t1;
+			Lobelia::Math::Vector3 v = point1 - sp1; v.Normalize();
+			t2 = Math::Vector3::Dot(sp1_ep1_n, v);
+			// Å’Z‹——£(‰¼)‚ğŒvZ
+			Lobelia::Math::Vector3 point2 = sp1 + sp1_ep1_n * t2;
+			float length = (point2 - point1).Length();
+			if (.0f <= t1 && t1 <= 1.0f && .0f <= t2 && t2 <= 1.0f) {
+				return length;
+			}
+		}
+		// ‚ü‚Ì‘«‚ªŠO‘¤‚É‚ ‚é‚±‚Æ‚ª”»–¾
+		t1 = Saturate(t1);
+		p1 = sp0 + sp0_ep0_n * t1;
+		Math::Vector3 h(.0f, .0f, .0f);
+		float length = CalcPointSegmentLength(sp0, sp1, ep1, &h);
+		// ƒxƒNƒgƒ‹ŒW”‚ğŒvZ
+		t2 = (h - sp1).Length() / sp1_ep1.Length();
+		if (.0f <= t2 && t2 <= 1.0f) return length;
+
+		// ü•ª2‚ªŠO‚Å‚ ‚é‚±‚Æ‚ª”»–¾
+		t2 = Saturate(t2);
+		p2 = sp1 + sp1_ep1_n * t2;
+		length = CalcPointSegmentLength(sp0, sp1, ep1, &h);
+		t1 = (h - sp0).Length() / sp0_ep0.Length();
+		if (0.0f <= t1 && t1 <= 1.0f) return length;
+		t1 = Saturate(t1);
+		p1 = sp0 + sp0_ep0_n * t1;
+
+		return (p2 - p1).Length();
+	}
+	//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	__forceinline Math::Vector3 Lerp(const Math::Vector3& v0, const Math::Vector3& v1, float ratio) {
+		Math::Vector3 ret;
+		ret = v0 - (v0 - v1) * ratio;
+		ret.Normalize();
+		return ret;
+	}
+	__forceinline Math::Vector3 CalcNormal(const Math::Vector3& p0, const Math::Vector3& p1, const Math::Vector3& p2) { return Math::Vector3::Cross(p1 - p0, p2 - p1); }
+	__forceinline Math::Vector4 CalcNormal(const Math::Vector4& p0, const Math::Vector4& p1, const Math::Vector4& p2) {
+		Math::Vector4 ret;
+		ret.xyz = Math::Vector3::Cross(p1.xyz - p0.xyz, p2.xyz - p1.xyz);
+		return ret;
+	}
+	//vpvp(view*projection*viewport)
+	__forceinline Math::Vector2 CalcScreenPos(const DirectX::XMMATRIX vpvp, const Math::Vector3& pos) {
+		DirectX::XMFLOAT4 storagePos(pos.x, pos.y, pos.z, 1.0f);
+		DirectX::XMVECTOR calcPos = DirectX::XMLoadFloat4(&storagePos);
+		//s—ñ‡¬
+		calcPos = DirectX::XMVector3Transform(calcPos, vpvp);
+		DirectX::XMStoreFloat4(&storagePos, calcPos);
+		//NDC³‹K‰»
+		Math::Vector3 tempPos(storagePos.x, storagePos.y, storagePos.z);
+		tempPos /= storagePos.w;
+		return tempPos.xy;
+	}
+	template<class T, class... Args> constexpr T Max(T&& head, Args&&... tail) {
+		T result = head;
+		using swallow = std::initializer_list<int>;
+		(void)swallow {
+			(void(result = max(result, tail)), 0)...
+		};
+		return result;
+	}
+	template<class T, class... Args> constexpr T Min(T&& head, Args&&... tail) {
+		T result = head;
+		using swallow = std::initializer_list<int>;
+		(void)swallow {
+			(void(result = min(result, tail)), 0)...
+		};
+		return result;
 	}
 }

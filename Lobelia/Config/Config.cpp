@@ -13,24 +13,23 @@ namespace Lobelia {
 		//アンチエイリアス
 		preference.msaa.Count = s_cast<UINT>(xmlApplicationInfo["msaa"]["count"].GetInt());
 		preference.msaa.Quality = s_cast<UINT>(xmlApplicationInfo["msaa"]["quality"].GetInt());
-
-		auto& application = preference.applicationOption;
-		//システム情報を表示するか否か
-		application.systemVisible = (xmlApplicationInfo["sys_visible"].GetInt());
 		//アプリ更新FPS
-		application.updateFPS = xmlApplicationInfo["fps"].GetFloat();
-		//表示位置
-		application.pos.x = xmlApplicationInfo["state_pos"]["x"].GetFloat();
-		application.pos.y = xmlApplicationInfo["state_pos"]["y"].GetFloat();
-		//表示サイズ
-		application.size.x = xmlApplicationInfo["state_size"]["x"].GetFloat();
-		application.size.y = xmlApplicationInfo["state_size"]["y"].GetFloat();
-
+		preference.updateFPS = xmlApplicationInfo["fps"].GetFloat();
+		//VSyncを使用する
+		preference.useVSync = xmlApplicationInfo["vsync"].GetInt();
 #ifdef USE_IMGUI_AND_CONSOLE
 		auto& xmlConsoleInfo = xml->Root()["console"];
 		auto& console = preference.consoleOption;
 		//アクティブ状態
 		console.active = (xmlConsoleInfo["active"].GetInt());
+		//システム情報を表示するか否か
+		console.systemVisible = (xmlConsoleInfo["sys_visible"].GetInt());
+		//表示位置
+		console.systemPos.x = xmlConsoleInfo["state_pos"]["x"].GetFloat();
+		console.systemPos.y = xmlConsoleInfo["state_pos"]["y"].GetFloat();
+		//表示サイズ
+		console.systemSize.x = xmlConsoleInfo["state_size"]["x"].GetFloat();
+		console.systemSize.y = xmlConsoleInfo["state_size"]["y"].GetFloat();
 		//インフォメーションコンソールの表示
 		console.informationVisible = (xmlConsoleInfo["info_visible"].GetInt());
 		//ログコンソールの表示
@@ -43,6 +42,8 @@ namespace Lobelia {
 		console.variableAnalyze = (xmlConsoleInfo["var_analyze"].GetInt());
 		//変数監視のインターバル
 		console.variableAnalyzeDomain = xmlConsoleInfo["var_analyze_domain"].GetFloat();
+		//メモリとCPU使用率の更新インターバル
+		console.memoryCpuUsageDomain = xmlConsoleInfo["memory_cpu_usage_domain"].GetFloat();
 		//インフォメーションコンソールの位置
 		console.informationPos.x = xmlConsoleInfo["info_pos"]["x"].GetFloat();
 		console.informationPos.y = xmlConsoleInfo["info_pos"]["y"].GetFloat();

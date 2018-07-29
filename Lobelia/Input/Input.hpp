@@ -4,6 +4,10 @@
 #pragma comment(lib,"dinput8.lib")
 
 namespace Lobelia::Input {
+	struct KeyEmulateInfo {
+		float time;
+		int key_code;
+	};
 	//デバイスを所持
 	class DirectInput :public Utility::Singleton<DirectInput> {
 		friend class Utility::Singleton<DirectInput>;

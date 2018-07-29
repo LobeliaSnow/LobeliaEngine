@@ -8,7 +8,7 @@ namespace Lobelia::Game {
 		SceneMain();
 		~SceneMain();
 		void Initialize()override;
-		void Update()override;
-		void Render()override;
+		void AlwaysUpdate()override;
+		void AlwaysRender()override;
 	};
 }

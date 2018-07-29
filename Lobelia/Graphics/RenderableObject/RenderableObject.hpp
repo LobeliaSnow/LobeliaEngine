@@ -11,10 +11,10 @@ namespace Lobelia::Graphics {
 		static std::shared_ptr<PixelShader> ps;
 	protected:
 		static void Activate() {
-			blend->Set();
-			sampler->Set();
-			rasterizer->Set();
-			depthStencil->Set();
+			blend->Set(true);
+			sampler->Set(true);
+			rasterizer->Set(true);
+			depthStencil->Set(true);
 			inputLayout->Set();
 			vs->Set();
 			ps->Set();
@@ -29,6 +29,13 @@ namespace Lobelia::Graphics {
 		static void ChangeInputLayout(std::shared_ptr<InputLayout> inputLayout) { RenderableObject<T>::inputLayout = inputLayout; }
 		static void ChangeVertexShader(std::shared_ptr<VertexShader> vs) { RenderableObject<T>::vs = vs; }
 		static void ChangePixelShader(std::shared_ptr<PixelShader> ps) { RenderableObject<T>::ps = ps; }
+		static std::shared_ptr<BlendState> GetBlendState() { return blend; }
+		static std::shared_ptr<SamplerState> GetSamplerState() { return sampler; }
+		static std::shared_ptr<RasterizerState> GetRasterizerState() { return rasterizer; }
+		static std::shared_ptr<DepthStencilState> GetDepthStencilState() { return depthStencil; }
+		static std::shared_ptr<InputLayout> GetInputLayout() { return inputLayout; }
+		static std::shared_ptr<VertexShader> GetVertexShader() { return vs; }
+		static std::shared_ptr<PixelShader> GetPixelShader() { return ps; }
 	};
 	template<class T> std::shared_ptr<BlendState> RenderableObject<T>::blend;
 	template<class T> std::shared_ptr<SamplerState> RenderableObject<T>::sampler;

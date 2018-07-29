@@ -3,7 +3,6 @@
 #include "Exception/Exception.hpp"
 
 namespace Lobelia::Graphics {
-
 	GraphicDriverInfo::GraphicDriverInfo(const ComPtr<IDXGIAdapter>& adapter) :adapter(adapter) {
 		HRESULT hr = this->adapter->GetDesc(&desc);
 		if (FAILED(hr))STRICT_THROW("ドライバー情報の取得に失敗しました");

@@ -38,8 +38,8 @@ namespace Lobelia::Audio {
 				fmtChunk = true;
 			}
 			else if (!strcmp(chunkId, "data")) {
-				buffer->source = new BYTE[buffer->size];
-				if (fc->Read(buffer->source, sizeof(BYTE)* (buffer->size), sizeof(BYTE), buffer->size) != buffer->size) {
+				buffer->source = std::make_unique<BYTE[]>(buffer->size);
+				if (fc->Read(buffer->source.get(), sizeof(BYTE)* (buffer->size), sizeof(BYTE), buffer->size) != buffer->size) {
 					fc->Close();
 					STRICT_THROW("ファイルが壊れている可能性があります");
 				}
@@ -64,10 +64,10 @@ namespace Lobelia::Audio {
 		buffer->format.cbSize = 0;
 		buffer->size = static_cast<DWORD>(ov_pcm_total(&ovf, -1))* info->channels * 2;
 		int bitstream = 0;
-		buffer->source = new BYTE[buffer->size];
+		buffer->source = std::make_unique<BYTE[]>(buffer->size);
 		DWORD totalReadSize = 0;
 		while (totalReadSize < buffer->size) {
-			long readSize = ov_read(&ovf, reinterpret_cast<char*>(buffer->source) + totalReadSize, buffer->size - totalReadSize, 0, 2, 1, &bitstream);
+			long readSize = ov_read(&ovf, reinterpret_cast<char*>(buffer->source.get()) + totalReadSize, buffer->size - totalReadSize, 0, 2, 1, &bitstream);
 			if (readSize < 0) 	STRICT_THROW("oggのでコードに失敗しました");
 			totalReadSize += readSize;
 		}

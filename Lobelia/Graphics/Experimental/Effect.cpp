@@ -9,8 +9,8 @@ namespace Lobelia::Graphics {
 		void EffekseerWrapper::Activate() {
 			::Effekseer::Matrix44 projection = {};
 			::Effekseer::Matrix44 camera = {};
-			DirectX::XMMATRIX proj = View::GetNowRawProjectionMatrix();
-			DirectX::XMMATRIX view = View::GetNowRawViewMatrix();
+			DirectX::XMMATRIX proj = View::GetNowRowProjectionMatrix();
+			DirectX::XMMATRIX view = View::GetNowRowViewMatrix();
 			memcpy_s(&projection, sizeof(::Effekseer::Matrix44), &proj, sizeof(DirectX::XMMATRIX));
 			memcpy_s(&camera, sizeof(::Effekseer::Matrix44), &view, sizeof(DirectX::XMMATRIX));
 			renderer->SetProjectionMatrix(projection);

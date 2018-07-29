@@ -13,9 +13,9 @@
 #include <locale.h>
 
 namespace Lobelia::Graphics {
-	Texture::Texture(const Math::Vector2& size, DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag, CPU_ACCESS_FLAG cpu_flag) :size(size) {
+	Texture::Texture(const Math::Vector2& size, DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag, CPU_ACCESS_FLAG cpu_flag, int array_count) :size(size) {
 		HRESULT hr = S_OK;
-		CreateTexture(format, bind_flags, sample, access_flag, cpu_flag);
+		CreateTexture(format, bind_flags, sample, access_flag, cpu_flag, array_count);
 		D3D11_TEXTURE2D_DESC desc = {};
 		texture->GetDesc(&desc);
 		if (desc.BindFlags&D3D11_BIND_SHADER_RESOURCE)	CreateShaderResourceView(desc.Format);
@@ -28,13 +28,13 @@ namespace Lobelia::Graphics {
 	}
 	Texture::~Texture() = default;
 	ComPtr<ID3D11Texture2D>&Texture::Get() { return texture; }
-	void Texture::CreateTexture(DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag, CPU_ACCESS_FLAG cpu_flag) {
+	void Texture::CreateTexture(DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag, CPU_ACCESS_FLAG cpu_flag, int array_count) {
 		HRESULT hr = S_OK;
 		D3D11_TEXTURE2D_DESC desc = {};
 		desc.Width = size.Get().x;
 		desc.Height = size.Get().y;
 		desc.MipLevels = 1;
-		desc.ArraySize = 1;
+		desc.ArraySize = array_count;
 		desc.Format = format;
 		desc.SampleDesc = sample;
 		desc.Usage = static_cast<D3D11_USAGE>(access_flag);

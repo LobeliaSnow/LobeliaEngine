@@ -25,7 +25,7 @@ namespace Lobelia::Graphics {
 	std::unique_ptr<Mesh<SpriteRenderer::Vertex>> SpriteRenderer::mesh;
 	//こいつが実際のスクリーンスペースの座標を所持している
 	Math::Vector2 SpriteRenderer::vertex[4] = { { -1,-1 },{ -1,0 },{ 0,-1 },{ 0,0 } };
-	InstanceID SpriteRenderer::id = -1;
+	//InstanceID SpriteRenderer::id = -1;
 	void SpriteRenderer::Initialize() {
 		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, false);
 		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
@@ -33,12 +33,12 @@ namespace Lobelia::Graphics {
 		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, false, Graphics::StencilDesc(), false);
 		if (!vs)vs = std::make_shared<VertexShader>("Data/ShaderFile/2D/VS.hlsl", "Main2D", Graphics::VertexShader::Model::VS_5_0, false);
 		if (!ps)ps = std::make_shared<PixelShader>("Data/ShaderFile/2D/PS.hlsl", "Main2D", Graphics::PixelShader::Model::PS_5_0, true);
-		id = ps->GetLinkage()->CreateInstance("TextureColor");
+		ps->GetLinkage()->CreateInstance("TextureColor");
 		ps->GetLinkage()->CreateInstance("VertexColor");
 		ps->GetLinkage()->CreateInstance("InvertTextureColor");
 		ps->GetLinkage()->CreateInstance("GrayscaleTextureColor");
 		ps->GetLinkage()->CreateInstance("SepiaTextureColor");
-
+		ps->SetLinkage(0);
 		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
 		if (!inputLayout)inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
 		mesh = std::make_unique<Mesh<Vertex>>(4);
@@ -89,13 +89,13 @@ namespace Lobelia::Graphics {
 		}
 	}
 	void SpriteRenderer::Render(Texture* tex, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color) {
-		blend->Set();
-		sampler->Set();
-		rasterizer->Set();
-		depthStencil->Set();
+		blend->Set(true);
+		sampler->Set(true);
+		rasterizer->Set(true);
+		depthStencil->Set(true);
 		inputLayout->Set();
 		vs->Set();
-		ps->Set(1, &id);
+		ps->Set();
 		tex->Set(0, ShaderStageList::PS);
 		Device::GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		PositionPlant(transform);
@@ -106,12 +106,12 @@ namespace Lobelia::Graphics {
 		mesh->Set();
 		Device::GetContext()->Draw(4, 0);
 	}
-	void SpriteRenderer::Render(Texture* tex, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color) {
+	void SpriteRenderer::Render(Texture* tex, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_size, Utility::Color color) {
 		Transform2D trans = {};
 		trans.position = pos;
 		trans.scale = size;
 		trans.rotation = rad;
-		Render(tex, trans, uv_begin, uv_end, color);
+		Render(tex, trans, uv_begin, uv_size, color);
 	}
 	void SpriteRenderer::Render(Texture* tex, Utility::Color color) {
 		Transform2D trans = {};
@@ -121,18 +121,18 @@ namespace Lobelia::Graphics {
 		Render(tex, trans, Math::Vector2(0.0f, 0.0f), tex->GetSize(), color);
 	}
 	void SpriteRenderer::Render(RenderTarget* rt, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color) {
-		Texture::Clean(0, ShaderStageList::PS);
+		//Texture::Clean(0, ShaderStageList::PS);
 		Render(rt->GetTexture(), transform, uv_pos, uv_size, color);
 	}
-	void SpriteRenderer::Render(RenderTarget* rt, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_end, Utility::Color color) {
-		Texture::Clean(0, ShaderStageList::PS);
-		Render(rt->GetTexture(), pos, size, rad, uv_begin, uv_end, color);
+	void SpriteRenderer::Render(RenderTarget* rt, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_size, Utility::Color color) {
+		//Texture::Clean(0, ShaderStageList::PS);
+		Render(rt->GetTexture(), pos, size, rad, uv_begin, uv_size, color);
 	}
 	void SpriteRenderer::Render(RenderTarget* rt, Utility::Color color) {
-		Texture::Clean(0, ShaderStageList::PS);
+		//Texture::Clean(0, ShaderStageList::PS);
 		Render(rt->GetTexture(), color);
 	}
-	
+
 	SpriteBatchRenderer::SpriteBatchRenderer(int render_limit) :RENDER_LIMIT(render_limit) {
 		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, false);
 		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
@@ -149,6 +149,9 @@ namespace Lobelia::Graphics {
 		mesh->GetBuffer()[2] = { { +1.0f, +1.0f, +0.0f, +1.0f },{ 1.0f,1.0f } };
 		mesh->GetBuffer()[3] = { { +1.0f, -1.0f, +0.0f, +1.0f },{ 1.0f,0.0f } };
 		mesh->Update();
+		for (int i = 0; i < TEXTURE_COUNT; i++) {
+			textures[i] = nullptr;
+		}
 	}
 	const Texture* SpriteBatchRenderer::GetTexture(int index) {
 		if (s_cast<UINT>(index) >= TEXTURE_COUNT)STRICT_THROW("slotが限界値を超えています");
@@ -229,5 +232,218 @@ namespace Lobelia::Graphics {
 		UINT offset[2] = { 0,0 };
 		Device::GetContext()->IASetVertexBuffers(0, 2, buffer, strides, offset);
 		Device::GetContext()->DrawInstanced(4, renderCount, 0, 0);
+	}
+
+	Polygon3DRenderer::Polygon3DRenderer(int vertex_max) {
+		if (!blend) blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, false);
+		if (!sampler) sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::NONE);
+		if (!depthStencil) depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, true, Graphics::StencilDesc(), false);
+		if (!vs) vs = std::make_shared<VertexShader>("Data/Shaderfile/3D/VS.hlsl", "MainPolygon", Graphics::VertexShader::Model::VS_4_0);
+		if (!ps) ps = std::make_shared<PixelShader>("Data/Shaderfile/3D/PS.hlsl", "MainPolygon", Graphics::PixelShader::Model::PS_5_0, true);
+		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
+		if (!inputLayout)inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
+		transform.CalcWorldMatrix();
+		constantBuffer = std::make_unique<ConstantBuffer<DirectX::XMMATRIX>>(1, Config::GetRefPreference().systemCBActiveStage);
+		mesh = std::make_unique<Mesh<Vertex>>(vertex_max);
+		world = DirectX::XMMatrixIdentity();
+		LoadTexture("");
+	}
+	Polygon3DRenderer::~Polygon3DRenderer() = default;
+	void Polygon3DRenderer::SetTransformAndCalcMatrix(const Transform3D& transform) {
+		DirectX::XMMATRIX translate, rotation, scalling;
+		translate = DirectX::XMMatrixTranslation(transform.position.x, transform.position.y, transform.position.z);
+		rotation  = DirectX::XMMatrixRotationRollPitchYaw(transform.rotation.x, transform.rotation.y, transform.rotation.z);
+		scalling  = DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, transform.scale.z);
+		scalling.m[0][0] *= -1;
+		world = scalling;
+		world *= rotation;
+		//ここは少し審議が必要
+		world *= translate;
+	}
+	void Polygon3DRenderer::ChangeTexture(Graphics::Texture* texture) { this->texture = texture; }
+	void Polygon3DRenderer::LoadTexture(const char* file_path) { TextureFileAccessor::Load(file_path, &texture); }
+	Polygon3DRenderer::Vertex* Polygon3DRenderer::Begin() { return mesh->GetBuffer(); }
+	void Polygon3DRenderer::End() { mesh->Update(); }
+	void Polygon3DRenderer::Render(int render_count, Topology topology) {
+		Activate(); mesh->Set();
+		Device::GetContext()->IASetPrimitiveTopology(s_cast<D3D11_PRIMITIVE_TOPOLOGY>(topology));
+		texture->Set(0, ShaderStageList::PS);
+		//DirectX::XMMATRIX world = {};
+		//transform.GetWorldMatrixTranspose(&world);
+		constantBuffer->Activate(DirectX::XMMatrixTranspose(world));
+		Device::GetContext()->Draw(render_count, 0);
+	}
+	Polygon2DRenderer::Polygon2DRenderer(int vertex_max) {
+		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, false);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::LINEAR, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::BACK);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, false, Graphics::StencilDesc(), false);
+		if (!vs)vs = std::make_shared<VertexShader>("Data/ShaderFile/2D/VS.hlsl", "Main2D", Graphics::VertexShader::Model::VS_5_0, false);
+		if (!ps)ps = std::make_shared<PixelShader>("Data/ShaderFile/2D/PS.hlsl", "Main2D", Graphics::PixelShader::Model::PS_5_0, true);
+		ps->GetLinkage()->CreateInstance("TextureColor");
+		ps->GetLinkage()->CreateInstance("VertexColor");
+		ps->GetLinkage()->CreateInstance("InvertTextureColor");
+		ps->GetLinkage()->CreateInstance("GrayscaleTextureColor");
+		ps->GetLinkage()->CreateInstance("SepiaTextureColor");
+		ps->SetLinkage(0);
+		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
+		if (!inputLayout)inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
+		mesh = std::make_unique<Mesh<Vertex>>(vertex_max);
+		LoadTexture("");
+	}
+	Polygon2DRenderer::~Polygon2DRenderer() = default;
+	void Polygon2DRenderer::ChangeTexture(Graphics::Texture* texture) { this->texture = texture; }
+	void Polygon2DRenderer::LoadTexture(const char* file_path) { TextureFileAccessor::Load(file_path, &texture); }
+	Polygon2DRenderer::Vertex* Polygon2DRenderer::Begin() { return mesh->GetBuffer(); }
+	void Polygon2DRenderer::End() { mesh->Update(); }
+	void Polygon2DRenderer::Render(int render_count, Topology topology) {
+		Activate(); mesh->Set();
+		Device::GetContext()->IASetPrimitiveTopology(s_cast<D3D11_PRIMITIVE_TOPOLOGY>(topology));
+		texture->Set(0, ShaderStageList::PS);
+		Device::GetContext()->Draw(render_count, 0);
+	}
+	void Primitive3D::CreateSphere(Sphere* sphere, int division) {
+		if (division <= 0)STRICT_THROW("分割数の設定が正しく行えませんでした");
+		//頂点作成
+		std::vector<Math::Vector3> position((division + 1)*(division + 1));
+		int posCount = 0;
+		for (int i = 0; i <= division; i++) {
+			float ph = PI * f_cast(i) / f_cast(division);
+			float y = cosf(ph);
+			float r = sinf(ph);
+			for (int j = 0; j <= division; j++) {
+				float th = 2.0f*PI*f_cast(j) / f_cast(division);
+				float x = r * cosf(th);
+				float z = r * sinf(th);
+				position[posCount] = Math::Vector3(x, y, z);
+				posCount++;
+			}
+		}
+		//面作成
+		sphere->vertexCount = division * division * 3 * 2;
+		sphere->pos.resize(sphere->vertexCount);
+		sphere->normal.resize(sphere->vertexCount);
+		int faceCount = 0;
+		for (int i = 0; i < division; i++) {
+			for (int j = 0; j < division; j++) {
+				int count = (division + 1)*i + j;
+				Math::Vector4 normal;
+				//上半分
+				sphere->pos[faceCount].xyz = position[count];
+				sphere->pos[faceCount + 1].xyz = position[count + 1];
+				sphere->pos[faceCount + 2].xyz = position[count + division + 2];
+				//法線
+				normal = Math::CalcNormal(sphere->pos[faceCount], sphere->pos[faceCount + 1], sphere->pos[faceCount + 2]);
+				for (int k = 0; k < 3; k++) {
+					sphere->normal[faceCount + k] = normal;
+				}
+				//w成分を1.0に
+				sphere->pos[faceCount].w = 1.0f;
+				sphere->pos[faceCount + 1].w = 1.0f;
+				sphere->pos[faceCount + 2].w = 1.0f;
+				faceCount += 3;
+				//下半分
+				sphere->pos[faceCount].xyz = position[count];
+				sphere->pos[faceCount + 1].xyz = position[count + division + 2];
+				sphere->pos[faceCount + 2].xyz = position[count + division + 1];
+				normal = Math::CalcNormal(sphere->pos[faceCount], sphere->pos[faceCount + 1], sphere->pos[faceCount + 2]);
+				//法線
+				for (int k = 0; k < 3; k++) {
+					sphere->normal[faceCount + k] = normal;
+				}
+				//w成分を1.0に
+				sphere->pos[faceCount].w = 1.0f;
+				sphere->pos[faceCount + 1].w = 1.0f;
+				sphere->pos[faceCount + 2].w = 1.0f;
+				faceCount += 3;
+			}
+		}
+	}
+
+	DebugRenderer::DebugRenderer()
+#ifdef _DEBUG
+		:verticesLine(nullptr), verticesPoint(nullptr), verticeSphere(nullptr)
+#endif
+	{}
+	void DebugRenderer::Initialize() {
+#ifdef _DEBUG
+		line = std::make_unique<Graphics::Polygon3DRenderer>(10240);
+		line->LoadTexture("");
+		point = std::make_unique<Graphics::Polygon3DRenderer>(512);
+		point->LoadTexture("");
+		sphere = std::make_unique<Graphics::Polygon3DRenderer>(25600);
+		sphere->LoadTexture("");
+#endif
+	}
+	void DebugRenderer::Begin() {
+#ifdef _DEBUG
+		verticesLine = line->Begin();
+		lineCount = 0;
+		verticesPoint = point->Begin();
+		pointCount = 0;
+		verticeSphere = sphere->Begin();
+		sphereVertexCount = 0;
+#endif
+	}
+	void DebugRenderer::SetLine(const Math::Vector3& p0, const Math::Vector3&p1, Utility::Color color) {
+#ifdef _DEBUG
+		if (!verticesLine)STRICT_THROW("Beginを行ってください");
+		int line0Index = lineCount * 2;
+		verticesLine[line0Index].pos.xyz = p0; verticesLine[line0Index].pos.w = 1.0f;
+		verticesLine[line0Index].color = Math::Vector4(color.GetNormalizedR(), color.GetNormalizedG(), color.GetNormalizedB(), color.GetNormalizedA());
+		verticesLine[line0Index].normal = Math::Vector4(0.0f, 1.0f, 0.0f, 0.0f);
+		int line1Index = lineCount * 2 + 1;
+		verticesLine[line1Index].pos.xyz = p1; verticesLine[line1Index].pos.w = 1.0f;
+		verticesLine[line1Index].color = Math::Vector4(color.GetNormalizedR(), color.GetNormalizedG(), color.GetNormalizedB(), color.GetNormalizedA());
+		verticesLine[line1Index].normal = Math::Vector4(0.0f, 1.0f, 0.0f, 0.0f);
+		lineCount++;
+#endif
+	}
+	void DebugRenderer::SetPoint(const Math::Vector3& p, Utility::Color color) {
+#ifdef _DEBUG
+		if (!verticesPoint)STRICT_THROW("Beginを行ってください");
+		verticesPoint[pointCount].pos.xyz = p; verticesPoint[pointCount].pos.w = 1.0f;
+		verticesPoint[pointCount].color = Math::Vector4(color.GetNormalizedR(), color.GetNormalizedG(), color.GetNormalizedB(), color.GetNormalizedA());
+		verticesPoint[pointCount].normal = Math::Vector4(0.0f, 1.0f, 0.0f, 0.0f);
+		pointCount++;
+#endif
+	}
+	void DebugRenderer::SetSphere(const Math::Vector3& p, float radius, int division, Utility::Color color) {
+#ifdef _DEBUG
+		Primitive3D::Sphere sphere;
+		Primitive3D::CreateSphere(&sphere, division);
+		SetSphere(p, radius, sphere, color);
+#endif
+	}
+	void DebugRenderer::SetSphere(const Math::Vector3& pos, float radius, const Primitive3D::Sphere& sphere, Utility::Color color) {
+#ifdef _DEBUG
+		Math::Vector4 vColor(color.GetNormalizedR(), color.GetNormalizedG(), color.GetNormalizedB(), color.GetNormalizedA());
+		for (int i = 0; i < sphere.vertexCount; i++) {
+			//位置
+			verticeSphere[sphereVertexCount + i].pos      = sphere.pos[i];
+			verticeSphere[sphereVertexCount + i].pos.xyz *= radius;
+			verticeSphere[sphereVertexCount + i].pos.xyz += pos;
+			//法線
+			verticeSphere[sphereVertexCount + i].normal = sphere.normal[i];
+			//色
+			verticeSphere[sphereVertexCount + i].color = vColor;
+		}
+		sphereVertexCount += sphere.vertexCount;
+#endif
+	}
+	void DebugRenderer::End() {
+#ifdef _DEBUG
+		line->End(); verticesLine = nullptr;
+		point->End(); verticesPoint = nullptr;
+		sphere->End(); verticeSphere = nullptr;
+#endif
+	}
+	void DebugRenderer::Render() {
+#ifdef _DEBUG
+		if (lineCount != 0)line->Render(lineCount * 2, Topology::LINE_LIST);
+		if (pointCount != 0)point->Render(pointCount, Topology::POINT_LIST);
+		if (sphereVertexCount != 0)sphere->Render(sphereVertexCount, Topology::TRI_LIST);
+#endif
 	}
 }

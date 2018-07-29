@@ -12,7 +12,6 @@ namespace Lobelia::Graphics {
 	using InstanceID = UINT;
 	class ShaderLinkageInstance final {
 		friend class ShaderLinkage;
-		friend void ShaderSet(std::function<void(int, ID3D11ClassInstance**)> functor, ShaderLinkage* linkage, int instance_count, InstanceID* instances);
 	private:
 		std::string name;
 		ComPtr<ID3D11ClassInstance> instance;
@@ -41,54 +40,81 @@ namespace Lobelia::Graphics {
 		InstanceID GetInstance(const char* instance_name, int instance_index);
 	};
 
-	//TODO : 一度スプライトを出せたら作り直し。
 	class Shader {
 		friend class Reflection;
 	protected:
 		ComPtr<ID3DBlob> blob;
 		std::unique_ptr<ShaderLinkage> linkage;
+		int instanceCount;
+		std::vector<ID3D11ClassInstance*> instances;
 	public:
 		Shader(const char* file_path, const char* entry_point, const char* shader_model, ShaderLinkage* linkage);
 		~Shader();
 		ShaderLinkage* GetLinkage();
+		template<class... Args> void SetLinkage(Args&&... args) {
+			instanceCount = 0;
+			using swallow = std::initializer_list<int>;
+			(void)swallow {
+				(instances.push_back(linkage->instances[args]->Get().Get()), instanceCount++)...
+			};
+		}
 	};
 
 	class VertexShader :public Shader {
 		friend class InputLayout;
 	public:
 		enum Model { VS_2_0, VS_3_0, VS_4_0, VS_4_1, VS_5_0, VS_5_1, };
-	private:
-		ComPtr<ID3D11VertexShader> vs;
-	private:
-		//シェーダーモデルのパース。
-		std::string ConverteShaderModelString(Model shader_model);
 	public:
 		VertexShader(const char* file_path, const char* entry_point, Model shader_model, bool use_linkage = false);
 		~VertexShader();
-		void Set(int instance_count = 0, InstanceID* instances = nullptr);
+		void Set();
+	private:
+		//シェーダーモデルのパース。
+		std::string ConverteShaderModelString(Model shader_model);
+	private:
+		ComPtr<ID3D11VertexShader> vs;
 	};
 	class PixelShader :public Shader {
 	public:
 		enum Model { PS_2_0, PS_3_0, PS_4_0, PS_4_1, PS_5_0, PS_5_1, };
-	private:
-		ComPtr<ID3D11PixelShader> ps;
-	private:
-		//シェーダーモデルのパース。
-		std::string ConverteShaderModelString(Model shader_model);
 	public:
 		PixelShader(const char* file_path, const char* entry_point, Model shader_model, bool use_linkage = false);
 		~PixelShader();
-		void Set(int instance_count = 0, InstanceID* instances = nullptr);
+		void Set();
+	private:
+		//シェーダーモデルのパース。
+		std::string ConverteShaderModelString(Model shader_model);
+	private:
+		ComPtr<ID3D11PixelShader> ps;
 	};
 	class GeometryShader :public Shader {
-	private:
-		ComPtr<ID3D11GeometryShader> gs;
 	public:
 		GeometryShader(const char* file_path, const char* entry_point);
 		~GeometryShader();
 		void Set();
+		static void Clean();
+	private:
+		ComPtr<ID3D11GeometryShader> gs;
 	};
+	class HullShader :public Shader {
+	public:
+		HullShader(const char* file_path, const char* entry_point);
+		~HullShader();
+		void Set();
+		static void Clean();
+	private:
+		ComPtr<ID3D11HullShader> hs;
+	};
+	class DomainShader :public Shader {
+	public:
+		DomainShader(const char* file_path, const char* entry_point);
+		~DomainShader();
+		void Set();
+		static void Clean();
+	private:
+		ComPtr<ID3D11DomainShader> ds;
 
+	};
 	namespace _ {
 		//ComputeShaderで使う入力用バッファ
 		//TODO : 引数追加

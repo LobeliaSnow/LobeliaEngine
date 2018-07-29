@@ -21,10 +21,10 @@ namespace Lobelia::Utility {
 		OpenMode GetMode()const noexcept;
 		void Open(std::string filename, OpenMode m);
 		void Close()noexcept;
-		template<typename T> size_t Write(T* pointer, size_t count)noexcept;
-		template<typename T> size_t Read(T* pointer, size_t buffer_size, size_t read_size, size_t count)noexcept;
-		template <typename ... Args> size_t Print(const char *format, Args const & ... args)noexcept;
-		template <typename ... Args> size_t Scan(const char* pointer, Args const & ... args)noexcept;
+		template<class T> size_t Write(T* pointer, size_t count)noexcept;
+		template<class T> size_t Read(T* pointer, size_t buffer_size, size_t read_size, size_t count)noexcept;
+		template <class... Args> size_t Print(const char *format, Args&& ... args)noexcept;
+		template <class... Args> size_t Scan(const char* pointer, Args&& ... args)noexcept;
 		bool Seek(int offset, SeekMode mode);
 		size_t GetSize();
 		bool Rewind()noexcept;

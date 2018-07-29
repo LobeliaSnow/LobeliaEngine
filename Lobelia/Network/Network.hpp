@@ -19,7 +19,6 @@ namespace Lobelia::Network {
 	class System {
 	private:
 		static const int SDKVersion = 2;
-		//もうちょい何とかしなければ
 		static constexpr u_short PORT = 9305;
 	private:
 		static WSADATA wsaData;
@@ -117,37 +116,6 @@ namespace Lobelia::Network {
 		static int WriteSelect();
 		static int IsSet(Socket* socket);
 		static void SetTimeOut(int sec, int micro);
-	};
-	class PingEngine {
-	public:
-		enum class State { NONE, WAIT, SUCCESS, FAILED, TIMEOUT };
-	private:
-		struct Ping {
-			union {
-				int ping;
-				char buffer[sizeof(int)];
-			};
-		};
-	private:
-		std::weak_ptr<Socket> socket;
-		State state;
-		float timeoutTime;
-		Ping in;
-		Ping out;
-		Timer timer;
-		float pingTime;
-	public:
-		PingEngine(std::weak_ptr<Socket> socket);
-		~PingEngine();
-		//タイムアウトする時間の設定
-		void SetTimeoutTime(float time);
-		//相手にping要求を送る
-		void PingSend();
-		//ping結果応答待ち
-		State PingReceive();
-		float GetPingIntervalTime();
-		//相手からのpingリクエストを処理する関数
-		bool PingRequestReceive();
 	};
 
 }

@@ -1,4 +1,7 @@
 #pragma once
+//***************************************************************************************************
+//このあたり一度すべて書き直す
+//***************************************************************************************************
 namespace Lobelia::Graphics {
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	//  importer周り
@@ -27,6 +30,16 @@ namespace Lobelia::Graphics {
 			std::vector<std::vector<Info>> infos;
 			std::vector<DirectX::XMMATRIX> initPoseMatrices;
 		};
+	public:
+		DxdImporter(const char* file_path);
+		~DxdImporter();
+		//TODO : アクセサー追加
+		int GetMeshCount();
+		const std::vector<Mesh>& GetMeshes();
+		Mesh& GetMesh(int index);
+		int GetBoneCount(int mesh_index);
+		const std::vector<Bone>& GetMeshsBoneInfos();
+		const Bone& GetMeshBoneInfo(int index);
 	private:
 		int meshCount;
 		std::vector<Mesh> meshes;
@@ -40,16 +53,6 @@ namespace Lobelia::Graphics {
 		void VertexLoad(std::weak_ptr<Utility::FileController> file);
 		void SkinLoad(std::weak_ptr<Utility::FileController> file);
 		void ClusterLoad(std::weak_ptr<Utility::FileController> file, int mesh_index);
-	public:
-		DxdImporter(const char* file_path);
-		~DxdImporter();
-		//TODO : アクセサー追加
-		int GetMeshCount();
-		const std::vector<Mesh>& GetMeshes();
-		Mesh& GetMesh(int index);
-		int GetBoneCount(int mesh_index);
-		const std::vector<Bone>& GetMeshsBoneInfos();
-		const Bone& GetMeshBoneInfo(int index);
 	};
 	class MaterialImporter {
 	private:
@@ -59,17 +62,17 @@ namespace Lobelia::Graphics {
 			int textureNameLength;
 			std::string textureName;
 		};
-	private:
-		int materialCount;
-		std::vector<Material> materials;
-	private:
-		void Load(std::weak_ptr<Utility::FileController> file);
 	public:
 		MaterialImporter(const char* file_path);
 		~MaterialImporter();
 		int GetMaterialCount();
 		const std::vector<Material>& GetMaterials();
 		const Material& GetMaterial(int index);
+	private:
+		int materialCount;
+		std::vector<Material> materials;
+	private:
+		void Load(std::weak_ptr<Utility::FileController> file);
 	};
 	class AnimationImporter {
 	private:
@@ -80,18 +83,6 @@ namespace Lobelia::Graphics {
 			//クラスター数
 			std::vector<ClusterFrames> clusterFrames;
 		};
-	private:
-		int nameLength;
-		std::string name;
-		int framePerSecond;
-		int keyFrameCount;
-		int meshCount;
-		//メッシュ数
-		std::vector<Info> infos;
-	private:
-		void LoadName(std::weak_ptr<Utility::FileController> file);
-		void SettingLoad(std::weak_ptr<Utility::FileController> file);
-		void KeyFramesLoad(std::weak_ptr<Utility::FileController> file);
 	public:
 		AnimationImporter(const char* file_path);
 		~AnimationImporter();
@@ -101,6 +92,18 @@ namespace Lobelia::Graphics {
 		int GetMeshCount();
 		const std::vector<Info>& GetInfos();
 		const Info& GetInfo(int index);
+	private:
+		void LoadName(std::weak_ptr<Utility::FileController> file);
+		void SettingLoad(std::weak_ptr<Utility::FileController> file);
+		void KeyFramesLoad(std::weak_ptr<Utility::FileController> file);
+	private:
+		int nameLength;
+		std::string name;
+		int framePerSecond;
+		int keyFrameCount;
+		int meshCount;
+		//メッシュ数
+		std::vector<Info> infos;
 	};
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -118,6 +121,16 @@ namespace Lobelia::Graphics {
 		};
 		//メッシュ->クラスター->フレーム
 		using KeyFrames = std::vector<std::vector<std::vector<DirectX::XMFLOAT4X4>>>;
+	public:
+		Animation(const char* file_path);
+		~Animation();
+		void AddElapsedTime(float time);
+		void ResetTime();
+		void Update(int meshIndex);
+		//アニメーション名取得
+		const std::string& GetName();
+		float GetMaxTime();
+		void CalcAnimationMatrix(int bone_index, DirectX::XMFLOAT4X4* anim);
 	private:
 		std::string name;
 		int framePerCount;
@@ -128,14 +141,6 @@ namespace Lobelia::Graphics {
 		Constant buffer;
 		std::unique_ptr<ConstantBuffer<Constant>> constantBuffer;
 		float time;
-	public:
-		Animation(const char* file_path);
-		~Animation();
-		void AddElapsedTime(float time);
-		void ResetTime();
-		void Update(int meshIndex);
-		//アニメーション名取得
-		const std::string& GetName();
 	};
 	//とりあえず今はusing、状況次第で構造体やクラスに代わる
 	using AnimationNo = int;
@@ -175,6 +180,9 @@ namespace Lobelia::Graphics {
 			std::string texturePath;
 		};
 	public:
+		ModelData(const char* dxd_path, const char* mt_path);
+		~ModelData();
+	public:
 		int allMeshVertexCountSum;
 		std::vector<Vertex> vertices;
 		std::vector<Bone> bones;
@@ -186,9 +194,6 @@ namespace Lobelia::Graphics {
 		void ConfigureVertex(std::weak_ptr<DxdImporter> dxd);
 		void ConfigureBones(std::weak_ptr<DxdImporter> dxd, int mesh_index, int* vertex_index);
 		void ConfigureMaterial(std::weak_ptr<MaterialImporter> mt, const std::string& directory);
-	public:
-		ModelData(const char* dxd_path, const char* mt_path);
-		~ModelData();
 	};
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,6 +205,9 @@ namespace Lobelia::Graphics {
 	//そのうち統一化を図りたい
 	struct AnimationData {
 		friend class InstancingAnimationEngine;
+	public:
+		AnimationData(const char* file_path);
+		~AnimationData();
 	private:
 		//メッシュ->クラスター->フレーム
 		using KeyFrames = std::vector<std::vector<std::vector<DirectX::XMFLOAT4X4>>>;
@@ -210,9 +218,6 @@ namespace Lobelia::Graphics {
 		int meshCount;
 		std::vector<int> clusterCount;
 		KeyFrames keyFrames;
-	public:
-		AnimationData(const char* file_path);
-		~AnimationData();
 	};
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -220,8 +225,8 @@ namespace Lobelia::Graphics {
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	//  Model
 	///////////////////////////////////////////////////////////////////////////////////////////////////
-	class Model {
-	private:
+	class Model :public RenderableObject<Model> {
+	public:
 		struct Vertex {
 			Math::Vector4 pos;
 			Math::Vector4 normal;
@@ -229,6 +234,7 @@ namespace Lobelia::Graphics {
 			UINT clusteIndex[4];
 			Math::Vector4 weights;
 		};
+	private:
 		struct Subset {
 			//サブセットのインデックス
 			int index;
@@ -237,7 +243,7 @@ namespace Lobelia::Graphics {
 			//合計頂点数
 			int sum;
 			//試していない
-			bool ThisIsMyVertex(int vertex_index)const { return (s_cast<UINT>(vertex_index - start) > s_cast<UINT>(sum - start)); }
+			bool ThisIsMyVertex(int vertex_index)const { return (s_cast<UINT>(vertex_index * 3 - start) < s_cast<UINT>(sum - start)); }
 			//描画
 			void Render(Model* model) {
 				if (!model->renderIndexMaterial[index]->IsVisible())return;
@@ -250,38 +256,6 @@ namespace Lobelia::Graphics {
 			//クラスター数
 			std::vector<DirectX::XMMATRIX> initPoseMatrices;
 		};
-	private:
-		std::unique_ptr<Mesh<Vertex>> mesh;
-		std::map<std::string, std::shared_ptr<Material>> materials;
-		std::vector<Material*> renderIndexMaterial;
-		std::unique_ptr<InputLayout> inputLayout;
-		std::unique_ptr<ConstantBuffer<DirectX::XMMATRIX>> constantBuffer;
-		//メッシュ数
-		std::vector<Bone> bones;
-		std::vector<Subset> subsets;
-		DirectX::XMMATRIX world;
-		DirectX::XMMATRIX translate;
-		DirectX::XMMATRIX scalling;
-		DirectX::XMMATRIX rotation;
-		int allMeshVertexCountSum;
-		Transform3D transform;
-		AnimationNo activeAnimation;
-		//アニメーション
-		std::vector<std::unique_ptr<Animation>> animations;
-		int animationCount;
-		Model* parent;
-	private:
-		//非ポインター変数初期化
-		void StateInitialize();
-		//モデルデータ構築関連
-		void ConfigureVertex(std::weak_ptr<DxdImporter> dxd);
-		void ConfigureBones(std::weak_ptr<DxdImporter> dxd, int mesh_index, int* vertex_index);
-		void ConfigureMaterial(std::weak_ptr<MaterialImporter> mt, const std::string& directory);
-	private:
-		//transformから移動行列生成
-		void CalcTranslateMatrix();
-		//transformから拡縮行列生成
-		void CalcScallingMatrix();
 	public:
 		Model(const char* dxd_path, const char* mt_path);
 		~Model();
@@ -306,7 +280,7 @@ namespace Lobelia::Graphics {
 		void Scalling(float x, float y, float z);
 		void Scalling(float scale);
 		//更新処理
-		void CalculationWorldMatrix();
+		void CalcWorldMatrix();
 		//行列取得
 		void GetTranslateMatrix(DirectX::XMMATRIX* translate);
 		void CalcInverseTranslateMatrix(DirectX::XMMATRIX* inv_translate);
@@ -316,70 +290,62 @@ namespace Lobelia::Graphics {
 		void CalcInverseRotationMatrix(DirectX::XMMATRIX* inv_rotation);
 		void GetWorldMatrix(DirectX::XMMATRIX* world);
 		void CalcInverseWorldMatrix(DirectX::XMMATRIX* inv_world);
+		//ボーン行列回り
+		int GetBoneCount();
+		const DirectX::XMMATRIX& GetBone(int index);
 		//アニメーション関連
 		AnimationNo AnimationLoad(const char* file_path);
 		void AnimationActivate(AnimationNo index);
 		void AnimationUnActive();
 		const std::string& GetAnimationName(AnimationNo index);
 		void AnimationUpdate(float elapsed_time);
+		std::string GetMaterialName(int poly_index);
+		float GetAnimationTime(AnimationNo index);
+		void CalcAnimationMatrix(AnimationNo index, int bone_index, DirectX::XMFLOAT4X4* anim);
 		//マテリアル取得
-		Material* GetMaterial();
+		Material* GetMaterial(const char* mt_name);
 		//描画関連
-		void Render(bool no_set = false);
-	};
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	//	Transformer
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-	//これはModelクラスの行列部分だけコピペしてきたもの
-	//そのうち統一化を図りたい
-	class Transformer {
+		void Render(D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, bool no_set = false);
+		int RayPickWorld(Math::Vector3* out_pos, Math::Vector3* out_normal, const Math::Vector3& ray_pos, const Math::Vector3& ray_vec, float dist);
+		int RayPickLocal(Math::Vector3* out_pos, Math::Vector3* out_normal, const Math::Vector3& ray_pos, const Math::Vector3& ray_vec, float dist);
+		Mesh<Vertex>* GetMesh() { return mesh.get(); }
 	private:
-		Transform3D transform;
-		DirectX::XMMATRIX world;
-		DirectX::XMMATRIX translate;
-		DirectX::XMMATRIX scalling;
-		DirectX::XMMATRIX rotation;
+		//非ポインター変数初期化
+		void StateInitialize();
+		//モデルデータ構築関連
+		void ConfigureVertex(std::weak_ptr<DxdImporter> dxd);
+		void ConfigureBones(std::weak_ptr<DxdImporter> dxd, int mesh_index, int* vertex_index);
+		void ConfigureMaterial(std::weak_ptr<MaterialImporter> mt, const std::string& directory);
 	private:
 		//transformから移動行列生成
 		void CalcTranslateMatrix();
 		//transformから拡縮行列生成
 		void CalcScallingMatrix();
-	public:
-		Transformer();
-		//移動 行列計算も行われます
-		void Translation(const Math::Vector3& pos);
-		void Translation(float x, float y, float z);
-		void TranslationMove(const Math::Vector3& move);
-		void TranslationMove(float x, float y, float z);
-		//回転 行列計算も行われます
-		void RotationQuaternion(const DirectX::XMVECTOR& quaternion);
-		void RotationAxis(const Math::Vector3& axis, float rad);
-		void RotationRollPitchYow(const Math::Vector3& rpy);
-		void RotationYAxis(float rad);
-		//拡縮 行列計算も行われます
-		void Scalling(const Math::Vector3& scale);
-		void Scalling(float x, float y, float z);
-		void Scalling(float scale);
-		//更新処理
-		void CalculationWorldMatrix();
-		//行列取得
-		void GetTranslateMatrix(DirectX::XMMATRIX* translate);
-		void CalcInverseTranslateMatrix(DirectX::XMMATRIX* inv_translate);
-		void GetScallingMatrix(DirectX::XMMATRIX* scalling);
-		void CalcInverseScallingMatrix(DirectX::XMMATRIX* inv_scalling);
-		void GetRotationMatrix(DirectX::XMMATRIX* rotation);
-		void CalcInverseRotationMatrix(DirectX::XMMATRIX* inv_rotation);
-		//転置行列を返します
-		void GetWorldMatrix(DirectX::XMMATRIX* t_world);
-		void GetWorldMatrixTranspose(DirectX::XMMATRIX* world);
-		void CalcInverseWorldMatrix(DirectX::XMMATRIX* inv_world);
-		const Transform3D& GetTransform();
+	private:
+		std::unique_ptr<Mesh<Vertex>> mesh;
+		std::map<std::string, std::shared_ptr<Material>> materials;
+		std::vector<Material*> renderIndexMaterial;
+		std::unique_ptr<ConstantBuffer<DirectX::XMMATRIX>> constantBuffer;
+		//メッシュ数
+		std::vector<Bone> bones;
+		std::vector<Subset> subsets;
+		DirectX::XMMATRIX world;
+		DirectX::XMMATRIX translate;
+		DirectX::XMMATRIX scalling;
+		DirectX::XMMATRIX rotation;
+		int allMeshVertexCountSum;
+		Transform3D transform;
+		AnimationNo activeAnimation;
+		//アニメーション
+		std::vector<std::unique_ptr<Animation>> animations;
+		int animationCount;
+		Model* parent;
+		std::shared_ptr<VertexShader> vsAnim;
+		int boneCount;
 	};
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	//	ModelInstanced
@@ -388,9 +354,6 @@ namespace Lobelia::Graphics {
 		DirectX::XMMATRIX world;
 	};
 	class InstancingEngine {
-	private:
-		const int INSTANCE_MAX;
-		ComPtr<ID3D11Buffer> buffer;
 	public:
 		InstancingEngine(const int instance_count);
 		~InstancingEngine();
@@ -399,9 +362,11 @@ namespace Lobelia::Graphics {
 		void Unmap();
 		ComPtr<ID3D11Buffer>& GetBuffer();
 		const int GetInstanceMax();
+	private:
+		const int INSTANCE_MAX;
+		ComPtr<ID3D11Buffer> buffer;
 	};
-	//現在はスキンメッシュは非対応
-	class ModelInstanced {
+	class ModelInstanced :public RenderableObject<ModelInstanced> {
 	private:
 		struct Vertex {
 			Math::Vector4 pos;
@@ -430,18 +395,6 @@ namespace Lobelia::Graphics {
 			//クラスター数
 			std::vector<DirectX::XMMATRIX> initPoseMatrices;
 		};
-	private:
-		ModelData * modelData;
-		std::unique_ptr<InstancingEngine> instancingEngine;
-		std::unique_ptr<Mesh<Vertex>> mesh;
-		std::map<std::string, std::shared_ptr<Material>> materials;
-		std::vector<Material*> renderIndexMaterial;
-		std::unique_ptr<InputLayout> inputLayout;
-		//メッシュ数
-		std::vector<Bone> bones;
-		std::vector<Subset> subsets;
-		InstancedData* mapBuffer;
-		int renderCount;
 	public:
 		ModelInstanced(const char* dxd_path, const char* mt_path, const int instance_count);
 		~ModelInstanced();
@@ -449,6 +402,18 @@ namespace Lobelia::Graphics {
 		void Set(const InstancedData& data);
 		void End();
 		void Render();
+		std::map<std::string, std::shared_ptr<Material>> GetMaterials() { return materials; }
+	private:
+		ModelData * modelData;
+		std::unique_ptr<InstancingEngine> instancingEngine;
+		std::unique_ptr<Mesh<Vertex>> mesh;
+		std::map<std::string, std::shared_ptr<Material>> materials;
+		std::vector<Material*> renderIndexMaterial;
+		//メッシュ数
+		std::vector<Bone> bones;
+		std::vector<Subset> subsets;
+		InstancedData* mapBuffer;
+		int renderCount;
 	};
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -456,6 +421,16 @@ namespace Lobelia::Graphics {
 	// InstancingAnimationEngine
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	class InstancingAnimationEngine {
+	public:
+		InstancingAnimationEngine(const int instance_max);
+		~InstancingAnimationEngine();
+		AnimationNo LoadAnimation(const char* anm_path);
+		float AnimationTimeMax(AnimationNo animation_index);
+		void CreateTexture();
+		void SetData(int instance_index, int animation_index, float* times);
+		void TextureWriteFrames(int mesh_index, int render_count);
+		void CalcAnimationMatrix(AnimationNo animation_index, float time, int bone_index, DirectX::XMFLOAT4X4* anim);
+		void Activate();
 	private:
 		const int INSTANCE_MAX;
 		std::vector<AnimationData*> animationData;
@@ -464,15 +439,6 @@ namespace Lobelia::Graphics {
 		std::unique_ptr<Texture> animationFrames;
 		std::vector<float*> times;
 		std::vector<int> animationIndex;
-
-	public:
-		InstancingAnimationEngine(const int instance_max);
-		~InstancingAnimationEngine();
-		AnimationNo LoadAnimation(const char* anm_path);
-		void CreateTexture();
-		void SetData(int instance_index, int animation_index, float* times);
-		void TextureWriteFrames(int mesh_index, int render_count);
-		void Activate();
 	};
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -480,7 +446,7 @@ namespace Lobelia::Graphics {
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	// ModelInstancedAnimation
 	///////////////////////////////////////////////////////////////////////////////////////////////////
-	class ModelInstancedAnimation {
+	class ModelInstancedAnimation :public RenderableObject<ModelInstancedAnimation> {
 	private:
 		struct Vertex {
 			Math::Vector4 pos;
@@ -511,27 +477,50 @@ namespace Lobelia::Graphics {
 			//クラスター数
 			std::vector<DirectX::XMMATRIX> initPoseMatrices;
 		};
+	public:
+		ModelInstancedAnimation(const char* dxd_path, const char* mt_path, const int instance_count);
+		~ModelInstancedAnimation();
+		AnimationNo LoadAnimation(const char* anm_path);
+		void CreateAnimationFramesTexture();
+		float GetAnimationTimeMax(AnimationNo animation_index);
+		void CalcAnimationMatrix(AnimationNo animation_index, float time, int bone_index, DirectX::XMFLOAT4X4* anim);
+		void Begin();
+		//time部分要調整
+		void Set(const InstancedData& data, int animationIndex, float* time);
+		void End();
+		void Render();
 	private:
 		std::unique_ptr<InstancingEngine> instancingEngine;
 		std::unique_ptr<InstancingAnimationEngine> animationEngine;
 		std::unique_ptr<Mesh<Vertex>> mesh;
 		std::map<std::string, std::shared_ptr<Material>> materials;
 		std::vector<Material*> renderIndexMaterial;
-		std::unique_ptr<InputLayout> inputLayout;
 		//メッシュ数
 		std::vector<Bone> bones;
 		std::vector<Subset> subsets;
 		InstancedData* mapBuffer;
 		int renderCount;
+	};
+	class MultiTextureModel :public ModelInstancedAnimation {
 	public:
-		ModelInstancedAnimation(const char* dxd_path, const char* mt_path, const int instance_count);
-		~ModelInstancedAnimation();
-		AnimationNo LoadAnimation(const char* anm_path);
-		void CreateAnimationFramesTexture();
+		struct TexInfo{
+			Texture* texture;
+			int slot;
+		};
+	public:
+		MultiTextureModel(const char* dxd_path, const char* mt_path, const int instance_count);
+		void SetMultiTexture(const char* texture_path,int tex_slot = 32);
 		void Begin();
-		void Set(const InstancedData& data, int animationIndex, float* time);
+		void Set(const InstancedData& data, int animationIndex, float* time, int type);
 		void End();
 		void Render();
+	private:
+		std::unique_ptr<Texture> texture;
+		std::vector<TexInfo> textures;
+		D3D11_MAPPED_SUBRESOURCE resource;
+		Texture* subTexture;
+		int renderCount;
+		UINT* buffer;
 	};
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////

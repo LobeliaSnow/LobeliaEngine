@@ -45,10 +45,10 @@ namespace Lobelia::Graphics {
 	void Material::SetAmbientColor(const Math::Vector4& ambient) { data.ambient = ambient; }
 	void Material::SetSpecularColor(const Math::Vector4& specular) { data.specular = specular; }
 	void Material::SetTexColor(Utility::Color tex_color) {
-		data.texColor.x = tex_color.GetNormalizedA();
-		data.texColor.y = tex_color.GetNormalizedR();
-		data.texColor.z = tex_color.GetNormalizedG();
-		data.texColor.w = tex_color.GetNormalizedB();
+		data.texColor.x = tex_color.GetNormalizedR();
+		data.texColor.y = tex_color.GetNormalizedG();
+		data.texColor.z = tex_color.GetNormalizedB();
+		data.texColor.w = tex_color.GetNormalizedA();
 	}
 	void Material::ChangeVisible(bool visible) { this->visible = visible; }
 	bool Material::IsVisible() { return visible; }

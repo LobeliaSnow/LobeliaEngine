@@ -60,3 +60,19 @@ struct PS_IN_DEPTH
 	float4 depth : POSITION0;
 	float2 tex : TEXCOORD0;
 };
+
+struct VS_IN_POLYGON
+{
+	float4 pos : POSITION0;
+	float4 normal : NORMAL0;
+	float2 tex : TEXCOORD0;
+	float4 color: TEXCOORD1;
+};
+
+struct PS_IN_POLYGON
+{
+	float4 pos : SV_POSITION;
+	float4 normal : NORMAL0;
+	float2 tex : TEXCOORD0;
+	float4 color : TEXCOORD2;
+};

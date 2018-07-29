@@ -1,6 +1,7 @@
 #include "Common/Common.hpp"
 #include "Audio/Device/Device.hpp"
 #include "Audio/Voice/Voice.hpp"
+#include "Audio/Bank/Bank.hpp"
 #include "Exception/Exception.hpp"
 
 namespace Lobelia::Audio {
@@ -190,12 +191,14 @@ namespace Lobelia::Audio {
 	void Emitter::SetSpeed(const Math::Vector3& speed) {
 		memcpy_s(&emitter.Velocity, sizeof(emitter.Velocity), &speed, sizeof(speed));
 	}
-	void Emitter::Update(class SourceVoice* voice) {
+	void Emitter::Update(SourceVoice* voice) {
 		//上方向算出&セット
 		CalculationUpDirection(pos, front);
 		//3D音源アップデート
 		X3DAudioCalculate(Sound3DSystem::GetHandle(), &Sound3DSystem::GetListner(), &emitter, X3DAUDIO_CALCULATE_MATRIX | X3DAUDIO_CALCULATE_DOPPLER | X3DAUDIO_CALCULATE_LPF_DIRECT | X3DAUDIO_CALCULATE_LPF_REVERB | X3DAUDIO_CALCULATE_REVERB, &dsp);
-		voice->voice->SetOutputMatrix(EffectVoice::GetSubmixVoice(), voice->buffer.format.nChannels, 2, dsp.pMatrixCoefficients);
+		std::shared_ptr<Buffer> buffer = voice->buffer.lock();
+		if (!buffer)STRICT_THROW("期間切れのボイスです");
+		voice->voice->SetOutputMatrix(EffectVoice::GetSubmixVoice(), buffer->format.nChannels, 2, dsp.pMatrixCoefficients);
 		voice->voice->SetFrequencyRatio(dsp.DopplerFactor);
 		XAUDIO2_FILTER_PARAMETERS FilterParametersDirect = { LowPassFilter, 2.0f * sinf(X3DAUDIO_PI / 6.0f * dsp.LPFDirectCoefficient), 1.0f }; // see XAudio2CutoffFrequencyToRadians() in XAudio2.h for more information on the formula used here
 		voice->voice->SetOutputFilterParameters(EffectVoice::GetSubmixVoice(), &FilterParametersDirect);
@@ -203,157 +206,104 @@ namespace Lobelia::Audio {
 		voice->voice->SetOutputFilterParameters(EffectVoice::GetSubmixVoice(), &FilterParametersReverb);
 	}
 	//Callbackは後で実装
-	SourceVoice::SourceVoice(const Buffer& buffer) :buffer(buffer) {
+	SourceVoice::SourceVoice(std::weak_ptr<Buffer> buffer) :buffer(buffer) {
+		std::shared_ptr<Buffer> instance = buffer.lock();
+		if (!instance)STRICT_THROW("音声データが存在しません");
 		XAUDIO2_SEND_DESCRIPTOR sendDescriptors;
 		sendDescriptors.Flags = XAUDIO2_SEND_USEFILTER; // LPF direct-path
 		sendDescriptors.pOutputVoice = EffectVoice::GetSubmixVoice();
 		const XAUDIO2_VOICE_SENDS sendList = { 1, &sendDescriptors };
-		HRESULT	hr = Device::Get()->CreateSourceVoice(&voice, &buffer.format, 0 | XAUDIO2_VOICE_USEFILTER  /*| XAUDIO2_VOICE_MUSIC*/, XAUDIO2_DEFAULT_FREQ_RATIO, nullptr, &sendList, nullptr);
+		HRESULT	hr = Device::Get()->CreateSourceVoice(&voice, &instance->format, 0 | XAUDIO2_VOICE_USEFILTER  /*| XAUDIO2_VOICE_MUSIC*/, XAUDIO2_DEFAULT_FREQ_RATIO, nullptr, &sendList, nullptr);
 		if (FAILED(hr))STRICT_THROW("ソースボイスが作成できませんでした");
 	}
 	SourceVoice::~SourceVoice() { _::SafeDestroyVoice(voice); }
-	void SourceVoice::Play(UINT loop)noexcept {
+	void SourceVoice::Play(UINT loop) {
+		std::shared_ptr<Buffer> instance = buffer.lock();
+		if (!instance)STRICT_THROW("音声データが存在しません");
 		data.Flags = XAUDIO2_END_OF_STREAM;
-		data.pAudioData = buffer.source;
-		data.AudioBytes = buffer.size;
+		data.pAudioData = instance->source.get();
+		data.AudioBytes = instance->size;
 		data.PlayBegin = 0;
-		data.PlayLength = buffer.size / buffer.format.nBlockAlign;
+		data.PlayLength = instance->size / instance->format.nBlockAlign;
 		data.LoopBegin = 0;
 		data.LoopCount = loop >= XAUDIO2_LOOP_INFINITE ? XAUDIO2_LOOP_INFINITE : loop;
-		data.LoopLength = loop ? buffer.size / buffer.format.nBlockAlign : 0;
+		data.LoopLength = loop ? instance->size / instance->format.nBlockAlign : 0;
 		voice->SubmitSourceBuffer(&data, nullptr);
 		voice->Start(0, XAUDIO2_COMMIT_NOW);
+		isPlay = true;
 	}
 	void SourceVoice::Pause()const noexcept {
 		voice->Stop(0, XAUDIO2_COMMIT_NOW);
 	}
-	void SourceVoice::Stop()const noexcept {
+	void SourceVoice::Stop()noexcept {
 		voice->Stop(XAUDIO2_PLAY_TAILS, XAUDIO2_COMMIT_ALL);
 		voice->FlushSourceBuffers();
 		//キューに追加
 		voice->SubmitSourceBuffer(&data, nullptr);
+		isPlay = false;
 	}
 
 	bool SourceVoice::IsPlay()const noexcept {
+		if (!isPlay)return false;
 		XAUDIO2_VOICE_STATE state = {};
 		voice->GetState(&state);
 		return (state.BuffersQueued != 0);
 	}
 	void SourceVoice::SetVolume(float volume) { voice->SetVolume(volume); }
-	Player::Player(const Buffer& buffer) :buffer(buffer) {	}
-	Player::~Player() {
-		for each(auto& voice in voices) {
-			voice->Stop();
-		}
-		delete[] buffer.source;
-	}
+
 	void Player::Update() {
-		for (auto& voice = voices.begin(); voice != voices.end();) {
-			if (!(*voice)->IsPlay()) {
-				(*voice)->Stop();
+		for (auto&& voice = voices.begin(); voice != voices.end();) {
+			if (!voice->second->IsPlay()) {
+				voice->second->Stop();
+				if (voice->first.is3D)emitters.erase(voice->first);
 				voice = voices.erase(voice);
 			}
-			else voice++;
+			else {
+				if (voice->first.is3D)emitters[voice->first]->Update(voice->second.get());
+				voice++;
+			}
 		}
 	}
-	void Player::Play(UINT loop) {
-		voices.push_front(std::make_unique<SourceVoice>(buffer));
-		voices.front()->Play(loop);
-	}
-	void Player::Stop() {
-		for each(auto& voice in voices) {
-			voice->Stop();
-		}
-	}
-	void Player::Pause() {
-		for each(auto& voice in voices) {
-			voice->Pause();
-		}
-	}
-	bool Player::IsPlay() {
-		for each(auto& voice in voices) {
-			if (voice->IsPlay())return true;
-		}
-		return false;
-	}
-	void Player::SetVolume(float volume) {
-		for each(auto& voice in voices) {
-			voice->SetVolume(volume);
-		}
-	}
-	size_t Player::TakeSize() { return voices.size(); }
-
-	Voice3DPlayer::Voice3DPlayer(const Buffer& buffer) :buffer(buffer) {}
-	Voice3DPlayer::~Voice3DPlayer() {
-		for each(auto& voice in voices) {
-			voice.second.voice->Stop();
-		}
-		delete[] buffer.source;
-	}
-	Voice3DHandle Voice3DPlayer::Play(const Math::Vector3& pos, const Math::Vector3& front, bool loop) {
-		Voice3D voice;
-		voice.voice = std::make_unique<SourceVoice>(buffer);
-		voice.emitter = std::make_unique<Emitter>(pos, front);
-		voice.emitter->Update(voice.voice.get());
-		voice.voice->Play(loop ? XAUDIO2_LOOP_INFINITE : 0);
-		Voice3DHandle handle;
-		voices[handle] = std::move(voice);
+	const Player::Handle Player::IssueHandle(bool is_3d) {
+		static UINT next = 0;
+		Handle handle(next++, is_3d);
 		return handle;
 	}
-	bool Voice3DPlayer::Stop(Voice3DHandle handle) {
-		if (voices.find(handle) == voices.end())return false;
-		voices[handle].voice->Stop();
-		voices.erase(handle);
-		return true;
+	const Player::Handle Player::Play(const char* tag, int loop, bool is_3d) {
+		Handle handle = IssueHandle(is_3d);
+		voices[handle] = (std::make_unique<SourceVoice>(Bank::GetInstance()->GetBuffer(tag)));
+		if (is_3d) emitters[handle] = std::make_shared<Emitter>(Math::Vector3(0.0f, 0.0f, 0.0f), Math::Vector3(0.0f, 0.0f, 1.0f));
+		voices[handle]->Play(loop);
+		return handle;
 	}
-	bool Voice3DPlayer::Pause(Voice3DHandle handle) {
-		if (voices.find(handle) == voices.end())return false;
-		voices[handle].voice->Pause();
-		return true;
+	void Player::Stop(const Handle& handle) {
+		if (!FindSoundHandle(handle))STRICT_THROW("存在しないハンドルです");
+		voices[handle]->Stop();
 	}
-	bool Voice3DPlayer::IsPlay(Voice3DHandle handle) {
-		if (voices.find(handle) == voices.end())return false;
-		return voices[handle].voice->IsPlay();
+	void Player::Pause(const Handle& handle) {
+		if (!FindSoundHandle(handle))STRICT_THROW("存在しないハンドルです");
+		voices[handle]->Pause();
 	}
-	bool Voice3DPlayer::SetVolume(Voice3DHandle handle, float volume) {
-		if (voices.find(handle) == voices.end())return false;
-		voices[handle].voice->SetVolume(volume);
-		return true;
+	bool Player::IsPlay(const Handle& handle) {
+		if (!FindSoundHandle(handle))STRICT_THROW("存在しないハンドルです");
+		return voices[handle]->IsPlay();
 	}
-	bool Voice3DPlayer::SetPos(Voice3DHandle handle, const Math::Vector3& pos) {
-		if (voices.find(handle) == voices.end())return false;
-		voices[handle].emitter->SetPos(pos);
-		return true;
+	void Player::SetVolume(const Handle& handle, float volume) {
+		if (!FindSoundHandle(handle))STRICT_THROW("存在しないハンドルです");
+		voices[handle]->SetVolume(volume);
 	}
-	bool Voice3DPlayer::SetFrontVector(Voice3DHandle handle, const Math::Vector3& front) {
-		if (voices.find(handle) == voices.end())return false;
-		voices[handle].emitter->SetFrontVector(front);
-		return true;
+	std::weak_ptr<Emitter> Player::GetEmitter(Handle handle) {
+		if (!handle.is3D || FindEmitterHundle(handle))STRICT_THROW("3Dとして再生されていないか、存在しないハンドルです");
+		return emitters[handle];
 	}
-	bool Voice3DPlayer::SetDopplerScaler(Voice3DHandle handle, float scaler) {
-		if (voices.find(handle) == voices.end())return false;
-		voices[handle].emitter->SetDopplerScaler(scaler);
-		return true;
-	}
-	bool Voice3DPlayer::SetImpactDistanceScaler(Voice3DHandle handle, float scaler) {
-		if (voices.find(handle) == voices.end())return false;
-		voices[handle].emitter->SetImpactDistanceScaler(scaler);
-		return true;
-	}
-	bool Voice3DPlayer::SetSpeed(Voice3DHandle handle, const Math::Vector3& speed) {
-		if (voices.find(handle) == voices.end())return false;
-		voices[handle].emitter->SetSpeed(speed);
-		return true;
-	}
-	void Voice3DPlayer::Update() {
-		for (auto& voice = voices.begin(); voice != voices.end();) {
-			voice->second.emitter->Update(voice->second.voice.get());
-			if (!voice->second.voice->IsPlay()) {
-				voice->second.voice->Stop();
-				voice = voices.erase(voice);
-			}
-			else voice++;
+	void Player::Clear() {
+		for each(auto&& voice in voices) {
+			voice.second->Stop();
 		}
+		voices.clear();
+		emitters.clear();
 	}
-	size_t Voice3DPlayer::TakeSize() { return voices.size(); }
+	size_t Player::TakeSize() { return voices.size(); }
+	bool Player::FindSoundHandle(const Handle& handle) { return (voices.find(handle) != voices.end()); }
+	bool Player::FindEmitterHundle(const Handle& handle) { return (emitters.find(handle) != emitters.end()); }
 }

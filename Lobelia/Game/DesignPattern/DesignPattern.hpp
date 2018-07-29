@@ -16,6 +16,9 @@ namespace Lobelia::Game {
 	//通知受け取る 意味 観察者
 	template<class Type, class Key = std::string> class Observer Interface {
 		template<class Type, class Key> friend class Observable;
+	public:
+		Observer() = default;
+		virtual ~Observer() = default;
 	private:
 		//更新
 		virtual void Update(Type* subject, const Key& key) = 0;
@@ -25,6 +28,7 @@ namespace Lobelia::Game {
 	//通知を送る 意味 観測可能な 
 	template<class Type, class Key = std::string> class Observable {
 	private:
+		//listでよくね
 		std::vector<Observer<Type, Key>*> observers;
 	public:
 		Observable() = default;
@@ -47,6 +51,7 @@ namespace Lobelia::Game {
 				if (observer->ShouldNotify(key))observer->Update(static_cast<Type*>(this), key);
 			}
 		}
+		void Notify(Key&& key) { Notify(key); }
 	};
 	//---------------------------------------------------------------------------------------------
 	//---------------------------------------------------------------------------------------------

@@ -20,7 +20,6 @@
 #include "Scene/Scene.hpp"
 #include "Application/Application.hpp"
 #include "Graphics/View/View.hpp"
-#include "Graphics/Pipeline/Pipeline.hpp"
 #include "Graphics/Renderer/Renderer.hpp"
 
 namespace Lobelia::Graphics {
@@ -47,12 +46,15 @@ namespace Lobelia::Graphics {
 		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::BACK);
 		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, false, Graphics::StencilDesc(), false);
 		if (!vs)vs = std::make_shared<VertexShader>("Data/ShaderFile/2D/VS.hlsl", "Main2DInst", Graphics::VertexShader::Model::VS_5_0, false);
-		if (!ps)ps = std::make_shared<PixelShader>("Data/ShaderFile/2D/PS.hlsl", "Main2D", Graphics::PixelShader::Model::PS_5_0, true);
-		id = ps->GetLinkage()->CreateInstance("TextureColor");
-		ps->GetLinkage()->CreateInstance("VertexColor");
-		ps->GetLinkage()->CreateInstance("InvertTextureColor");
-		ps->GetLinkage()->CreateInstance("GrayscaleTextureColor");
-		ps->GetLinkage()->CreateInstance("SepiaTextureColor");
+		if (!ps) {
+			ps = std::make_shared<PixelShader>("Data/ShaderFile/2D/PS.hlsl", "Main2D", Graphics::PixelShader::Model::PS_5_0, true);
+			ps->GetLinkage()->CreateInstance("TextureColor");
+			ps->GetLinkage()->CreateInstance("VertexColor");
+			ps->GetLinkage()->CreateInstance("InvertTextureColor");
+			ps->GetLinkage()->CreateInstance("GrayscaleTextureColor");
+			ps->GetLinkage()->CreateInstance("SepiaTextureColor");
+			ps->SetLinkage(0);
+		}
 		std::unique_ptr<Reflection> reflector = std::make_unique<Reflection>(vs.get());
 		if (!inputLayout)inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
 		BufferCreator::Create(instanceBuffer.GetAddressOf(), nullptr, sizeof(Instance)*render_limit, D3D11_USAGE_DYNAMIC, D3D11_BIND_VERTEX_BUFFER, D3D11_CPU_ACCESS_WRITE, sizeof(float));
@@ -73,7 +75,7 @@ namespace Lobelia::Graphics {
 		instances = static_cast<Instance*>(mapResource.pData);
 		renderCount = 0;
 	}
-	void SpriteBatch::Set(const Transform2D& transform, const Math::Vector2& upos, const Math::Vector2& usize, float rotate_axis_x, float rotate_axis_y, Utility::Color color) {
+	void SpriteBatch::Set(const Transform2D& transform, const Math::Vector2& upos, const Math::Vector2& usize, /*float rotate_axis_x, float rotate_axis_y,*/ Utility::Color color) {
 		Math::Vector2 view(2.0f / View::nowSize.x, -2.0f / View::nowSize.y);
 		Math::Vector2 rotate(cosf(transform.rotation), sinf(transform.rotation));
 		instances[renderCount].ndc._11 = view.x*(transform.scale.x / 2)*rotate.x;
@@ -88,8 +90,8 @@ namespace Lobelia::Graphics {
 		instances[renderCount].ndc._23 = 0.0f;
 		instances[renderCount].ndc._33 = 1.0f;
 		instances[renderCount].ndc._43 = 0.0f;
-		instances[renderCount].ndc._14 = view.x*(-rotate_axis_x * rotate.x + -rotate_axis_y * -rotate.y + rotate_axis_x + transform.position.x + transform.scale.x / 2) - 1.0f;
-		instances[renderCount].ndc._24 = view.y*(-rotate_axis_x * rotate.y + -rotate_axis_y * rotate.x + rotate_axis_y + transform.position.y + transform.scale.y / 2) + 1.0f;
+		instances[renderCount].ndc._14 = view.x*(/*-rotate_axis_x * rotate.x + -rotate_axis_y * -rotate.y + rotate_axis_x + */transform.position.x + transform.scale.x / 2) - 1.0f;
+		instances[renderCount].ndc._24 = view.y*(/*-rotate_axis_x * rotate.y + -rotate_axis_y * rotate.x + rotate_axis_y + */transform.position.y + transform.scale.y / 2) + 1.0f;
 		instances[renderCount].ndc._34 = 0.0f;
 		instances[renderCount].ndc._44 = 1.0f;
 
@@ -105,6 +107,13 @@ namespace Lobelia::Graphics {
 		instances[renderCount].uvTrans.w = static_cast<float>(usize.y) / static_cast<float>(size.y);
 		renderCount++;
 	}
+	void SpriteBatch::Set(const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_size, Utility::Color color) {
+		Transform2D trans = {};
+		trans.position = pos;
+		trans.scale = size;
+		trans.rotation = rad;
+		Set(trans, uv_begin, uv_size, color);
+	}
 	void SpriteBatch::End() {
 		Device::GetContext()->Unmap(instanceBuffer.Get(), 0);
 	}
@@ -115,7 +124,7 @@ namespace Lobelia::Graphics {
 		depthStencil->Set();
 		inputLayout->Set();
 		vs->Set();
-		ps->Set(1, &id);
+		ps->Set();
 		inputLayout->Set();
 		texture->Set(0, ShaderStageList::PS);
 		Device::GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);

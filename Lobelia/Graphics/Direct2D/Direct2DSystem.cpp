@@ -1,4 +1,5 @@
 #include "Lobelia.hpp"
+
 namespace Lobelia::Graphics {
 	ComPtr<ID2D1Device> Direct2DSystem::device;
 	ComPtr<ID2D1DeviceContext> Direct2DSystem::context;

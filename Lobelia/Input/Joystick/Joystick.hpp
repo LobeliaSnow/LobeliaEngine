@@ -35,7 +35,7 @@ namespace Lobelia::Input {
 			Math::Vector2 rightAxis;
 			//ボタン
 			std::array<BYTE, 20> button;
-			//個のフレーム押された瞬間のID
+			//このフレーム押された瞬間のID
 			int pushKey;
 			std::string deviceName;
 			int deadZone;
@@ -62,13 +62,6 @@ namespace Lobelia::Input {
 			void Vibration(int gain, float period);
 			const std::string& GetDeviceName();
 		};
-	private:
-		int dinputDeviceCount;
-		std::vector<std::unique_ptr<DirectInputController>> dinputControllers;
-		//前からDirectInput[]+XInput[]
-		std::vector<Controller> controllers;
-		DirectInputPadSet defaultPadSet;
-		int controllerCount;
 	private:
 		void CreateDirectInputController(HWND hwnd, bool fore_ground, bool exclusive);
 #ifdef USE_XINPUT
@@ -98,5 +91,12 @@ namespace Lobelia::Input {
 		Joystick(Joystick&&) = delete;
 		Joystick& operator =(const Joystick&) = delete;
 		Joystick& operator =(Joystick&&) = delete;
+	private:
+		int dinputDeviceCount;
+		std::vector<std::unique_ptr<DirectInputController>> dinputControllers;
+		//前からDirectInput[]+XInput[]
+		std::vector<Controller> controllers;
+		DirectInputPadSet defaultPadSet;
+		int controllerCount;
 	};
 }

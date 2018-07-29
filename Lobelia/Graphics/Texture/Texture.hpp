@@ -29,10 +29,10 @@ namespace Lobelia::Graphics {
 		ComPtr<ID3D11Texture2D> texture;
 	private:
 		//à¯êîóvåüì¢
-		void CreateTexture(DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag, CPU_ACCESS_FLAG cpu_flag);
+		void CreateTexture(DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag, CPU_ACCESS_FLAG cpu_flag, int array_count);
 		void CreateShaderResourceView(DXGI_FORMAT format);
 	public:
-		Texture(const Math::Vector2& size, DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag = ACCESS_FLAG::DEFAULT, CPU_ACCESS_FLAG cpu_flag = CPU_ACCESS_FLAG::NONE);
+		Texture(const Math::Vector2& size, DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag = ACCESS_FLAG::DEFAULT, CPU_ACCESS_FLAG cpu_flag = CPU_ACCESS_FLAG::NONE, int array_count = 1);
 		Texture(const ComPtr<ID3D11Texture2D>& texture);
 		~Texture();
 		ComPtr<ID3D11Texture2D>& Get();
@@ -63,4 +63,5 @@ namespace Lobelia::Graphics {
 		static void Save(const char* file_path, Texture* texture);
 		static void CreateNormalMap(Texture* src, Texture** normal, float amplitude);
 	};
+
 }

@@ -1,33 +1,42 @@
 #pragma once
 namespace Lobelia::Audio {
-	class Bank {
+	class Bank :public Utility::Singleton<Bank> {
+		friend class Utility::Singleton<Bank>;
 	public:
-		static void Load(const char* file_path, const char* tag);
-		static void Load3D(const char* file_path, const char* tag);
-		static void Play(const char* tag, UINT loop = 0);
-		static Voice3DHandle Play3D(const char* tag, const Math::Vector3& pos, const Math::Vector3& front, bool loop = false);
-		//現在このタグで再生中の音声をすべて止める
-		static void Stop(const char* tag);
-		static bool Stop3D(const char* tag, Voice3DHandle handle);
-		//現在このタグで再生中の音声をすべて一時停止
-		static void Pause(const char* tag);
-		static bool Pause3D(const char* tag, Voice3DHandle handle);
-		//現在このタグで再生中の音声が一つでもあるかどうか取得
-		static bool IsPlay(const char* tag);
-		static bool IsPlay3D(const char* tag, Voice3DHandle handle);
-		static void SetVolume(const char* tag, float volume);
-		static bool SetVolume3D(const char* tag, Voice3DHandle handle, float volume);
-		static bool SetPos3D(const char* tag, Voice3DHandle handle, const Math::Vector3& pos);
-		static bool SetFrontVector3D(const char* tag, Voice3DHandle handle, const Math::Vector3& front);
-		static bool SetDopplerScaler3D(const char* tag, Voice3DHandle handle, float scaler);
-		static bool SetImpactDistanceScaler3D(const char* tag, Voice3DHandle handle, float scaler);
-		static bool SetSpeed3D(const char* tag, Voice3DHandle handle, const Math::Vector3& speed);
-		static Player* GetData(const char* tag);
-		static Voice3DPlayer* GetData3D(const char* tag);
-		static void Clear();
-		static void Clear3D();
-		static void Clear(const char* tag);
-		static void Clear3D(const char* tag);
-		static void Update();
+		template<class T> using ReferencePtr = std::weak_ptr<T>;
+		using Loader = std::function<void(const char*, Buffer*)>;
+	public:
+		//ローダーの設定 第一引数 ロード関数 第二引数以降 拡張子
+		template<class... Args> void AttachLoader(Loader loader, Args... args) {
+			//ローダーの登録
+			loaderList.push_front(std::move(loader));
+			//拡張子とローダーの紐づけ
+			auto RegisterLoader = [this](std::string tag, std::list<Loader>::iterator loader) {
+				loaderMap[tag] = loader;
+			};
+			//マップの生成
+			std::initializer_list<int> {
+				((void)RegisterLoader(args, loaderList.begin()), 0)...
+			};
+		}
+	public:
+		void Load(const char* file_path, const char* tag);
+		//TODO : 存在チェック
+		ReferencePtr<Buffer> GetBuffer(const char* tag) { return sounds[tag]; }
+		void Clear(const char* tag);
+	private:
+		Bank() = default;
+		~Bank() = default;
+	public:
+		Bank(const Bank&) = delete;
+		Bank(Bank&&) = delete;
+		Bank& operator=(const Bank&) = delete;
+		Bank& operator=(Bank&&) = delete;
+	private:
+		//ローダーの実態を保持
+		std::list<Loader> loaderList;
+		//拡張子に対応したローダーへのアドレスを所持
+		std::map<std::string, std::list<Loader>::iterator> loaderMap;
+		std::map<std::string, std::shared_ptr<Buffer>> sounds;
 	};
 }

@@ -6,6 +6,7 @@ namespace Lobelia {
 		class InformationConsole* information = nullptr;
 		class LogConsole* logs = nullptr;
 		class CommandConsole* commander = nullptr;
+		class SystemConsole* system = nullptr;
 	private:
 		HostConsole();
 		~HostConsole();
@@ -26,9 +27,11 @@ namespace Lobelia {
 		void VariableUnRegister(const char* key, const char* label);
 		void VariableUnRegister(const char* key);
 		void SetLog(const std::string& log);
-		template<class... Args> void Printf(const char* format, Args... args) {
+		void SaveLog(const char* file_path);
+		void SetProcessTime(float process_time);
+		template<class... Args> void Printf(const char* format, Args&&... args) {
 			char buffer[256] = {};
-			sprintf_s(buffer, format, args...);
+			sprintf_s(buffer, format, std::forward<Args>(args)...);
 			SetLog(buffer);
 		}
 		bool CommandRegister(const char* cmd, ExeStyle style, const std::function<bool()>& exe);

@@ -13,11 +13,11 @@ namespace Lobelia::Game {
 		~VectorSort() = delete;
 	public:
 		template<class T> static void Desc(std::vector<T>& data) {
-			static_assert(is_greater_than<T>::value, "operator>() Unimplemented");
+			static_assert(is_greater_than<T>::value, "operator> Unimplemented");
 			std::sort(data.begin(), data.end(), std::greater<T>());
 		}
 		template<class T> static void Asc(std::vector<T>& data) {
-			static_assert(is_less_than<T>::value, "operator<() Unimplemented");
+			static_assert(is_less_than<T>::value, "operator< Unimplemented");
 			std::sort(data.begin(), data.end());
 		}
 	};
@@ -34,6 +34,7 @@ namespace Lobelia::Game {
 		std::vector<T> data;
 	public:
 		RankingData(const char* file_path, int ranking_count, const T default_value = {});
+		RankingData() = default;
 		~RankingData();
 		//コンストラクタで呼ばれるので値の更新目的以外では特に呼ばなくてよい
 		void Load(const char* file_path, int ranking_count, const T default_value = {});
@@ -74,6 +75,7 @@ namespace Lobelia::Game {
 		RankingData<T> rankingData;
 	public:
 		Ranking(const RankingData<T>& rankingData);
+		Ranking(const char* file_path, int ranking_count, const T& default_value = {});
 		~Ranking();
 		const std::vector<T>& Get();
 		void Save(const char* file_path);
@@ -81,6 +83,11 @@ namespace Lobelia::Game {
 	};
 	template<class T, SortOrder order> Ranking<T, order>::Ranking(const RankingData<T>& rankingData) :rankingData(rankingData) {
 		static_assert(!std::has_virtual_destructor<T>::value, "	virtual exists in the member method");
+		OrderTypeTraits<order>::Sort(this->rankingData.data);
+	}
+	template<class T, SortOrder order> Ranking<T, order>::Ranking(const char* file_path, int ranking_count, const T& default_value) {
+		rankingData = RankingData<T>(file_path, ranking_count, default_value);
+		rankingData.Load(file_path, ranking_count, default_value);
 		OrderTypeTraits<order>::Sort(this->rankingData.data);
 	}
 	template<class T, SortOrder order> Ranking<T, order>::~Ranking() = default;

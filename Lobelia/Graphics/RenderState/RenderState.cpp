@@ -104,13 +104,20 @@ namespace Lobelia::Graphics {
 		Device::GetContext()->OMSetBlendState(state.Get(), blendFactory, 0xFFFFFFFF);
 	}
 
-	SamplerState::SamplerState(SamplerPreset preset, int max_anisotropy) {
+	SamplerState::SamplerState(SamplerPreset preset, int max_anisotropy, bool is_border) {
 		HRESULT hr = S_OK;
 		D3D11_SAMPLER_DESC desc = {};
 		SettingPreset(&desc, static_cast<int>(preset));
-		desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-		desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-		desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		if (is_border) {
+			desc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+			desc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+			desc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+		}
+		else {
+			desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+			desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+			desc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+		}
 		desc.MaxAnisotropy = max_anisotropy;
 		desc.ComparisonFunc = D3D11_COMPARISON_GREATER_EQUAL;
 		desc.MinLOD = -FLT_MAX;
@@ -149,8 +156,8 @@ namespace Lobelia::Graphics {
 		desc.FillMode = wire_frame ? D3D11_FILL_WIREFRAME : D3D11_FILL_SOLID;
 		//表面が反時計回りが表(TRUE)か時計回りが表(FALSE)かの設定
 		desc.FrontCounterClockwise = false;
-		desc.AntialiasedLineEnable = false;
-		desc.MultisampleEnable = false;
+		desc.AntialiasedLineEnable = true;
+		desc.MultisampleEnable = true;
 		hr = Device::Get()->CreateRasterizerState(&desc, state.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("ラスタライザ作成に失敗");
 	}
@@ -212,8 +219,4 @@ namespace Lobelia::Graphics {
 		Device::GetContext()->OMSetDepthStencilState(state.Get(), 1);
 	}
 
-	void RenderStateBank::BlendFactory(std::string key, BlendPreset p, bool blend_enable, bool alpha_coverage)noexcept { ResourceBank<BlendState>::Factory(key, p, blend_enable, alpha_coverage); }
-	void RenderStateBank::SamplerFactory(std::string key, SamplerPreset p, int max_anisotropy) { ResourceBank<SamplerState>::Factory(key, p, max_anisotropy); }
-	void RenderStateBank::RasterizerFactory(std::string key, RasterizerPreset p, bool wire_frame) { ResourceBank<RasterizerState>::Factory(key, p, wire_frame); }
-	void RenderStateBank::DepthStencilFactory(std::string key, DepthPreset p, bool depth, StencilDesc desc, bool stencil) { ResourceBank<DepthStencilState>::Factory(key, p, depth, desc, stencil); }
 }

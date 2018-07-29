@@ -26,7 +26,7 @@ namespace Lobelia {
 		*@param[in] インスタンス生成に必要な引数
 		*@return インスタンスへのポインタ
 		*/
-		template<class U = T, class... Args> static T* Factory(Key key, Args... args);
+		template<class U = T, class... Args> static T* Factory(Key key, Args&&... args);
 		/**
 		*@brief 登録関数
 		*@brief ファクトリを使用せず直接インスタンスを預けたいときに使用

@@ -13,11 +13,13 @@ namespace Lobelia::Game {
 			int index0;
 			int index1;
 			Edge(int index0, int index1) :index0(index0), index1(index1) {}
+			Edge() :Edge(-1, -1) {}
 			bool operator==(const Edge& e) { return (index0 == e.index0&&index1 == e.index1); }
 			bool operator<(const Edge& e) { return ((index0 < e.index0) || (index0 == e.index0&&index1 < e.index1)); }
 		};
 		struct Node {
 			Math::Vector3 pos;
+			float buildLength;
 			int index;
 			Node(const Math::Vector3& pos, int index) :pos(pos), index(index) {}
 			Node() = default;
@@ -38,6 +40,7 @@ namespace Lobelia::Game {
 		const std::list<Edge>& GetEdgeList() { return edgeList; }
 		const std::list<Node>& GetNodeList() { return nodeList; }
 		void CreateVectorNodeList(std::vector<NaviMeshGraph::Node>& node_list);
+		void CreateVectorEdgeList(std::vector<NaviMeshGraph::Edge>& edge_list);
 	private:
 		void NodeLoad(Utility::FileController& fc);
 		void EdgeLoad(Utility::FileController& fc);
@@ -52,5 +55,9 @@ namespace Lobelia::Game {
 		std::vector<TriPolygon> triangleList;
 		std::list<Edge> edgeList;
 		std::list<Node> nodeList;
+	};
+	class ApplyNaviToDijkstra {
+	public:
+		static void Apply(DijkstraEngineVector3* engine, NaviMeshGraph* graph, float scale);
 	};
 }

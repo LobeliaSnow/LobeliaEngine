@@ -189,11 +189,11 @@ namespace Lobelia::Input {
 		axis[3] = state.lRx;	axis[4] = state.lRy;	axis[5] = state.lRz;
 		//適用
 		data->leftAxis.x = f_cast(axis[asignMap[0]]);
-		data->leftAxis.y = f_cast(axis[asignMap[1]]);
+		data->leftAxis.y = f_cast(-axis[asignMap[1]]);
 		data->rightAxis.x = f_cast(axis[asignMap[2]]);
-		data->rightAxis.y = f_cast(axis[asignMap[3]]);
+		data->rightAxis.y = f_cast(-axis[asignMap[3]]);
 		//十字キー判定
-		int angle = 8;//何も押されていない状態を表す
+		int angle = 8;		//何も押されていない状態を表す
 		constexpr int POV_KEY[9] = { 0x01 ,0x09, 0x08, 0x0A, 0x02, 0x06, 0x04, 0x05, 0x00 };
 		//8方向取得
 		if (LOWORD(state.rgdwPOV[0]) != 0xFFFF)angle = state.rgdwPOV[0] / 4500;
@@ -290,6 +290,8 @@ namespace Lobelia::Input {
 			Push(&controllers[index].button[i_cast(KeyCode::R1)], (pad.wButtons&XINPUT_GAMEPAD_RIGHT_SHOULDER));
 			Push(&controllers[index].button[i_cast(KeyCode::R2)], (pad.bRightTrigger));
 			Push(&controllers[index].button[i_cast(KeyCode::R3)], (pad.wButtons&XINPUT_GAMEPAD_RIGHT_THUMB));
+			Push(&controllers[index].button[i_cast(KeyCode::START)], (pad.wButtons&XINPUT_GAMEPAD_START));
+			Push(&controllers[index].button[i_cast(KeyCode::SELECT)], (pad.wButtons&XINPUT_GAMEPAD_BACK));
 			controllers[index].leftAxis.x = f_cast(pad.sThumbLX) / 32768.0f*1000.0f;
 			controllers[index].leftAxis.y = f_cast(pad.sThumbLY) / 32768.0f*1000.0f;
 			controllers[index].rightAxis.x = f_cast(pad.sThumbRX) / 32768.0f*1000.0f;

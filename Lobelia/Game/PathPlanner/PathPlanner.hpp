@@ -44,6 +44,7 @@ namespace Lobelia::Game {
 	//ダイクストラ法の近似ノード算出用関数
 	template<class T> using DijkstraQueryFunction = std::function<float(const T&, const T&)>;
 	//ダイクストラ法
+	//Math::Vector3とMath::Vector2はクエリーをすでにデフォルトでセットしています
 	template<class T> class DijkstraEngine {
 	public:
 		DijkstraEngine() :begin(nullptr), end(nullptr) {}
@@ -54,15 +55,21 @@ namespace Lobelia::Game {
 		void SetBegin(const T& value) { SetBegin(QueryFromValue(value)); }
 		void SetEnd(DijkstraNode<T>* node) { end = node; }
 		void SetEnd(const T& value) { SetEnd(QueryFromValue(value)); }
+		const std::list<DijkstraNode<T>*>& GetNodes() { return node; }
+		//開始地点
+		const DijkstraNode<T>* GetBeginNode() { return begin; }
+		//多分使わない
+		const DijkstraNode<T>* GetEndNode() { return end; }
 		//条件に近いノードの検索
+		//TODO : パフォーマンス改善 具体的には空間分割？kd-tree(kd木)
 		DijkstraNode<T>* Query(const T& data) {
 			struct Min {
 				int index = -1;
-				float value = 9999.0f;
+				float value = 999999.0f;
 			}min;
 			int index = 0;
 			for each(auto&& it in node) {
-				float value = QueryNode(it.data, data);
+				float value = QueryNode(it->data, data);
 				if (min.value > value) {
 					min.index = index;
 					min.value = value;
@@ -160,11 +167,6 @@ namespace Lobelia::Game {
 			}
 			return nullptr;
 		}
-		const std::list<DijkstraNode<T>*>& GetNodes() { return node; }
-		//開始地点
-		const DijkstraNode<T>* GetBeginNode() { return begin; }
-		//多分使わない
-		const DijkstraNode<T>* GetEndNode() { return end; }
 	private:
 		//ノードのスタート地点
 		DijkstraNode<T>* begin;
@@ -183,5 +185,6 @@ namespace Lobelia::Game {
 	};
 	template<class T> DijkstraCostCalcFunction<T> DijkstraEngine<T>::CalcCost;
 	template<class T> DijkstraQueryFunction<T> DijkstraEngine<T>::QueryNode;
-
+	using DijkstraEngineVector3 = DijkstraEngine<Math::Vector3>;
+	using DijkstraEngineVector2 = DijkstraEngine<Math::Vector2>;
 }
