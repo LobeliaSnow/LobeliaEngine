@@ -117,5 +117,4 @@ namespace Lobelia::Network {
 		static int IsSet(Socket* socket);
 		static void SetTimeOut(int sec, int micro);
 	};
-
 }

@@ -10,12 +10,6 @@
 
 namespace Lobelia::Game {
 	SceneMain::SceneMain() :view(std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize())) {
-		for (int i = 0; i < Input::Joystick::GetInstance()->GetControllerCount(); i++) {
-			std::string name = Input::Joystick::GetInstance()->GetDeviceName(i);
-			HostConsole::GetInstance()->SetLog(name);
-		}
-		HostConsole::GetInstance()->Printf("joystick count : %d", Input::Joystick::GetInstance()->GetControllerCount());
-
 		std::shared_ptr<Audio::Buffer> buffer= std::make_shared<Audio::Buffer>();
 		buffer->format.nChannels = 1;
 		buffer->format.nSamplesPerSec = 44100;

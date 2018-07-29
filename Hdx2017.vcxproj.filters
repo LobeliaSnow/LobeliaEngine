@@ -372,6 +372,9 @@
     <ClCompile Include="Lobelia\Input\Joystick\Joystick.cpp">
       <Filter>Lobelia\Input\Joystick</Filter>
     </ClCompile>
+    <ClCompile Include="Lobelia\Network\NetworkObject.cpp">
+      <Filter>Lobelia\Network</Filter>
+    </ClCompile>
     <ClCompile Include="Lobelia\Common\Utility\PerformanceCounter\PerformanceCounter.cpp">
       <Filter>Lobelia\Common\Utility\PerformanceCounter</Filter>
     </ClCompile>
@@ -583,6 +586,9 @@
     </ClInclude>
     <ClInclude Include="Lobelia\Input\Joystick\Joystick.hpp">
       <Filter>Lobelia\Input\Joystick</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Network\NetworkObject.hpp">
+      <Filter>Lobelia\Network</Filter>
     </ClInclude>
     <ClInclude Include="Lobelia\Game\PathPlanner\PathPlanner.hpp">
       <Filter>Lobelia\Game\PathPlanner</Filter>
