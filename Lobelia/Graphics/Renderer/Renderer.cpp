@@ -74,13 +74,13 @@ namespace Lobelia::Graphics {
 			mesh->GetBuffer()[index].col.w = color.GetNormalizedA();
 		}
 	}
-	void SpriteRenderer::CutUV(Texture* tex, const Math::Vector2& uv_pos, const Math::Vector2& uv_size) {
+	void SpriteRenderer::CutUV(const Math::Vector2& tex, const Math::Vector2& uv_pos, const Math::Vector2& uv_size) {
 		for (int index = 0; index < 4; index++) {
-			mesh->GetBuffer()[1].tex.x = mesh->GetBuffer()[3].tex.x = (uv_pos.x + uv_size.x - 0.5f) / tex->GetSize().x;
-			mesh->GetBuffer()[0].tex.x = mesh->GetBuffer()[2].tex.x = (uv_pos.x + 0.5f) / tex->GetSize().x;
+			mesh->GetBuffer()[1].tex.x = mesh->GetBuffer()[3].tex.x = (uv_pos.x + uv_size.x - 0.5f) / tex.x;
+			mesh->GetBuffer()[0].tex.x = mesh->GetBuffer()[2].tex.x = (uv_pos.x + 0.5f) / tex.x;
 
-			mesh->GetBuffer()[0].tex.y = mesh->GetBuffer()[1].tex.y = (uv_pos.y + 0.5f) / tex->GetSize().y;
-			mesh->GetBuffer()[2].tex.y = mesh->GetBuffer()[3].tex.y = (uv_pos.y + uv_size.y - 0.5f) / tex->GetSize().y;
+			mesh->GetBuffer()[0].tex.y = mesh->GetBuffer()[1].tex.y = (uv_pos.y + 0.5f) / tex.y;
+			mesh->GetBuffer()[2].tex.y = mesh->GetBuffer()[3].tex.y = (uv_pos.y + uv_size.y - 0.5f) / tex.y;
 		}
 	}
 	void SpriteRenderer::MeshTransform() {
@@ -101,7 +101,7 @@ namespace Lobelia::Graphics {
 		PositionPlant(transform);
 		if (transform.rotation != 0.0f)PositionRotation(transform);
 		SetMeshColor(color);
-		CutUV(tex, uv_pos, uv_size);
+		CutUV(tex->GetSize(), uv_pos, uv_size);
 		MeshTransform();
 		mesh->Set();
 		Device::GetContext()->Draw(4, 0);
@@ -131,6 +131,27 @@ namespace Lobelia::Graphics {
 	void SpriteRenderer::Render(RenderTarget* rt, Utility::Color color) {
 		//Texture::Clean(0, ShaderStageList::PS);
 		Render(rt->GetTexture(), color);
+	}
+	void SpriteRenderer::CustumeRender(const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_size, const Math::Vector2& texture_size, Utility::Color color, bool state) {
+		if (state) {
+			blend->Set(true);
+			sampler->Set(true);
+			rasterizer->Set(true);
+			depthStencil->Set(true);
+			inputLayout->Set();
+		}
+		Device::GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		Transform2D transform;
+		transform.position = pos;
+		transform.rotation = rad;
+		transform.scale = size;
+		PositionPlant(transform);
+		if (transform.rotation != 0.0f)PositionRotation(transform);
+		SetMeshColor(color);
+		CutUV(texture_size, uv_begin, uv_size);
+		MeshTransform();
+		mesh->Set();
+		Device::GetContext()->Draw(4, 0);
 	}
 
 	SpriteBatchRenderer::SpriteBatchRenderer(int render_limit) :RENDER_LIMIT(render_limit) {
@@ -253,8 +274,8 @@ namespace Lobelia::Graphics {
 	void Polygon3DRenderer::SetTransformAndCalcMatrix(const Transform3D& transform) {
 		DirectX::XMMATRIX translate, rotation, scalling;
 		translate = DirectX::XMMatrixTranslation(transform.position.x, transform.position.y, transform.position.z);
-		rotation  = DirectX::XMMatrixRotationRollPitchYaw(transform.rotation.x, transform.rotation.y, transform.rotation.z);
-		scalling  = DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, transform.scale.z);
+		rotation = DirectX::XMMatrixRotationRollPitchYaw(transform.rotation.x, transform.rotation.y, transform.rotation.z);
+		scalling = DirectX::XMMatrixScaling(transform.scale.x, transform.scale.y, transform.scale.z);
 		scalling.m[0][0] *= -1;
 		world = scalling;
 		world *= rotation;
@@ -421,7 +442,7 @@ namespace Lobelia::Graphics {
 		Math::Vector4 vColor(color.GetNormalizedR(), color.GetNormalizedG(), color.GetNormalizedB(), color.GetNormalizedA());
 		for (int i = 0; i < sphere.vertexCount; i++) {
 			//ˆÊ’u
-			verticeSphere[sphereVertexCount + i].pos      = sphere.pos[i];
+			verticeSphere[sphereVertexCount + i].pos = sphere.pos[i];
 			verticeSphere[sphereVertexCount + i].pos.xyz *= radius;
 			verticeSphere[sphereVertexCount + i].pos.xyz += pos;
 			//–@ü

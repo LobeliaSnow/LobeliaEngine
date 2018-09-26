@@ -17,7 +17,7 @@ namespace Lobelia::Graphics {
 		static void PositionPlant(const Transform2D& transform);
 		static void PositionRotation(const Transform2D& transform);
 		static void SetMeshColor(Utility::Color color);
-		static void CutUV(Texture* tex, const Math::Vector2& uv_pos, const Math::Vector2& uv_size);
+		static void CutUV(const Math::Vector2& tex, const Math::Vector2& uv_pos, const Math::Vector2& uv_size);
 		static void MeshTransform();
 	public:
 		static void Initialize();
@@ -27,6 +27,8 @@ namespace Lobelia::Graphics {
 		static void Render(RenderTarget* rt, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color);
 		static void Render(RenderTarget* rt, const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_size, Utility::Color color);
 		static void Render(RenderTarget* rt, Utility::Color color = 0xFFFFFFFF);
+		//内部でシェーダーのセットは無し、ステート等と頂点データをIAに送ってドローコールが呼ばれるのみ
+		static void CustumeRender(const Math::Vector2& pos, const Math::Vector2& size, float rad, const Math::Vector2& uv_begin, const Math::Vector2& uv_size, const Math::Vector2& texture_size,Utility::Color color = 0xFFFFFFFF,bool state = true);
 	};
 	class SpriteBatchRenderer :public RenderableObject<SpriteBatchRenderer>, public Utility::Singleton<SpriteBatchRenderer> {
 	private:

@@ -52,6 +52,9 @@ namespace Lobelia::Graphics {
 		void ChangeViewport(const Math::Vector2& pos, const Math::Vector2& size);
 		void CreateFrustum();
 		bool IsFrustumRange(const Math::Vector3& pos, float rad);
+		//“à•”î•ñ‚¾‚¯XV‚·‚éê‡
+		void Update();
+		void ViewportActivate();
 		void Activate();
 		DirectX::XMMATRIX GetColumnViewMatrix();
 		DirectX::XMMATRIX GetColumnProjectionMatrix();

@@ -67,11 +67,14 @@ interface PSInterfaceForward
 {
 	float4 GetColor(PS_IN ps_in);
 };
+TextureCube txCube : register(t4);
 class Lambert : PSInterfaceForward
 {
 	float4 GetColor(PS_IN ps_in)
 	{
-		return GetDiffuseMap(ps_in.tex) * texColor * ps_in.color * ambientColor;
+		//float3 reflectRay = reflect(-ps_in.eyeVector.xyz, ps_in.normal.xyz);
+		//return txCube.Sample(samLinear, reflectRay);
+		return GetDiffuseMap(ps_in.tex)/* * texColor * ps_in.color * ambientColor*/;
 	}
 };
 class Fog : PSInterfaceForward

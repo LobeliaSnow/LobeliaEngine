@@ -27,10 +27,12 @@ namespace Lobelia::Graphics {
 		Math::Vector2 size;
 		ComPtr<ID3D11ShaderResourceView> view;
 		ComPtr<ID3D11Texture2D> texture;
+		std::vector<ComPtr<ID3D11ShaderResourceView>> viewArray;
+		int arrayCount;
 	private:
 		//à¯êîóvåüì¢
 		void CreateTexture(DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag, CPU_ACCESS_FLAG cpu_flag, int array_count);
-		void CreateShaderResourceView(DXGI_FORMAT format);
+		void CreateShaderResourceView(DXGI_FORMAT format, int array_count);
 	public:
 		Texture(const Math::Vector2& size, DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag = ACCESS_FLAG::DEFAULT, CPU_ACCESS_FLAG cpu_flag = CPU_ACCESS_FLAG::NONE, int array_count = 1);
 		Texture(const ComPtr<ID3D11Texture2D>& texture);

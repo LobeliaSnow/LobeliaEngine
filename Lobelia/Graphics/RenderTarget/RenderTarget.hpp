@@ -14,7 +14,7 @@ namespace Lobelia::Graphics {
 		ComPtr<ID3D11DepthStencilView> depthView;
 	private:
 		void CreateRenderTarget(const Math::Vector2& size, const DXGI_SAMPLE_DESC& sample, int array_count);
-		void CreateDepthView();
+		void CreateDepthView(int array_count);
 	public:
 		RenderTarget(const Math::Vector2& size, const DXGI_SAMPLE_DESC& sample = Config::GetRefPreference().msaa, const DXGI_FORMAT&  format = DXGI_FORMAT_R32G32B32A32_FLOAT, int array_count = 1);
 		RenderTarget(const ComPtr<ID3D11Texture2D>& texture);

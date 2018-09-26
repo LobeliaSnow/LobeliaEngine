@@ -11,7 +11,9 @@
 */
 
 #include "Lobelia.hpp"
-#include "SceneMain.hpp"
+#include "SceneSea.hpp"
+#include "SceneDissolve.hpp"
+#include "SceneFur.hpp"
 
 #ifdef _DEBUG	
 //メモリリーク検知用
@@ -50,7 +52,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, PSTR, int) {
 	WPARAM wp = {};
 	try {
 		Lobelia::Bootup();
-		Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneMain>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
+		Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneSea>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
+		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneDissolve>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
+		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneFur>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
 		Lobelia::Audio::EffectVoice::DisableEffect(0);
 
 #ifdef USE_IMGUI_AND_CONSOLE
@@ -68,6 +72,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, PSTR, int) {
 				Lobelia::SceneManager::GetInstance()->Pause(pause);
 			}
 		});
+		//Lobelia::HostConsole::GetInstance()->CommandRegister("change sea", Lobelia::HostConsole::ExeStyle::BUTTON, [=]() {
+		//	Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneSea>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
+		//	return true;
+		//});
+		//Lobelia::HostConsole::GetInstance()->CommandRegister("change dissolve", Lobelia::HostConsole::ExeStyle::BUTTON, [=]() {
+		//	Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneSea>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
+		//	return true;
+		//});
 
 		//Lobelia::Application::GetInstance()->Bootup<Application::SceneRanking>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc, Lobelia::RankingData<float>("Data/Score/data.dat", 10, 999.99), Lobelia::Utility::Frand(0.0f, 0.5f));
 #else

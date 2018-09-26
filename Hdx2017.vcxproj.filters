@@ -378,6 +378,18 @@
     <ClCompile Include="Lobelia\Common\Utility\PerformanceCounter\PerformanceCounter.cpp">
       <Filter>Lobelia\Common\Utility\PerformanceCounter</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Scene\SceneSea.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Scene\SceneDissolve.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Header\Scene\SceneFur.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Header\ParaboloidEnvironmentMap.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImGui\Header\imconfig.h">
@@ -596,6 +608,18 @@
     <ClInclude Include="Lobelia\Common\Utility\PerformanceCounter\PerformanceCounter.hpp">
       <Filter>Lobelia\Common\Utility\PerformanceCounter</Filter>
     </ClInclude>
+    <ClInclude Include="Header\Scene\SceneSea.hpp">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Header\Scene\SceneDissolve.hpp">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Header\Scene\SceneFur.hpp">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Header\ParaboloidEnvironmentMap.hpp">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\ShaderFile\Header.hlsli">
@@ -640,6 +664,12 @@
     <None Include="Data\ShaderFile\GPUParticle\GPUParticleDefine.hlsli">
       <Filter>Data\ShaderFile\GPUParticle</Filter>
     </None>
+    <None Include="Data\ShaderFile\3D\Sea.hlsl">
+      <Filter>Data\ShaderFile\3D</Filter>
+    </None>
+    <None Include="Data\ShaderFile\3D\ParaboloidEnvironmentMap.hlsl">
+      <Filter>Data\ShaderFile\3D</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Data\ShaderFile\2D\PS.hlsl">
@@ -658,6 +688,12 @@
       <Filter>Data\ShaderFile\GPUParticle</Filter>
     </FxCompile>
     <FxCompile Include="Data\ShaderFile\3D\VS.hlsl">
+      <Filter>Data\ShaderFile\3D</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\Dissolve.hlsl">
+      <Filter>Data\ShaderFile\3D</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\Fur.hlsl">
       <Filter>Data\ShaderFile\3D</Filter>
     </FxCompile>
   </ItemGroup>

@@ -12,14 +12,14 @@ namespace Lobelia::Graphics {
 	RenderTarget::RenderTarget(const Math::Vector2& size, const DXGI_SAMPLE_DESC& sample, const DXGI_FORMAT& format, int array_count) {
 		texture = std::make_shared<Texture>(size, format, D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE, sample, Texture::ACCESS_FLAG::DEFAULT, Texture::CPU_ACCESS_FLAG::NONE, array_count);
 		CreateRenderTarget(size, sample, array_count);
-		CreateDepthView();
+		CreateDepthView(array_count);
 	}
 	RenderTarget::RenderTarget(const ComPtr<ID3D11Texture2D>& texture) {
 		this->texture = std::make_shared<Texture>(texture);
 		D3D11_TEXTURE2D_DESC desc;
 		this->texture->texture->GetDesc(&desc);
 		CreateRenderTarget(this->texture->GetSize(), desc.SampleDesc, 1);
-		CreateDepthView();
+		CreateDepthView(1);
 	}
 	RenderTarget::~RenderTarget() = default;
 	void RenderTarget::CreateRenderTarget(const Math::Vector2& size, const DXGI_SAMPLE_DESC& sample, int array_count) {
@@ -47,16 +47,23 @@ namespace Lobelia::Graphics {
 			hr = Device::Get()->CreateRenderTargetView(texture->texture.Get(), nullptr, renderTarget.GetAddressOf());
 			if (FAILED(hr))STRICT_THROW("レンダーターゲットビューの作成に失敗しました");
 		}
-		depth = std::make_shared<Texture>(size, DXGI_FORMAT_D24_UNORM_S8_UINT, D3D11_BIND_DEPTH_STENCIL, sample);
+		depth = std::make_shared<Texture>(size, DXGI_FORMAT_D32_FLOAT, D3D11_BIND_DEPTH_STENCIL, sample, Texture::ACCESS_FLAG::DEFAULT, Texture::CPU_ACCESS_FLAG::NONE, array_count);
 	}
-	void RenderTarget::CreateDepthView() {
+	void RenderTarget::CreateDepthView(int array_count) {
 		D3D11_TEXTURE2D_DESC tdesc = {};
 		depth->texture->GetDesc(&tdesc);
 		D3D11_DEPTH_STENCIL_VIEW_DESC desc = {};
 		desc.Format = tdesc.Format;
-		desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
-		desc.Texture2D.MipSlice = 0;
-
+		if (array_count == 1) {
+			desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DMS;
+			desc.Texture2D.MipSlice = 0;
+		}
+		else {
+			desc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+			desc.Texture2DArray.ArraySize = array_count;
+			desc.Texture2DArray.FirstArraySlice = 0;
+			desc.Texture2DArray.MipSlice = 0;
+		}
 		HRESULT hr = Device::Get()->CreateDepthStencilView(depth->texture.Get(), &desc, depthView.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("デプスステンシルビューの作成に失敗");
 	}
@@ -72,7 +79,7 @@ namespace Lobelia::Graphics {
 		depthView = view->depthView;
 	}
 	void RenderTarget::Activate() {
-		Device::GetContext()->OMSetRenderTargets(1, renderTarget.GetAddressOf(), depthView.Get()); 
+		Device::GetContext()->OMSetRenderTargets(1, renderTarget.GetAddressOf(), depthView.Get());
 	}
 	void RenderTarget::Activate(int rt_count, RenderTarget** rts) {
 		ID3D11RenderTargetView** renderTransform = new ID3D11RenderTargetView*[rt_count];

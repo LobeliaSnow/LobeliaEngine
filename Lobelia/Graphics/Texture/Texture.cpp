@@ -13,18 +13,18 @@
 #include <locale.h>
 
 namespace Lobelia::Graphics {
-	Texture::Texture(const Math::Vector2& size, DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag, CPU_ACCESS_FLAG cpu_flag, int array_count) :size(size) {
+	Texture::Texture(const Math::Vector2& size, DXGI_FORMAT format, UINT bind_flags, const DXGI_SAMPLE_DESC& sample, ACCESS_FLAG access_flag, CPU_ACCESS_FLAG cpu_flag, int array_count) :size(size), arrayCount(array_count) {
 		HRESULT hr = S_OK;
 		CreateTexture(format, bind_flags, sample, access_flag, cpu_flag, array_count);
 		D3D11_TEXTURE2D_DESC desc = {};
 		texture->GetDesc(&desc);
-		if (desc.BindFlags&D3D11_BIND_SHADER_RESOURCE)	CreateShaderResourceView(desc.Format);
+		if (desc.BindFlags&D3D11_BIND_SHADER_RESOURCE)	CreateShaderResourceView(desc.Format, array_count);
 	}
-	Texture::Texture(const ComPtr<ID3D11Texture2D>& texture) : texture(texture) {
+	Texture::Texture(const ComPtr<ID3D11Texture2D>& texture) : texture(texture), arrayCount(1) {
 		D3D11_TEXTURE2D_DESC desc = {};
 		this->texture->GetDesc(&desc);
 		size.x = static_cast<float>(desc.Width); size.y = static_cast<float>(desc.Height);
-		if (desc.BindFlags&D3D11_BIND_SHADER_RESOURCE)	CreateShaderResourceView(desc.Format);
+		if (desc.BindFlags&D3D11_BIND_SHADER_RESOURCE)	CreateShaderResourceView(desc.Format, 1);
 	}
 	Texture::~Texture() = default;
 	ComPtr<ID3D11Texture2D>&Texture::Get() { return texture; }
@@ -40,19 +40,47 @@ namespace Lobelia::Graphics {
 		desc.Usage = static_cast<D3D11_USAGE>(access_flag);
 		desc.CPUAccessFlags = static_cast<UINT>(cpu_flag);
 		desc.BindFlags = bind_flags;
+		if (array_count == 6)desc.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
 		hr = Device::Get()->CreateTexture2D(&desc, nullptr, texture.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("テクスチャの作成に失敗しました");
 	}
-	void Texture::CreateShaderResourceView(DXGI_FORMAT format) {
+	void Texture::CreateShaderResourceView(DXGI_FORMAT format, int array_count) {
 		D3D11_SHADER_RESOURCE_VIEW_DESC srvdesc = {};
 		srvdesc.Format = format;
-		srvdesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-		srvdesc.Texture2D.MostDetailedMip = 0;
-		srvdesc.Texture2D.MipLevels = 1;
-		HRESULT hr = Device::Get()->CreateShaderResourceView(texture.Get(), &srvdesc, view.GetAddressOf());
+		if (array_count == 1) {
+			srvdesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+			srvdesc.Texture2D.MostDetailedMip = 0;
+			srvdesc.Texture2D.MipLevels = 1;
+		}
+		else {
+			//キューブテクスチャ
+			if (array_count == 6) {
+				srvdesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+				srvdesc.TextureCube.MostDetailedMip = 0;
+				srvdesc.TextureCube.MipLevels = 1;
+			}
+			else {
+				srvdesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+				srvdesc.Texture2DArray.ArraySize = array_count;
+				srvdesc.Texture2DArray.MostDetailedMip = 0;
+				srvdesc.Texture2DArray.MipLevels = 1;
+			}
+		}
+		HRESULT hr = S_OK;
+		hr = Device::Get()->CreateShaderResourceView(texture.Get(), &srvdesc, view.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("シェーダーリソースビューの作成に失敗");
-	}
+		if (array_count > 1) {
+			if (array_count == 6)return;
+			viewArray.resize(array_count);
+			srvdesc.Texture2DArray.ArraySize = 1;
+			for (int i = 0; i < 1; i++) {
+				srvdesc.Texture2DArray.FirstArraySlice = i;
+				hr = Device::Get()->CreateShaderResourceView(texture.Get(), &srvdesc, viewArray[i].GetAddressOf());
+				if (FAILED(hr))STRICT_THROW("シェーダーリソースビューの作成に失敗");
+			}
 
+		}
+	}
 	const Math::Vector2& Texture::GetSize() { return size; }
 	void Texture::Set(int num_slot, ShaderStageList list) {
 		switch (list) {

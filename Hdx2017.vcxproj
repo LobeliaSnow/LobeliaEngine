@@ -170,6 +170,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Header\ParaboloidEnvironmentMap.cpp" />
+    <ClCompile Include="Header\Scene\SceneFur.cpp" />
     <ClCompile Include="ImGui\Source\imgui.cpp" />
     <ClCompile Include="ImGui\Source\imgui_demo.cpp" />
     <ClCompile Include="ImGui\Source\imgui_draw.cpp" />
@@ -252,11 +254,17 @@
     <ClCompile Include="Lobelia\Network\NetworkObject.cpp" />
     <ClCompile Include="Lobelia\Scene\Scene.cpp" />
     <ClCompile Include="Lobelia\XML\XML.cpp" />
+    <ClCompile Include="Source\Scene\SceneDissolve.cpp" />
     <ClCompile Include="Source\Scene\SceneMain.cpp" />
+    <ClCompile Include="Source\Scene\SceneSea.cpp" />
     <ClCompile Include="System\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Header\ParaboloidEnvironmentMap.hpp" />
+    <ClInclude Include="Header\Scene\SceneDissolve.hpp" />
+    <ClInclude Include="Header\Scene\SceneFur.hpp" />
     <ClInclude Include="Header\Scene\SceneMain.hpp" />
+    <ClInclude Include="Header\Scene\SceneSea.hpp" />
     <ClInclude Include="ImGui\Header\imconfig.h" />
     <ClInclude Include="ImGui\Header\imgui.h" />
     <ClInclude Include="ImGui\Header\imgui_impl_dx11.h" />
@@ -332,6 +340,7 @@
   <ItemGroup>
     <None Include="Data\ShaderFile\2D\Header2D.hlsli" />
     <None Include="Data\ShaderFile\3D\Header3D.hlsli" />
+    <None Include="Data\ShaderFile\3D\Sea.hlsl" />
     <None Include="Data\ShaderFile\Common\Common.hlsli" />
     <None Include="Data\ShaderFile\GPUParticle\GPUParticleDefine.hlsli" />
     <None Include="Data\ShaderFile\Header.hlsli" />
@@ -374,6 +383,19 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Main2D</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\Dissolve.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\Fur.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <None Include="Data\ShaderFile\3D\ParaboloidEnvironmentMap.hlsl">
+      <FileType>Document</FileType>
+    </None>
     <FxCompile Include="Data\ShaderFile\3D\PS.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

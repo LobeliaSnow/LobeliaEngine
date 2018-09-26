@@ -42,10 +42,14 @@ namespace Lobelia::Graphics {
 	void View::SetNear(float near_z) { nearZ = near_z; }
 	void View::SetFar(float far_z) { farZ = far_z; }
 	void View::ChangeViewport(const Math::Vector2& pos, const Math::Vector2& size) { CreateViewport(pos, size); }
-	void View::Activate() {
+	void View::Update() {
 		CreateProjection(fov, aspect, nearZ, farZ);
 		CreateView(data);
 		CreateBillboardMat(data);
+	}
+	void View::ViewportActivate() { Device::GetContext()->RSSetViewports(1, &viewport); }
+	void View::Activate() {
+		Update();
 		constantBuffer->Activate(buffer);
 		Device::GetContext()->RSSetViewports(1, &viewport);
 		nowSize = size;

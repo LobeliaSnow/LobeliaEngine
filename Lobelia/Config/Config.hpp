@@ -5,7 +5,7 @@ namespace Lobelia {
 	private:
 		struct Preference {
 			//システムの定数バッファがアクティブになるステージ
-			byte systemCBActiveStage = Stage::VS | Stage::DS | Stage::GS | Stage::PS;
+			byte systemCBActiveStage = Stage::VS | Stage::HS | Stage::DS | Stage::GS | Stage::PS;
 			DXGI_SAMPLE_DESC msaa;
 			float updateFPS;
 			int useVSync;
