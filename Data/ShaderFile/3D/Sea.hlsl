@@ -31,12 +31,12 @@ cbuffer Environment : register(b4)
 }
 //海面操作用定数バッファ 
 cbuffer SeaInfo : register(b6) {
-	float min : packoffset(c0.x);
-	float max : packoffset(c0.y);
+	float minDist : packoffset(c0.x);
+	float maxDist : packoffset(c0.y);
 	float maxDevide : packoffset(c0.z);
 	float hegihtBias : packoffset(c0.w);
 	float time : packoffset(c1.x);
-	float transparency : packoffset(c1.y);
+	float refractiveRatio : packoffset(c1.y);
 };
 cbuffer CubeMap:register(b7) {
 	column_major float4x4 views[6];
@@ -101,11 +101,13 @@ struct GS_OUT {
 #else
 struct GS_OUT {
 	float4 pos : SV_POSITION;
-	float4 oldPos : OLD_POSITION;
+	float4 environmentPos : OLD_POSITION;
 	float4 eyeVector : VECTOR0;
-	float4 oldEyeVector : VECTOR1;
+	float4 environmentEyeVector : VECTOR1;
 	float4 normal : NORMAL0;
-	float4 tangentLight : LIGHT0;
+	float4 tangent : NORMAL1;
+	float4 binormal : NORMAL2;
+	float4 tangentLight : LIGHT3;
 	float2 tex : TEXCOORD0;
 };
 
@@ -127,6 +129,7 @@ inline float3 CalcBinormal(float3 normal)
 	static float3 right = float3(1, 0, 0);
 	return cross(normal, right);
 }
+//ワールド空間から接空間へ変換するための
 inline float4x4 InvTangentMatrix(float3 tangent, float3 binormal, float3 normal)
 {
 	float4x4 mat =
@@ -137,6 +140,18 @@ inline float4x4 InvTangentMatrix(float3 tangent, float3 binormal, float3 normal)
 		{ 0.0f, 0.0f, 0.0f, 1.0f }
 	};
 	return transpose(mat); // 転置
+}
+//接空間からワールド空間へ変換するための
+inline float4x4 TangentMatrix(float3 tangent, float3 binormal, float3 normal)
+{
+	float4x4 mat =
+	{
+		{ float4(tangent, 0.0f) },
+	{ float4(binormal, 0.0f) },
+	{ float4(normal, 0.0f) },
+	{ 0.0f, 0.0f, 0.0f, 1.0f }
+	};
+	return mat;
 }
 
 //------------------------------------------------------------------------------------------------------
@@ -179,9 +194,9 @@ HS_TRI_OUT_DATA CalcTriConstants(InputPatch<VS_OUT, 3> ip, uint PatchID : SV_Pri
 	//中心点との距離
 	float dist = length(cpos.xyz - center);
 	//最小距離と最大距離の保証
-	dist = clamp(dist, min, max);
+	dist = clamp(dist, minDist, maxDist);
 	//最小～最大距離での比率算出
-	float ratio = (dist - min) / (max - min);
+	float ratio = (dist - minDist) / (maxDist - minDist);
 	//最大分割数から上での比率を用い分割数を規定
 	devide = (1.0f - ratio) * maxDevide + 1;
 	//分割数の定義
@@ -223,15 +238,15 @@ GS_OUT DS(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const Output
 	//output.normal.xyz = normalize(normal);
 	//output.normal = normalize(mul(output.normal, world));
 	//実際に頂点を動かす部分
-	output.oldPos = output.pos + output.normal * (sin(time + output.pos.x) / 3.0f);
+	output.environmentPos = output.pos + output.normal * (sin(time + output.pos.x) / 3.0f);
 	output.pos += output.normal * height;
 	output.pos += output.normal * (sin(time + output.pos.x) / 3.0f);
 	//output.tex.x = (sin(time + output.tex.x) / 3.14 + 1.0f)*0.5f;
 	//ワールド変換等
 	output.pos = mul(output.pos, world);
-	output.oldPos = mul(output.oldPos, world);
+	output.environmentPos = mul(output.environmentPos, world);
 	output.eyeVector = normalize(cpos - output.pos);
-	output.oldEyeVector = normalize(cpos - output.oldPos);
+	output.environmentEyeVector = normalize(output.environmentPos - cpos);
 	output.pos = mul(output.pos, view);
 	output.pos = mul(output.pos, projection);
 
@@ -266,37 +281,23 @@ void GS_CREATE_CUBE(triangle VS_OUT gs_in[3], inout TriangleStream<GS_CREATE_CUB
 	}
 }
 //海用
-[maxvertexcount(9)]
+[maxvertexcount(3)]
 void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
-	//重心算出
-	float3 center = (gs_in[0].pos + gs_in[1].pos + gs_in[2].pos) / 3.0f;
-	float3 cvVec[3] = (float3[3])0;
-	for (int i = 0; i < 3; i++) {
-		cvVec[i] = normalize(gs_in[i].pos - center);
-	}
-	//面法線算出
-	/*float3 vec0 = gs_in[0].pos - gs_in[1].pos;
-	float3 vec1 = gs_in[2].pos - gs_in[1].pos;
-	float3 normal = normalize(cross(vec0, vec1));*/
-	//TODO : 法線マップをしっかりするために本気の接空間求めに行く。
-	//float4 tangent = float4(CalcTangent(normal), 0.0f);
-	//float4 binormal = float4(CalcBinormal(normal), 0.0f);
-	//float4 tangentSpaceLightDirection = mul(lightDirection, InvTangentMatrix(tangent, binormal, normal));
 	GS_OUT gs_out[3] = (GS_OUT[3])0;
 	//接空間算出
 	//5次元から3次元に
 	float3 cp0[3] = (float3[3])0;
-	cp0[0] = float3(gs_in[0].oldPos.x, gs_in[0].tex.x, gs_in[0].tex.y);
-	cp0[1] = float3(gs_in[0].oldPos.y, gs_in[0].tex.x, gs_in[0].tex.y);
-	cp0[2] = float3(gs_in[0].oldPos.z, gs_in[0].tex.x, gs_in[0].tex.y);
+	cp0[0] = float3(gs_in[0].environmentPos.x, gs_in[0].tex.x, gs_in[0].tex.y);
+	cp0[1] = float3(gs_in[0].environmentPos.y, gs_in[0].tex.x, gs_in[0].tex.y);
+	cp0[2] = float3(gs_in[0].environmentPos.z, gs_in[0].tex.x, gs_in[0].tex.y);
 	float3 cp1[3] = (float3[3])0;
-	cp1[0] = float3(gs_in[1].oldPos.x, gs_in[1].tex.x, gs_in[1].tex.y);
-	cp1[1] = float3(gs_in[1].oldPos.y, gs_in[1].tex.x, gs_in[1].tex.y);
-	cp1[2] = float3(gs_in[1].oldPos.z, gs_in[1].tex.x, gs_in[1].tex.y);
+	cp1[0] = float3(gs_in[1].environmentPos.x, gs_in[1].tex.x, gs_in[1].tex.y);
+	cp1[1] = float3(gs_in[1].environmentPos.y, gs_in[1].tex.x, gs_in[1].tex.y);
+	cp1[2] = float3(gs_in[1].environmentPos.z, gs_in[1].tex.x, gs_in[1].tex.y);
 	float3 cp2[3] = (float3[3])0;
-	cp2[0] = float3(gs_in[2].oldPos.x, gs_in[2].tex.x, gs_in[2].tex.y);
-	cp2[1] = float3(gs_in[2].oldPos.y, gs_in[2].tex.x, gs_in[2].tex.y);
-	cp2[2] = float3(gs_in[2].oldPos.z, gs_in[2].tex.x, gs_in[2].tex.y);
+	cp2[0] = float3(gs_in[2].environmentPos.x, gs_in[2].tex.x, gs_in[2].tex.y);
+	cp2[1] = float3(gs_in[2].environmentPos.y, gs_in[2].tex.x, gs_in[2].tex.y);
+	cp2[2] = float3(gs_in[2].environmentPos.z, gs_in[2].tex.x, gs_in[2].tex.y);
 	//平面からＵＶ座標算出
 	float u[3] = (float[3])0;
 	float v[3] = (float[3])0;
@@ -312,15 +313,24 @@ void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
 	float4 tangent = normalize(float4(u[0], u[1], u[2], 0.0f));
 	float4 binormal = normalize(float4(v[0], v[1], v[2], 0.0f));
 	float4 normal = float4(normalize(cross(tangent, binormal)), 0.0f);
-	float4x4 tangentMatrix = InvTangentMatrix(tangent, binormal, normal);
+	//接空間へ変換するための行列
+	const column_major float4x4 tangentMatrix = InvTangentMatrix(tangent, binormal, normal);
 	float4 tangentLight = normalize(mul(lightDirection, tangentMatrix));
 	for (int i = 0; i < 3; i++) {
 		gs_out[i].pos = gs_in[i].pos;
-		//gs_out[i].normal.xyz = gs_in[i].normal;
 		gs_out[i].normal.xyz = normal;
+		gs_out[i].tangent.xyz = tangent;
+		gs_out[i].binormal.xyz = binormal;
 		gs_out[i].tangentLight = tangentLight;
-		gs_out[i].eyeVector = normalize(mul(gs_in[i].oldEyeVector, tangentMatrix));
-		//gs_out[i].tangentSpaceLightDirection = tangentSpaceLightDirection;
+		gs_out[i].eyeVector = normalize(mul(gs_in[i].eyeVector, tangentMatrix));
+		//gs_out[i].eyeVector = gs_in[i].eyeVector;
+		//gs_out[i].environmentEyeVector = gs_in[i].environmentEyeVector;
+		//環境マップ用のカメラから位置へのベクトルを接空間へ変換
+		gs_out[i].environmentEyeVector = normalize(mul(gs_in[i].environmentEyeVector, tangentMatrix));
+		//gs_out[i].environmentEyeVector.x = dot(tangent, gs_in[i].environmentEyeVector.x);
+		//gs_out[i].environmentEyeVector.y = dot(binormal, gs_in[i].environmentEyeVector.y);
+		//gs_out[i].environmentEyeVector.z = dot(normal, gs_in[i].environmentEyeVector.z);
+		//gs_out[i].environmentEyeVector = normalize(-gs_out[i].environmentEyeVector);
 		gs_out[i].tex = gs_in[i].tex;
 #ifdef __PARABOLOID__
 		float3 ray = normalize(-gs_out[i].eyeVector).xyz;
@@ -359,8 +369,6 @@ float4 PS_CREATE_CUBE(GS_CREATE_CUBE_OUT ps_in) :SV_Target{
 }
 //海用
 float4 PS(GS_OUT ps_in) :SV_Target{
-	//色情報
-	float4 diffuse = txDiffuse.Sample(samLinear, ps_in.tex);
 #ifdef __PARABOLOID__//双曲面環境マップ
 	//環境マップ
 	float4 front = txParaboloid.Sample(samLinear, float3(ps_in.paraboloidTex0,0));
@@ -382,32 +390,36 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	return float4((environment.rgb*lambert + specular), diffuse.a*transparency);
 	return float4((diffuse.rgb*lambert + specular * environment.rgb), diffuse.a*transparency);
 #else//この先キューブマップ
-	//return float4(ps_in.normal.xyz, 1.0f);
 	//法線マップ読み込み
 	float3 normalColor = txNormalMap.Sample(samLinear, ps_in.tex);
 	float3 normalVector = normalize(2.0f * normalColor - 1.0f);
+	//フレネル反射率計算
+	float d = dot(-ps_in.environmentEyeVector.xyz, normalVector.xyz);
+	float rt = sqrt(1.0f - refractiveRatio * refractiveRatio*(1.0f - d * d));
+	float rs = (refractiveRatio*d - rt)*(refractiveRatio*d - rt) / ((refractiveRatio*d + rt)*(refractiveRatio*d + rt));
+	float rp = (refractiveRatio*rt - d)*(refractiveRatio*rt - d) / ((refractiveRatio*rt + d)*(refractiveRatio*rt + d));
+	float alpha = (rs + rp) / 2.0f;
 	//環境マップ読み込み
-	float3 reflectRay = reflect(ps_in.eyeVector.xyz, normalVector.xyz);
-	float4 environment = txCube.Sample(samLinear, reflectRay);
-	//ライティング
-	float3 lambert = saturate(dot(normalVector, ps_in.tangentLight));
-	//反射ベクトル取得
-	float3 reflectValue = /*normalize*/(reflect(ps_in.tangentLight, normalVector));
-	//スぺキュラ算出
-	float3 specular = pow(saturate(dot(reflectValue, ps_in.eyeVector.xyz)), 2)*1.0f;
-	return float4(environment.rgb, transparency);
-	return float4((diffuse.rgb*lambert + specular * environment), diffuse.a*transparency);
+	float3 reflectRay = normalize(reflect(ps_in.environmentEyeVector.xyz, normalVector));
+	//const float eta = 0.67;  // 屈折率の比
+	//float3 refractRay = normalize(refract(ps_in.environmentEyeVector.xyz, normalVector, eta));
+	//接空間からワールド空間へ変換用
+	const column_major float4x4 tangentMatrix = TangentMatrix(ps_in.tangent, ps_in.binormal, ps_in.normal);
+	//ここではまだ接空間なので
+	reflectRay = mul(reflectRay, tangentMatrix);
+	//refractRay = mul(refractRay, tangentMatrix);
+	//ここでの反射ベクトルは、ワールド空間のものを要求
+	float4 reflectEnvironment = txCube.Sample(samLinear, reflectRay);
+	//float4 refractEnvironment = txCube.Sample(samLinear, refractRay);
+	//return float4(refractEnvironment.rgb, 1.0f);
+	return float4(reflectEnvironment.rgb, alpha);
+	//return lerp(refractEnvironment,reflectEnvironment, refractiveRatio);
+	////ライティング
+	//float3 lambert = saturate(dot(normalVector, ps_in.tangentLight));
+	////反射ベクトル取得
+	//float3 reflectValue = normalize(reflect(ps_in.tangentLight, normalVector));
+	////スぺキュラ算出
+	//float3 specular = pow(saturate(dot(reflectValue, ps_in.eyeVector.xyz)), 2)*3.0f;
+	//return float4(environment.rgb, 1.0f);
 #endif
-	//if (!test)return float4((diffuse.rgb*lambert + specular), diffuse.a*transparency);
-	//else return float4(1.0f,1.0f,1.0f,1.0f);
-	//float3 normalMap = txNormalMap.Sample(samLinear, ps_in.tex);
-	//normalMap = normalize(2 * normalMap - 1.0f);
-	//return float4(normalMap, 1.0f);
-	//return float4(normalize(ps_in.normal.xyz),1.0f);
-	//return float4(ps_in.tangentSpaceLightDirection.xyz, 0.0f);
-	//float lambert = dot(normalMap, ps_in.tangentSpaceLightDirection);
-	//float3 reflectValue = normalize(lightDirection.xyz - ps_in.normal.xyz*2.0f*dot(lightDirection,ps_in.normal));
-	//return float4(reflectValue, 1.0f);
-	//return float4(specular, 1.0f);
-	//return lambert;
 }

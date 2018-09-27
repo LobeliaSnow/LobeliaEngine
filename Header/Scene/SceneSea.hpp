@@ -4,7 +4,6 @@ namespace Lobelia::Game {
 	ALIGN(16) struct CubeInfo {
 		DirectX::XMFLOAT4X4 views[6];
 		DirectX::XMFLOAT4X4 projection;
-		float transparency;
 		//ライティングするか否か if文使用するが、最適化でパフォーマンスは変わらない
 		int isLighting;
 	};
@@ -29,9 +28,8 @@ namespace Lobelia::Game {
 		float radius;
 		//テクスチャサイズ
 		Math::Vector2 size;
-		//二方向を見るビュー
+		//立方体6面
 		std::unique_ptr<Graphics::View> views[6];
-		//デュアルパラボイドマップレンダリング用(中で配列として要素数2で作成)
 		std::shared_ptr<Graphics::RenderTarget> rt;
 		//コンスタントバッファ用情報
 		CubeInfo info;
@@ -70,7 +68,7 @@ namespace Lobelia::Game {
 		float maxDevide;
 		float height;
 		float time;
-		float transparency;
+		float reflectiveRatio;
 	};
 	class WaterShader {
 	public:
@@ -125,5 +123,8 @@ namespace Lobelia::Game {
 		int wire;
 		int sea;
 		D3D11_PRIMITIVE_TOPOLOGY topology;
+
+		Math::Vector3 seaPos;
+
 	};
 }

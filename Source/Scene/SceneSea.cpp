@@ -54,9 +54,7 @@ namespace Lobelia::Game {
 		//コンスタントバッファの作成
 		constantBuffer = std::make_unique<Graphics::ConstantBuffer<CubeInfo>>(7, Graphics::ShaderStageList::GS);
 	}
-	CubeEnvironmentMapManager::~CubeEnvironmentMapManager() {
-
-	}
+	CubeEnvironmentMapManager::~CubeEnvironmentMapManager() {	}
 	void CubeEnvironmentMapManager::AddModelList(std::weak_ptr<Graphics::Model> model) { models.push_back(model); }
 	//環境マップへの書き込み
 	void CubeEnvironmentMapManager::RenderEnvironmentMap() {
@@ -142,7 +140,6 @@ namespace Lobelia::Game {
 	}
 	void CubeEnvironmentMapManager::ClearModelList() { models.clear(); }
 
-
 	WaterShader::WaterShader() :displacement(nullptr), normal(nullptr) {
 		//シェーダーのロード
 		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/Sea.hlsl", "VS", Graphics::VertexShader::Model::VS_5_0);
@@ -158,13 +155,13 @@ namespace Lobelia::Game {
 		seaInfo.maxDevide = 64.0f;
 		seaInfo.height = 1.0f;
 		seaInfo.time = 0.0f;
-		seaInfo.transparency = 0.5f;
+		seaInfo.reflectiveRatio = 0.2f;
 		//メニューに値を追加
 		HostConsole::GetInstance()->FloatRegister("Sea Info", "min dist", &seaInfo.min, false);
 		HostConsole::GetInstance()->FloatRegister("Sea Info", "max dist", &seaInfo.max, false);
 		HostConsole::GetInstance()->FloatRegister("Sea Info", "max devide", &seaInfo.maxDevide, false);
 		HostConsole::GetInstance()->FloatRegister("Sea Info", "height", &seaInfo.height, false);
-		HostConsole::GetInstance()->FloatRegister("Sea Info", "transparency", &seaInfo.transparency, false);
+		HostConsole::GetInstance()->FloatRegister("Sea Info", "reflectiveRatio", &seaInfo.reflectiveRatio, false);
 	}
 	void WaterShader::LoadDisplacementMap(const char* file_path) {
 		Graphics::TextureFileAccessor::Load(file_path, &displacement);
@@ -210,11 +207,18 @@ namespace Lobelia::Game {
 		up = Math::Vector3(0.0f, 1.0f, 0.0f);
 		//モデル読み込み
 		model = std::make_unique<Graphics::Model>("Data/Model/plane.dxd", "Data/Model/plane.mt");
+		//model = std::make_unique<Graphics::Model>("Data/Model/sphere.dxd", "Data/Model/sphere.mt");
 		model->ChangeBlendState(std::make_shared<Graphics::BlendState>(Graphics::BlendPreset::COPY, true, false));
+		//model->RotationRollPitchYow(Math::Vector3(-PI / 5.0f, 0.0, 0.0f));
+		//model->Scalling(3.0f);
+		model->CalcWorldMatrix();
 		stage = std::make_unique<Graphics::Model>("Data/Model/stage.dxd", "Data/Model/stage.mt");
-		//stage->Translation(Math::Vector3(0.0f, 7.0f, 0.0f));
-		//stage->RotationRollPitchYow(Math::Vector3(PI, 0.0f, 0.0f));
-		//stage->CalcWorldMatrix();
+		//stage = std::make_unique<Graphics::Model>("Data/Model/stage2.dxd", "Data/Model/stage2.mt");
+		//stage = std::make_unique<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
+		//stage->Translation(Math::Vector3(0.0f, -1.0f, 0.0f));
+		//stage->RotationRollPitchYow(Math::Vector3(0.0f, PI, 0.0f));
+		//stage->Scalling(3.0f);
+		stage->CalcWorldMatrix();
 		skyBox = std::make_unique<Graphics::Model>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
 		skyBox->Translation(Math::Vector3(0.0f, 0.0f, 0.0f));
 		skyBox->Scalling(10.0f);
@@ -229,12 +233,14 @@ namespace Lobelia::Game {
 		waterShader = std::make_unique<WaterShader>();
 		waterShader->LoadDisplacementMap("Data/Model/displacement.png");
 		waterShader->LoadNormalMap("Data/Model/normal.png");
+		//waterShader->LoadDisplacementMap("Data/Model/displacementTest.png");
+		//waterShader->LoadNormalMap("Data/Model/normalTest.png");
 #ifdef __PARABOLOID__
 		environmentManager = std::make_unique<DualParaboloidMapManager>();
 		paraboloidMap = environmentManager->CreateEnvironmentMap(Math::Vector2(512, 512), Math::Vector3(0.0f, 5.0f, 0.0f), 100.0f);
 #else
 		environmentManager = std::make_unique<CubeEnvironmentMapManager>();
-		cubeMap = environmentManager->CreateEnvironmentMap(Math::Vector2(128, 128), Math::Vector3(0.0f, 0.0f, 0.0f), 100.0f);
+		cubeMap = environmentManager->CreateEnvironmentMap(Math::Vector2(512, 512), Math::Vector3(0.0f, 0.0f, 0.0f), 100.0f);
 #endif
 		//値の設定
 		wire = FALSE; sea = TRUE;
@@ -254,8 +260,8 @@ namespace Lobelia::Game {
 		if (Input::GetKeyboardKey(DIK_S)) pos += front * 20.0f*elapsedTime;
 		if (Input::GetKeyboardKey(DIK_W)) pos -= front * 20.0f*elapsedTime;
 		//左右
-		if (Input::GetKeyboardKey(DIK_D)) pos += right * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_A)) pos -= right * 20.0f*elapsedTime;
+		if (Input::GetKeyboardKey(DIK_A)) pos += right * 20.0f*elapsedTime;
+		if (Input::GetKeyboardKey(DIK_D)) pos -= right * 20.0f*elapsedTime;
 		//上下
 		if (Input::GetKeyboardKey(DIK_Z)) pos += up * 20.0f*elapsedTime;
 		if (Input::GetKeyboardKey(DIK_X)) pos -= up * 20.0f*elapsedTime;
@@ -263,9 +269,23 @@ namespace Lobelia::Game {
 		view->SetEyePos(pos);
 		view->SetEyeTarget(at);
 		view->SetEyeUpDirection(up);
+		//海動かす
+		//前後
+		if (Input::GetKeyboardKey(DIK_DOWN)) seaPos += front * 20.0f*elapsedTime;
+		if (Input::GetKeyboardKey(DIK_UP)) seaPos -= front * 20.0f*elapsedTime;
+		//左右
+		if (Input::GetKeyboardKey(DIK_LEFT)) seaPos += right * 20.0f*elapsedTime;
+		if (Input::GetKeyboardKey(DIK_RIGHT)) seaPos -= right * 20.0f*elapsedTime;
+		//上下
+		if (Input::GetKeyboardKey(DIK_PGUP)) seaPos += up * 20.0f*elapsedTime;
+		if (Input::GetKeyboardKey(DIK_PGDN)) seaPos -= up * 20.0f*elapsedTime;
+		model->Translation(seaPos);
+		model->CalcWorldMatrix();
+		stage->Translation(seaPos);
+		stage->CalcWorldMatrix();
 		//モデルのセット
-		//environmentManager->AddModelList(stage);
 		environmentManager->AddModelList(skyBox);
+		environmentManager->AddModelList(stage);
 	}
 	void SceneSea::AlwaysRender() {
 		//シェーダーをデフォルトに
