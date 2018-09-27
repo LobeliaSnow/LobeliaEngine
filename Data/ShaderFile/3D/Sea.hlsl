@@ -139,6 +139,7 @@ inline float4x4 InvTangentMatrix(float3 tangent, float3 binormal, float3 normal)
 		{ float4(normal, 0.0f) },
 		{ 0.0f, 0.0f, 0.0f, 1.0f }
 	};
+	//正規直行系は転置するだけで逆行列となる
 	return transpose(mat); // 転置
 }
 //接空間からワールド空間へ変換するための
@@ -240,6 +241,7 @@ GS_OUT DS(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const Output
 	//実際に頂点を動かす部分
 	output.environmentPos = output.pos + output.normal * (sin(time + output.pos.x) / 3.0f);
 	output.pos += output.normal * height;
+	//ここを含めた高さを調節できるようにしたいのと、波の流れる向きを自由にする予定
 	output.pos += output.normal * (sin(time + output.pos.x) / 3.0f);
 	//output.tex.x = (sin(time + output.tex.x) / 3.14 + 1.0f)*0.5f;
 	//ワールド変換等
@@ -284,7 +286,7 @@ void GS_CREATE_CUBE(triangle VS_OUT gs_in[3], inout TriangleStream<GS_CREATE_CUB
 [maxvertexcount(3)]
 void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
 	GS_OUT gs_out[3] = (GS_OUT[3])0;
-	//接空間算出
+	//接空間算出 げーむつくろーから。理解は一旦後回し。
 	//5次元から3次元に
 	float3 cp0[3] = (float3[3])0;
 	cp0[0] = float3(gs_in[0].environmentPos.x, gs_in[0].tex.x, gs_in[0].tex.y);
@@ -322,17 +324,9 @@ void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
 		gs_out[i].tangent.xyz = tangent;
 		gs_out[i].binormal.xyz = binormal;
 		gs_out[i].tangentLight = tangentLight;
-		gs_out[i].eyeVector = normalize(mul(gs_in[i].eyeVector, tangentMatrix));
-		//gs_out[i].eyeVector = gs_in[i].eyeVector;
-		//gs_out[i].environmentEyeVector = gs_in[i].environmentEyeVector;
-		//環境マップ用のカメラから位置へのベクトルを接空間へ変換
-		gs_out[i].environmentEyeVector = normalize(mul(gs_in[i].environmentEyeVector, tangentMatrix));
-		//gs_out[i].environmentEyeVector.x = dot(tangent, gs_in[i].environmentEyeVector.x);
-		//gs_out[i].environmentEyeVector.y = dot(binormal, gs_in[i].environmentEyeVector.y);
-		//gs_out[i].environmentEyeVector.z = dot(normal, gs_in[i].environmentEyeVector.z);
-		//gs_out[i].environmentEyeVector = normalize(-gs_out[i].environmentEyeVector);
-		gs_out[i].tex = gs_in[i].tex;
 #ifdef __PARABOLOID__
+		gs_out[i].eyeVector = gs_in[i].eyeVector;
+		gs_out[i].environmentEyeVector = gs_in[i].environmentEyeVector;
 		float3 ray = normalize(-gs_out[i].eyeVector).xyz;
 		float3 ref = reflect(ray, gs_out[i].normal.xyz);
 		gs_out[i].paraboloidTex0.x = 0.5f*(1 + ref.x / (1 + ref.z));
@@ -340,6 +334,11 @@ void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
 		gs_out[i].paraboloidTex1.x = 0.5f*(1 - ref.x / (1 - ref.z));
 		gs_out[i].paraboloidTex1.x = 0.5f*(1 - ref.y / (1 - ref.z));
 		gs_out[i].isFront = ref.z + 0.5f;
+#else
+		gs_out[i].eyeVector = normalize(mul(gs_in[i].eyeVector, tangentMatrix));
+		//環境マップ用のカメラから位置へのベクトルを接空間へ変換
+		gs_out[i].environmentEyeVector = normalize(mul(gs_in[i].environmentEyeVector, tangentMatrix));
+		gs_out[i].tex = gs_in[i].tex;
 #endif
 		//ストリームに出力
 		stream.Append(gs_out[i]);
@@ -405,7 +404,7 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	//float3 refractRay = normalize(refract(ps_in.environmentEyeVector.xyz, normalVector, eta));
 	//接空間からワールド空間へ変換用
 	const column_major float4x4 tangentMatrix = TangentMatrix(ps_in.tangent, ps_in.binormal, ps_in.normal);
-	//ここではまだ接空間なので
+	//ここではまだ接空間なのでワールド空間に戻す(苦肉の策)
 	reflectRay = mul(reflectRay, tangentMatrix);
 	//refractRay = mul(refractRay, tangentMatrix);
 	//ここでの反射ベクトルは、ワールド空間のものを要求

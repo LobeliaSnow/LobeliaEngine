@@ -54,6 +54,8 @@
 #include "Audio/Bank/Bank.hpp"
 #include "XML/XML.hpp"
 
+#include "Game/Actor/Actor.hpp"
+#include "Game/Collision/Collision.hpp"
 #include "Game/DesignPattern/DesignPattern.hpp"
 #include "Game/SelectModule.hpp"
 #include "Game/Ranking.hpp"

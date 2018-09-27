@@ -19,7 +19,7 @@ namespace Lobelia::Game {
 		void UpdateInfo();
 		void Clear(Utility::Color color = 0x00000000);
 		std::shared_ptr<Graphics::RenderTarget> GetRenderTarget();
-		const CubeInfo& GetCubeInfo();
+		CubeInfo& GetCubeInfo();
 		void Activate();
 	private:
 		//位置
@@ -40,7 +40,7 @@ namespace Lobelia::Game {
 		CubeEnvironmentMapManager();
 		~CubeEnvironmentMapManager();
 		//毎フレームセットが必要
-		void AddModelList(std::weak_ptr<Graphics::Model> model);
+		void AddModelList(std::weak_ptr<Graphics::Model> model, bool lighting);
 		//環境マップへの書き込み
 		void RenderEnvironmentMap();
 		//戻り値を受けなければ内部でもクリーンされる
@@ -58,8 +58,8 @@ namespace Lobelia::Game {
 		std::shared_ptr<Graphics::PixelShader> ps;
 		//コンスタントバッファ
 		std::unique_ptr<Graphics::ConstantBuffer<CubeInfo>> constantBuffer;
-		//モデルリスト
-		std::list <std::weak_ptr<Graphics::Model>> models;
+		//モデルのリスト(ライティングフラグとのペア)
+		std::list<std::pair<std::weak_ptr<Graphics::Model>, bool>> models;
 	};
 	//海操作用
 	ALIGN(16) struct SeaInfo {
@@ -89,9 +89,7 @@ namespace Lobelia::Game {
 		Graphics::Texture* displacement;
 		Graphics::Texture* normal;
 	};
-	class WaterPlane {
 
-	};
 	class SceneSea :public Lobelia::Scene {
 	public:
 		SceneSea();

@@ -226,6 +226,12 @@
     <Filter Include="Lobelia\Common\Utility\PerformanceCounter">
       <UniqueIdentifier>{47abf5f0-4ffd-4399-ac41-dc18d7ef4f14}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Lobelia\Game\Actor">
+      <UniqueIdentifier>{d1089554-8e60-4b11-958e-e95cd765ea47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Lobelia\Game\Collision">
+      <UniqueIdentifier>{db96b0d3-a073-4a4c-9068-694be2264509}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="System\WinMain.cpp">
@@ -389,6 +395,12 @@
     </ClCompile>
     <ClCompile Include="Header\ParaboloidEnvironmentMap.cpp">
       <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Game\Actor\Actor.cpp">
+      <Filter>Lobelia\Game\Actor</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Game\Collision\Collision.cpp">
+      <Filter>Lobelia\Game\Collision</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -619,6 +631,12 @@
     </ClInclude>
     <ClInclude Include="Header\ParaboloidEnvironmentMap.hpp">
       <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Game\Actor\Actor.hpp">
+      <Filter>Lobelia\Game\Actor</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Game\Collision\Collision.hpp">
+      <Filter>Lobelia\Game\Collision</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

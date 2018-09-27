@@ -1,5 +1,6 @@
 #include "Lobelia.hpp"
 //シェーダー側にも同じ定義がある
+//現在失敗しているので使わない
 //#define __PARABOLOID__
 #ifdef __PARABOLOID__
 //没になった実装
@@ -36,7 +37,7 @@ namespace Lobelia::Game {
 	}
 	void CubeEnvironmentMap::Clear(Utility::Color color) { rt->Clear(color); }
 	std::shared_ptr<Graphics::RenderTarget> CubeEnvironmentMap::GetRenderTarget() { return rt; }
-	const CubeInfo& CubeEnvironmentMap::GetCubeInfo() { return info; }
+	CubeInfo& CubeEnvironmentMap::GetCubeInfo() { return info; }
 	void CubeEnvironmentMap::Activate() {
 		//ビューポートをアクティブに
 		views[0]->ViewportActivate();
@@ -55,7 +56,7 @@ namespace Lobelia::Game {
 		constantBuffer = std::make_unique<Graphics::ConstantBuffer<CubeInfo>>(7, Graphics::ShaderStageList::GS);
 	}
 	CubeEnvironmentMapManager::~CubeEnvironmentMapManager() {	}
-	void CubeEnvironmentMapManager::AddModelList(std::weak_ptr<Graphics::Model> model) { models.push_back(model); }
+	void CubeEnvironmentMapManager::AddModelList(std::weak_ptr<Graphics::Model> model, bool lighting) { models.push_back(std::make_pair(model, lighting)); }
 	//環境マップへの書き込み
 	void CubeEnvironmentMapManager::RenderEnvironmentMap() {
 		if (environmentMaps.empty())return;
@@ -73,11 +74,11 @@ namespace Lobelia::Game {
 			std::shared_ptr<CubeEnvironmentMap> cube = map->lock();
 			bool renderFlag = false;
 			for (auto&& model = models.begin(); model != models.end();) {
-				if (model->expired()) {
+				if (model->first.expired()) {
 					model = models.erase(model);
 					continue;
 				}
-				std::shared_ptr<Graphics::Model> modelInstance = model->lock();
+				std::shared_ptr<Graphics::Model> modelInstance = model->first.lock();
 				//適応範囲にいるか否か、離れたオブジェクトは反射に含めない
 				if ((cube->GetPos() - modelInstance->GetTransform().position).Length() > cube->GetRadius()) {
 					model++;
@@ -87,11 +88,12 @@ namespace Lobelia::Game {
 				if (!renderFlag) {
 					cube->UpdateInfo();
 					cube->Activate();
-					constantBuffer->Activate(cube->GetCubeInfo());
 					renderFlag = true;
 				}
 				//この先描画されることが確定
-				std::shared_ptr<Graphics::RenderTarget> rt = cube->GetRenderTarget();
+				CubeInfo& info = cube->GetCubeInfo();
+				info.isLighting = static_cast<int>(model->second);
+				constantBuffer->Activate(info);
 				//モデルの描画
 				modelInstance->Render();
 				model++;
@@ -205,7 +207,7 @@ namespace Lobelia::Game {
 		pos = Math::Vector3(0.0f, 10.0f, -10.0f);
 		at = Math::Vector3(0.0f, 0.0f, 0.0f);
 		up = Math::Vector3(0.0f, 1.0f, 0.0f);
-		//モデル読み込み
+		//モデル読み込み、ワールド変換行列作成
 		model = std::make_unique<Graphics::Model>("Data/Model/plane.dxd", "Data/Model/plane.mt");
 		//model = std::make_unique<Graphics::Model>("Data/Model/sphere.dxd", "Data/Model/sphere.mt");
 		model->ChangeBlendState(std::make_shared<Graphics::BlendState>(Graphics::BlendPreset::COPY, true, false));
@@ -229,7 +231,7 @@ namespace Lobelia::Game {
 		//ラスタライザ差分作成
 		wireState = std::make_shared<Graphics::RasterizerState>(Graphics::RasterizerPreset::FRONT, true);
 		solidState = model->GetRasterizerState();
-		//水シェーダー
+		//水シェーダー周り読み込み
 		waterShader = std::make_unique<WaterShader>();
 		waterShader->LoadDisplacementMap("Data/Model/displacement.png");
 		waterShader->LoadNormalMap("Data/Model/normal.png");
@@ -284,8 +286,8 @@ namespace Lobelia::Game {
 		stage->Translation(seaPos);
 		stage->CalcWorldMatrix();
 		//モデルのセット
-		environmentManager->AddModelList(skyBox);
-		environmentManager->AddModelList(stage);
+		environmentManager->AddModelList(skyBox, false);
+		environmentManager->AddModelList(stage, true);
 	}
 	void SceneSea::AlwaysRender() {
 		//シェーダーをデフォルトに
@@ -294,8 +296,12 @@ namespace Lobelia::Game {
 		//環境マップを作成
 		environmentManager->RenderEnvironmentMap();
 		view->Activate();
-		//ステージの描画
+		//事前に確保したインスタンスインデックス1番でライティングをオフに
+		Graphics::Model::GetPixelShader()->SetLinkage(1);
 		skyBox->Render();
+		//ライティングをオンに
+		Graphics::Model::GetPixelShader()->SetLinkage(0);
+		//ステージの描画
 		stage->Render();
 		//海として描画するか否か
 		if (sea) {

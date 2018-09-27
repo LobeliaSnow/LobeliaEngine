@@ -443,6 +443,7 @@ namespace Lobelia::Graphics {
 		if (!ps) {
 			ps = std::make_shared<PixelShader>("Data/Shaderfile/3D/PS.hlsl", "Main3D", Graphics::PixelShader::Model::PS_5_0, true);
 			ps->GetLinkage()->CreateInstance("Lambert");
+			ps->GetLinkage()->CreateInstance("Diffuse");
 			ps->GetLinkage()->CreateInstance("Fog");
 			ps->GetLinkage()->CreateInstance("Phong");
 			ps->SetLinkage(0);

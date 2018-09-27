@@ -208,6 +208,8 @@
     <ClCompile Include="Lobelia\Config\Config.cpp" />
     <ClCompile Include="Lobelia\Console\Console.cpp" />
     <ClCompile Include="Lobelia\Exception\Exception.cpp" />
+    <ClCompile Include="Lobelia\Game\Actor\Actor.cpp" />
+    <ClCompile Include="Lobelia\Game\Collision\Collision.cpp" />
     <ClCompile Include="Lobelia\Game\DesignPattern\DesignPattern.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
@@ -292,6 +294,8 @@
     <ClInclude Include="Lobelia\Config\Config.hpp" />
     <ClInclude Include="Lobelia\Console\Console.hpp" />
     <ClInclude Include="Lobelia\Exception\Exception.hpp" />
+    <ClInclude Include="Lobelia\Game\Actor\Actor.hpp" />
+    <ClInclude Include="Lobelia\Game\Collision\Collision.hpp" />
     <ClInclude Include="Lobelia\Game\DesignPattern\DesignPattern.hpp" />
     <ClInclude Include="Lobelia\Game\PathPlanner\PathPlanner.hpp" />
     <ClInclude Include="Lobelia\Game\Ranking.hpp" />

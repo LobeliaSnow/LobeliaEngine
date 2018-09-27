@@ -53,6 +53,7 @@ namespace Lobelia::Graphics {
 		ShaderLinkage* GetLinkage();
 		template<class... Args> void SetLinkage(Args&&... args) {
 			instanceCount = 0;
+			instances.clear();
 			using swallow = std::initializer_list<int>;
 			(void)swallow {
 				(instances.push_back(linkage->instances[args]->Get().Get()), instanceCount++)...
