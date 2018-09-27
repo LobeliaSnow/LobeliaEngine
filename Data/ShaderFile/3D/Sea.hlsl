@@ -101,7 +101,9 @@ struct GS_OUT {
 #else
 struct GS_OUT {
 	float4 pos : SV_POSITION;
+	float4 oldPos : OLD_POSITION;
 	float4 eyeVector : VECTOR0;
+	float4 oldEyeVector : VECTOR1;
 	float4 normal : NORMAL0;
 	float4 tangentLight : LIGHT0;
 	float2 tex : TEXCOORD0;
@@ -221,12 +223,15 @@ GS_OUT DS(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const Output
 	//output.normal.xyz = normalize(normal);
 	//output.normal = normalize(mul(output.normal, world));
 	//実際に頂点を動かす部分
+	output.oldPos = output.pos + output.normal * (sin(time + output.pos.x) / 3.0f);
 	output.pos += output.normal * height;
 	output.pos += output.normal * (sin(time + output.pos.x) / 3.0f);
 	//output.tex.x = (sin(time + output.tex.x) / 3.14 + 1.0f)*0.5f;
 	//ワールド変換等
 	output.pos = mul(output.pos, world);
+	output.oldPos = mul(output.oldPos, world);
 	output.eyeVector = normalize(cpos - output.pos);
+	output.oldEyeVector = normalize(cpos - output.oldPos);
 	output.pos = mul(output.pos, view);
 	output.pos = mul(output.pos, projection);
 
@@ -281,17 +286,17 @@ void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
 	//接空間算出
 	//5次元から3次元に
 	float3 cp0[3] = (float3[3])0;
-	cp0[0] = float3(gs_in[0].pos.x, gs_in[0].tex.x, gs_in[0].tex.y);
-	cp0[1] = float3(gs_in[0].pos.y, gs_in[0].tex.x, gs_in[0].tex.y);
-	cp0[2] = float3(gs_in[0].pos.z, gs_in[0].tex.x, gs_in[0].tex.y);
+	cp0[0] = float3(gs_in[0].oldPos.x, gs_in[0].tex.x, gs_in[0].tex.y);
+	cp0[1] = float3(gs_in[0].oldPos.y, gs_in[0].tex.x, gs_in[0].tex.y);
+	cp0[2] = float3(gs_in[0].oldPos.z, gs_in[0].tex.x, gs_in[0].tex.y);
 	float3 cp1[3] = (float3[3])0;
-	cp1[0] = float3(gs_in[1].pos.x, gs_in[1].tex.x, gs_in[1].tex.y);
-	cp1[1] = float3(gs_in[1].pos.y, gs_in[1].tex.x, gs_in[1].tex.y);
-	cp1[2] = float3(gs_in[1].pos.z, gs_in[1].tex.x, gs_in[1].tex.y);
+	cp1[0] = float3(gs_in[1].oldPos.x, gs_in[1].tex.x, gs_in[1].tex.y);
+	cp1[1] = float3(gs_in[1].oldPos.y, gs_in[1].tex.x, gs_in[1].tex.y);
+	cp1[2] = float3(gs_in[1].oldPos.z, gs_in[1].tex.x, gs_in[1].tex.y);
 	float3 cp2[3] = (float3[3])0;
-	cp2[0] = float3(gs_in[2].pos.x, gs_in[2].tex.x, gs_in[2].tex.y);
-	cp2[1] = float3(gs_in[2].pos.y, gs_in[2].tex.x, gs_in[2].tex.y);
-	cp2[2] = float3(gs_in[2].pos.z, gs_in[2].tex.x, gs_in[2].tex.y);
+	cp2[0] = float3(gs_in[2].oldPos.x, gs_in[2].tex.x, gs_in[2].tex.y);
+	cp2[1] = float3(gs_in[2].oldPos.y, gs_in[2].tex.x, gs_in[2].tex.y);
+	cp2[2] = float3(gs_in[2].oldPos.z, gs_in[2].tex.x, gs_in[2].tex.y);
 	//平面からＵＶ座標算出
 	float u[3] = (float[3])0;
 	float v[3] = (float[3])0;
@@ -314,7 +319,7 @@ void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
 		//gs_out[i].normal.xyz = gs_in[i].normal;
 		gs_out[i].normal.xyz = normal;
 		gs_out[i].tangentLight = tangentLight;
-		gs_out[i].eyeVector = normalize(mul(gs_in[i].eyeVector, tangentMatrix));
+		gs_out[i].eyeVector = normalize(mul(gs_in[i].oldEyeVector, tangentMatrix));
 		//gs_out[i].tangentSpaceLightDirection = tangentSpaceLightDirection;
 		gs_out[i].tex = gs_in[i].tex;
 #ifdef __PARABOLOID__
@@ -380,17 +385,14 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	//return float4(ps_in.normal.xyz, 1.0f);
 	//法線マップ読み込み
 	float3 normalColor = txNormalMap.Sample(samLinear, ps_in.tex);
-	float3 normalVector = 2.0f * normalColor - 1.0f;
-	//return float4(normalColor.xyz, 1.0f);
-	//return float4(normalVector.xyz, 1.0f);
-	//return float4(ps_in.tangentLight.xyz, 1.0f);
+	float3 normalVector = normalize(2.0f * normalColor - 1.0f);
 	//環境マップ読み込み
 	float3 reflectRay = reflect(ps_in.eyeVector.xyz, normalVector.xyz);
 	float4 environment = txCube.Sample(samLinear, reflectRay);
 	//ライティング
 	float3 lambert = saturate(dot(normalVector, ps_in.tangentLight));
 	//反射ベクトル取得
-	float3 reflectValue = normalize(reflect(ps_in.tangentLight, normalVector));
+	float3 reflectValue = /*normalize*/(reflect(ps_in.tangentLight, normalVector));
 	//スぺキュラ算出
 	float3 specular = pow(saturate(dot(reflectValue, ps_in.eyeVector.xyz)), 2)*1.0f;
 	return float4(environment.rgb, transparency);
