@@ -170,7 +170,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Header\ParaboloidEnvironmentMap.cpp" />
     <ClCompile Include="Header\Scene\SceneFur.cpp" />
     <ClCompile Include="ImGui\Source\imgui.cpp" />
     <ClCompile Include="ImGui\Source\imgui_demo.cpp" />
@@ -213,6 +212,7 @@
     <ClCompile Include="Lobelia\Game\DesignPattern\DesignPattern.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Lobelia\Game\Fuzzy\Fuzzy.cpp" />
     <ClCompile Include="Lobelia\Graphics\BufferCreator\BufferCreator.cpp" />
     <ClCompile Include="Lobelia\Graphics\Device\Device.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)/Graphics</ObjectFileName>
@@ -256,13 +256,19 @@
     <ClCompile Include="Lobelia\Network\NetworkObject.cpp" />
     <ClCompile Include="Lobelia\Scene\Scene.cpp" />
     <ClCompile Include="Lobelia\XML\XML.cpp" />
+    <ClCompile Include="Source\ParaboloidEnvironmentMap.cpp" />
+    <ClCompile Include="Source\Scene\SceneCompute.cpp" />
+    <ClCompile Include="Source\Scene\SceneDeferred.cpp" />
     <ClCompile Include="Source\Scene\SceneDissolve.cpp" />
     <ClCompile Include="Source\Scene\SceneMain.cpp" />
     <ClCompile Include="Source\Scene\SceneSea.cpp" />
     <ClCompile Include="System\WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Data\ShaderFile\Define.h" />
     <ClInclude Include="Header\ParaboloidEnvironmentMap.hpp" />
+    <ClInclude Include="Header\Scene\SceneCompute.hpp" />
+    <ClInclude Include="Header\Scene\SceneDeferred.hpp" />
     <ClInclude Include="Header\Scene\SceneDissolve.hpp" />
     <ClInclude Include="Header\Scene\SceneFur.hpp" />
     <ClInclude Include="Header\Scene\SceneMain.hpp" />
@@ -297,6 +303,7 @@
     <ClInclude Include="Lobelia\Game\Actor\Actor.hpp" />
     <ClInclude Include="Lobelia\Game\Collision\Collision.hpp" />
     <ClInclude Include="Lobelia\Game\DesignPattern\DesignPattern.hpp" />
+    <ClInclude Include="Lobelia\Game\Fuzzy\Fuzzy.hpp" />
     <ClInclude Include="Lobelia\Game\PathPlanner\PathPlanner.hpp" />
     <ClInclude Include="Lobelia\Game\Ranking.hpp" />
     <ClInclude Include="Lobelia\Game\SelectModule.hpp" />
@@ -365,6 +372,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </FxCompile>
+    <FxCompile Include="Data\ShaderFile\2D\PostEffect.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="Data\ShaderFile\2D\User.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -386,6 +397,10 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Main2D</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\Deferred.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Data\ShaderFile\3D\Dissolve.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>

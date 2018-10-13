@@ -35,6 +35,7 @@ namespace Lobelia::Game {
 	};
 	//ファジールール
 	class FuzzyRule {
+	public:
 		//論理積 &&
 		static float And(float value0, float value1) { return fminf(value0, value1); }
 		//論理和 ||

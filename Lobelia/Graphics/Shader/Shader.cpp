@@ -297,8 +297,8 @@ namespace Lobelia::Graphics {
 		Device::Get()->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), nullptr, cs.GetAddressOf());
 	}
 	ComputeShader::~ComputeShader() = default;
-	void ComputeShader::SetShaderResourceView(int slot, ID3D11ShaderResourceView* uav) {
-		Device::GetContext()->CSSetShaderResources(slot, 1, &uav);
+	void ComputeShader::SetShaderResourceView(int slot, ID3D11ShaderResourceView* srv) {
+		Device::GetContext()->CSSetShaderResources(slot, 1, &srv);
 	}
 	void ComputeShader::SetShaderResourceView(int slot, int sum, ID3D11ShaderResourceView** srvs) {
 		Device::GetContext()->CSSetShaderResources(slot, sum, srvs);

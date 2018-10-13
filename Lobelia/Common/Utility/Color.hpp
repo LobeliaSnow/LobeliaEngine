@@ -11,6 +11,7 @@ namespace Lobelia::Utility {
 		__forceinline Color(BYTE b, BYTE g, BYTE r, BYTE a) : b(b), g(g), r(r), a(a) {}
 		__forceinline ~Color()noexcept = default;
 		__forceinline constexpr operator DWORD()const noexcept { return colorCode; }
+		__forceinline operator Math::Vector4()const noexcept { return Math::Vector4(GetNormalizedR(), GetNormalizedG(), GetNormalizedB(), GetNormalizedA()); }
 		__forceinline void operator =(DWORD c)noexcept { colorCode = c; }
 		__forceinline float GetNormalizedA()const noexcept { return static_cast<float>(a) / 255.0f; }
 		__forceinline float GetNormalizedR()const noexcept { return static_cast<float>(r) / 255.0f; }

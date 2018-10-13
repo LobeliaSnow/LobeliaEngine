@@ -232,6 +232,9 @@
     <Filter Include="Lobelia\Game\Collision">
       <UniqueIdentifier>{db96b0d3-a073-4a4c-9068-694be2264509}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Lobelia\Game\Fuzzy">
+      <UniqueIdentifier>{c715e4b1-ec3c-4fde-8a18-c06dfd156862}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="System\WinMain.cpp">
@@ -393,14 +396,23 @@
     <ClCompile Include="Header\Scene\SceneFur.cpp">
       <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Header\ParaboloidEnvironmentMap.cpp">
-      <Filter>ソース ファイル\Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Lobelia\Game\Actor\Actor.cpp">
       <Filter>Lobelia\Game\Actor</Filter>
     </ClCompile>
     <ClCompile Include="Lobelia\Game\Collision\Collision.cpp">
       <Filter>Lobelia\Game\Collision</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\ParaboloidEnvironmentMap.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Lobelia\Game\Fuzzy\Fuzzy.cpp">
+      <Filter>Lobelia\Game\Fuzzy</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Scene\SceneDeferred.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Scene\SceneCompute.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -629,14 +641,26 @@
     <ClInclude Include="Header\Scene\SceneFur.hpp">
       <Filter>ヘッダー ファイル\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Header\ParaboloidEnvironmentMap.hpp">
-      <Filter>ヘッダー ファイル\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Lobelia\Game\Actor\Actor.hpp">
       <Filter>Lobelia\Game\Actor</Filter>
     </ClInclude>
     <ClInclude Include="Lobelia\Game\Collision\Collision.hpp">
       <Filter>Lobelia\Game\Collision</Filter>
+    </ClInclude>
+    <ClInclude Include="Header\ParaboloidEnvironmentMap.hpp">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+    <ClInclude Include="Lobelia\Game\Fuzzy\Fuzzy.hpp">
+      <Filter>Lobelia\Game\Fuzzy</Filter>
+    </ClInclude>
+    <ClInclude Include="Header\Scene\SceneDeferred.hpp">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Header\Scene\SceneCompute.hpp">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Data\ShaderFile\Define.h">
+      <Filter>Data\ShaderFile</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -713,6 +737,12 @@
     </FxCompile>
     <FxCompile Include="Data\ShaderFile\3D\Fur.hlsl">
       <Filter>Data\ShaderFile\3D</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\Deferred.hlsl">
+      <Filter>Data\ShaderFile\3D</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\2D\PostEffect.hlsl">
+      <Filter>Data\ShaderFile\2D</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

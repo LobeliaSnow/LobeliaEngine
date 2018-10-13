@@ -30,6 +30,7 @@ cbuffer EnvironmentInfo : register(b7) {
 	column_major float4x4 projectionParaboloid;
 	float zNear;
 	float zFar;
+	int lighting;
 };
 cbuffer DebugInfo : register(b8) {
 	//双曲面なので二つ
@@ -73,7 +74,12 @@ struct VS_IN_TEX
 	float4 col : COLOR;
 	float2 tex : TEXCOORD0;
 };
-
+// 出力パッチ定数データ。
+struct HS_TRI_OUT_DATA
+{
+	float edgeFactor[3] : SV_TessFactor;
+	float insideFactor : SV_InsideTessFactor;
+};
 //デバッグ用スプライト構造体
 struct PS_IN_TEX
 {
@@ -108,13 +114,67 @@ float4 Paraboloid(float4 position, int render_id) {
 //環境マップ作製用
 VS_CREATE_PARABOLOID_OUT VS_CREATE_PARABOLOID(VS_IN vs_in) {
 	VS_CREATE_PARABOLOID_OUT vs_out = (VS_CREATE_PARABOLOID_OUT)0;
-	vs_out.pos = mul(vs_in.pos, world);
-	vs_out.eyeVector = normalize(cpos - vs_out.pos);
-	vs_out.normal = mul(vs_in.normal, world);
+	vs_out.pos = vs_in.pos;
+	vs_out.normal = vs_in.normal;
 	vs_out.tex = vs_in.tex;
 	//vs_out.renderTargteIndex = 0;
 	return vs_out;
 }
+
+// パッチ定数関数 
+HS_TRI_OUT_DATA CalcTriConstants(InputPatch<VS_CREATE_PARABOLOID_OUT, 3> ip, uint PatchID : SV_PrimitiveID) {
+	HS_TRI_OUT_DATA Output;
+	//距離に応じた分割数の算出
+	float devide = 0.0f;
+	////面の中心点算出
+	//float3 center = (ip[0].pos.xyz + ip[1].pos.xyz + ip[2].pos.xyz) / 3.0f;
+	////中心点との距離
+	//float dist = length(cpos.xyz - center);
+	////最小距離と最大距離の保証
+	//dist = clamp(dist, minDist, maxDist);
+	////最小～最大距離での比率算出
+	//float ratio = (dist - minDist) / (maxDist - minDist);
+	////最大分割数から上での比率を用い分割数を規定
+	//devide = (1.0f - ratio) * maxDevide + 1;
+	devide = 5;
+	//分割数の定義
+	Output.edgeFactor[0] = devide;
+	Output.edgeFactor[1] = devide;
+	Output.edgeFactor[2] = devide;
+	Output.insideFactor = devide;
+	return Output;
+}
+[domain("tri")]
+[partitioning("fractional_odd")]
+[outputtopology("triangle_cw")]
+[outputcontrolpoints(3)]
+[patchconstantfunc("CalcTriConstants")]
+VS_CREATE_PARABOLOID_OUT HS_CREATE_PARABOLOID(InputPatch<VS_CREATE_PARABOLOID_OUT, 3> ip, uint i : SV_OutputControlPointID, uint PatchID : SV_PrimitiveID) {
+	return ip[i];
+}
+
+[domain("tri")]
+VS_CREATE_PARABOLOID_OUT DS_CREATE_PARABOLOID(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const OutputPatch<VS_CREATE_PARABOLOID_OUT, 3> patch)
+{
+	VS_CREATE_PARABOLOID_OUT output = (VS_CREATE_PARABOLOID_OUT)0;
+	//テクスチャ座標算出
+	output.tex = patch[0].tex * domain.x + patch[1].tex * domain.y + patch[2].tex * domain.z;
+
+	//domainがUV値 それによりほか三点のコントロールポイントから座標を算出
+	//位置算出
+	float3 pos = patch[0].pos * domain.x + patch[1].pos * domain.y + patch[2].pos * domain.z;
+	output.pos = float4(pos, 1.0f);
+	//法線(実際に求めるのはGS)
+	output.normal = normalize(patch[0].normal * domain.x + patch[1].normal * domain.y + patch[2].normal * domain.z);
+	//ワールド変換等
+	output.pos = mul(output.pos, world);
+	output.eyeVector = normalize(cpos - output.pos);
+	//output.pos = mul(output.pos, view);
+	//output.pos = mul(output.pos, projection);
+
+	return output;
+}
+
 
 //デバッグ用
 PS_IN_TEX VS_DEBUG_SPRITE(VS_IN_TEX vs_in)
@@ -148,7 +208,7 @@ void GS_CREATE_PARABOLOID(triangle VS_CREATE_PARABOLOID_OUT gs_in[3], inout Tria
 float4 PS_CREATE_PARABOLOID(GS_CREATE_PARABOLOID_OUT ps_in) :SV_Target{
 	//色情報
 	float4 diffuse = txDiffuse.Sample(samLinear, ps_in.tex);
-	return float4(diffuse.rgb, diffuse.a);
+	if (!lighting)return float4(diffuse.rgb, diffuse.a);
 	//ライティング
 	float3 lambert = saturate(dot(ps_in.normal, lightDirection));
 	//反射ベクトル取得

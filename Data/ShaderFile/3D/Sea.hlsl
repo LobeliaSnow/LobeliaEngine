@@ -4,7 +4,7 @@
 //
 //------------------------------------------------------------------------------------------------------
 //C++側にも同じ定義がある
-//#define __PARABOLOID__
+#include "../Define.h"
 //カメラ情報 
 cbuffer View : register(b0) {
 	column_major float4x4 view;
@@ -57,6 +57,7 @@ Texture2DArray txParaboloid: register(t4);
 #else
 TextureCube txCube : register(t4);
 #endif
+//Texture2D txCaustics : register(t5);
 SamplerState samLinear : register(s0);
 
 //入力用構造体 
@@ -87,18 +88,6 @@ struct GS_CREATE_CUBE_OUT {
 	float2 tex : TEXCOORD0;
 	uint renderTargetIndex : SV_RenderTargetArrayIndex;
 };
-#ifdef __PARABOLOID__
-struct GS_OUT {
-	float4 pos : SV_POSITION;
-	float4 eyeVector : VECTOR0;
-	float4 normal : NORMAL0;
-	//float4 tangentSpaceLightDirection : NORMAL1;
-	float2 tex : TEXCOORD0;
-	float2 paraboloidTex0 : TEXCOORD1;
-	float2 paraboloidTex1 : TEXCOORD2;
-	float isFront : IS_FRONT;
-};
-#else
 struct GS_OUT {
 	float4 pos : SV_POSITION;
 	float4 environmentPos : OLD_POSITION;
@@ -110,8 +99,6 @@ struct GS_OUT {
 	float4 tangentLight : LIGHT3;
 	float2 tex : TEXCOORD0;
 };
-
-#endif
 
 //------------------------------------------------------------------------------------------------------
 //
@@ -148,9 +135,9 @@ inline float4x4 TangentMatrix(float3 tangent, float3 binormal, float3 normal)
 	float4x4 mat =
 	{
 		{ float4(tangent, 0.0f) },
-	{ float4(binormal, 0.0f) },
-	{ float4(normal, 0.0f) },
-	{ 0.0f, 0.0f, 0.0f, 1.0f }
+		{ float4(binormal, 0.0f) },
+		{ float4(normal, 0.0f) },
+		{ 0.0f, 0.0f, 0.0f, 1.0f }
 	};
 	return mat;
 }
@@ -240,8 +227,8 @@ GS_OUT DS(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const Output
 	//output.normal = normalize(mul(output.normal, world));
 	//実際に頂点を動かす部分
 	output.environmentPos = output.pos + output.normal * (sin(time + output.pos.x) / 3.0f);
-	output.pos += output.normal * height;
 	//ここを含めた高さを調節できるようにしたいのと、波の流れる向きを自由にする予定
+	output.pos += output.normal * height;
 	output.pos += output.normal * (sin(time + output.pos.x) / 3.0f);
 	//output.tex.x = (sin(time + output.tex.x) / 3.14 + 1.0f)*0.5f;
 	//ワールド変換等
@@ -324,22 +311,10 @@ void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
 		gs_out[i].tangent.xyz = tangent;
 		gs_out[i].binormal.xyz = binormal;
 		gs_out[i].tangentLight = tangentLight;
-#ifdef __PARABOLOID__
-		gs_out[i].eyeVector = gs_in[i].eyeVector;
-		gs_out[i].environmentEyeVector = gs_in[i].environmentEyeVector;
-		float3 ray = normalize(-gs_out[i].eyeVector).xyz;
-		float3 ref = reflect(ray, gs_out[i].normal.xyz);
-		gs_out[i].paraboloidTex0.x = 0.5f*(1 + ref.x / (1 + ref.z));
-		gs_out[i].paraboloidTex0.y = 0.5f*(1 - ref.y / (1 + ref.z));
-		gs_out[i].paraboloidTex1.x = 0.5f*(1 - ref.x / (1 - ref.z));
-		gs_out[i].paraboloidTex1.x = 0.5f*(1 - ref.y / (1 - ref.z));
-		gs_out[i].isFront = ref.z + 0.5f;
-#else
 		gs_out[i].eyeVector = normalize(mul(gs_in[i].eyeVector, tangentMatrix));
 		//環境マップ用のカメラから位置へのベクトルを接空間へ変換
 		gs_out[i].environmentEyeVector = normalize(mul(gs_in[i].environmentEyeVector, tangentMatrix));
 		gs_out[i].tex = gs_in[i].tex;
-#endif
 		//ストリームに出力
 		stream.Append(gs_out[i]);
 	}
@@ -368,27 +343,6 @@ float4 PS_CREATE_CUBE(GS_CREATE_CUBE_OUT ps_in) :SV_Target{
 }
 //海用
 float4 PS(GS_OUT ps_in) :SV_Target{
-#ifdef __PARABOLOID__//双曲面環境マップ
-	//環境マップ
-	float4 front = txParaboloid.Sample(samLinear, float3(ps_in.paraboloidTex0,0));
-	float4 back = txParaboloid.Sample(samLinear, float3(ps_in.paraboloidTex1,1));
-	float4 environment;
-	if (ps_in.isFront > 0.5f) {
-		environment = front;
-	}
-	else {
-		environment = back;
-	}
-	//ライティング
-	float3 lambert = saturate(dot(ps_in.normal, lightDirection));
-	//反射ベクトル取得
-	float3 reflectValue = normalize(reflect(lightDirection, ps_in.normal));
-	//スぺキュラ算出
-	float3 specular = pow(saturate(dot(reflectValue, ps_in.eyeVector.xyz)), 2)*1.0f;
-	return float4(environment.rgb, transparency);
-	return float4((environment.rgb*lambert + specular), diffuse.a*transparency);
-	return float4((diffuse.rgb*lambert + specular * environment.rgb), diffuse.a*transparency);
-#else//この先キューブマップ
 	//法線マップ読み込み
 	float3 normalColor = txNormalMap.Sample(samLinear, ps_in.tex);
 	float3 normalVector = normalize(2.0f * normalColor - 1.0f);
@@ -398,21 +352,45 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	float rs = (refractiveRatio*d - rt)*(refractiveRatio*d - rt) / ((refractiveRatio*d + rt)*(refractiveRatio*d + rt));
 	float rp = (refractiveRatio*rt - d)*(refractiveRatio*rt - d) / ((refractiveRatio*rt + d)*(refractiveRatio*rt + d));
 	float alpha = (rs + rp) / 2.0f;
+#ifdef __PARABOLOID__//双曲面環境マップ
+	float3 ref = reflect(ps_in.environmentEyeVector.xyz, normalVector.xyz);
+	//接空間からワールド空間へ変換用
+	const column_major float4x4 tangentMatrix = TangentMatrix(ps_in.tangent, ps_in.binormal, ps_in.normal);
+	ref = mul(ref, tangentMatrix);
+	float2 paraboloidTex0; float2 paraboloidTex1;
+	paraboloidTex0.x = 0.5f*(1 + ref.x / (1 + ref.z));
+	paraboloidTex0.y = 0.5f*(1 - ref.y / (1 + ref.z));
+	paraboloidTex1.x = 0.5f*(1 + ref.x / (1 - ref.z));
+	paraboloidTex1.y = 0.5f*(1 - ref.y / (1 - ref.z));
+	bool isFront = ref.z + 0.5f;
+	//環境マップ
+	float4 front = txParaboloid.Sample(samLinear, float3(paraboloidTex0,0));
+	float4 back = txParaboloid.Sample(samLinear, float3(paraboloidTex1,1));
+	float4 reflectEnvironment;
+	if (isFront > 0.5f) reflectEnvironment = front;
+	else reflectEnvironment = back;
+	return float4(reflectEnvironment.rgb, alpha);
+#else//この先キューブマップ
 	//環境マップ読み込み
 	float3 reflectRay = normalize(reflect(ps_in.environmentEyeVector.xyz, normalVector));
-	//const float eta = 0.67;  // 屈折率の比
-	//float3 refractRay = normalize(refract(ps_in.environmentEyeVector.xyz, normalVector, eta));
+	const float eta = 0.67;  // 屈折率の比
+	const float f = (1.0 - eta) * (1.0 - eta) / ((1.0 + eta) * (1.0 + eta));
+	float3 refractRay = normalize(refract(ps_in.environmentEyeVector.xyz, normalVector, eta));
 	//接空間からワールド空間へ変換用
 	const column_major float4x4 tangentMatrix = TangentMatrix(ps_in.tangent, ps_in.binormal, ps_in.normal);
 	//ここではまだ接空間なのでワールド空間に戻す(苦肉の策)
 	reflectRay = mul(reflectRay, tangentMatrix);
-	//refractRay = mul(refractRay, tangentMatrix);
+	refractRay = mul(refractRay, tangentMatrix);
 	//ここでの反射ベクトルは、ワールド空間のものを要求
 	float4 reflectEnvironment = txCube.Sample(samLinear, reflectRay);
-	//float4 refractEnvironment = txCube.Sample(samLinear, refractRay);
+	float ratio = f + (1.0f - f)*pow(1.0f - dot(-ps_in.environmentEyeVector.xyz, normalVector), 5.0f);
+	float4 refractEnvironment = txCube.Sample(samLinear, refractRay);
 	//return float4(refractEnvironment.rgb, 1.0f);
+	//return float4(refractEnvironment.rgb, ratio);
 	return float4(reflectEnvironment.rgb, alpha);
-	//return lerp(refractEnvironment,reflectEnvironment, refractiveRatio);
+	/*float4 caustics = txCaustics.Sample(samLinear, ps_in.tex*6.0f)*0.3f;
+	return float4(reflectEnvironment.rgb + caustics.rgb, alpha);*/
+	//return float4(lerp(reflectEnvironment,refractEnvironment, ratio).rgb,1.0f);
 	////ライティング
 	//float3 lambert = saturate(dot(normalVector, ps_in.tangentLight));
 	////反射ベクトル取得

@@ -123,6 +123,6 @@ namespace Lobelia::Game {
 		D3D11_PRIMITIVE_TOPOLOGY topology;
 
 		Math::Vector3 seaPos;
-
+		Graphics::Texture* caustics;
 	};
 }

@@ -14,6 +14,12 @@ namespace Lobelia::Graphics {
 		CreateRenderTarget(size, sample, array_count);
 		CreateDepthView(array_count);
 	}
+	RenderTarget::RenderTarget(std::shared_ptr<Texture> texture) :texture(texture) {
+		D3D11_TEXTURE2D_DESC desc;
+		texture->texture->GetDesc(&desc);
+		CreateRenderTarget(this->texture->GetSize(), desc.SampleDesc, 1);
+		CreateDepthView(1);
+	}
 	RenderTarget::RenderTarget(const ComPtr<ID3D11Texture2D>& texture) {
 		this->texture = std::make_shared<Texture>(texture);
 		D3D11_TEXTURE2D_DESC desc;

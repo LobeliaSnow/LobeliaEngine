@@ -1,4 +1,5 @@
 #include "GPUParticleDefine.hlsli"
+#include "../Header.hlsli"
 #include "../Common/Common.hlsli"
 
 //追加用バッファ
@@ -10,14 +11,14 @@ RWByteAddressBuffer particleData : register(u2);
 //引数用バッファ
 RWByteAddressBuffer indirectArgs : register(u3);
 
-Texture2D txDiffuse0 : register(t10);
-Texture2D txDiffuse1 : register(t11);
-Texture2D txDiffuse2 : register(t12);
-Texture2D txDiffuse3 : register(t13);
-Texture2D txDiffuse4 : register(t14);
-Texture2D txDiffuse5 : register(t15);
-Texture2D txDiffuse6 : register(t16);
-Texture2D txDiffuse7 : register(t17);
+Texture2D txDiffuse8 : register(t10);
+Texture2D txDiffuse9 : register(t11);
+Texture2D txDiffuse10 : register(t12);
+Texture2D txDiffuse11 : register(t13);
+Texture2D txDiffuse12 : register(t14);
+Texture2D txDiffuse13 : register(t15);
+Texture2D txDiffuse14 : register(t16);
+Texture2D txDiffuse15 : register(t17);
 
 SamplerState samPoint:register(s0);
 //{
@@ -25,6 +26,17 @@ SamplerState samPoint:register(s0);
 //    AddressU = Clamp;
 //    AddressV = Clamp;
 //};
+column_major float4x4 GetIdentityMatrix()
+{
+	static column_major float4x4 identity =
+	{
+		{ 1.0f, 0.0f, 0.0f, 0.0f },
+	{ 0.0f, 1.0f, 0.0f, 0.0f },
+	{ 0.0f, 0.0f, 1.0f, 0.0f },
+	{ 0.0f, 0.0f, 0.0f, 1.0f },
+	};
+	return identity;
+}
 
 cbuffer GPUParticleInfo : register(b0)
 {
@@ -34,19 +46,6 @@ cbuffer GPUParticleInfo : register(b0)
 	int divideLevel : packoffset(c0.w);
 	int isBitonicFinal : packoffset(c1.x);
 };
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//	汎用関数
-//-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-column_major float4x4 GetIdentityMatrix()
-{
-	static column_major float4x4 identity = {
-		{ 1.0f, 0.0f, 0.0f, 0.0f },
-	{ 0.0f, 1.0f, 0.0f, 0.0f },
-	{ 0.0f, 0.0f, 1.0f, 0.0f },
-	{ 0.0f, 0.0f, 0.0f, 1.0f },
-	};
-	return identity;
-}
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //	AppendParticle
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -152,7 +151,7 @@ inline void ConfigureIndirectArgs(uint thread_id, uint data_index[2])
 	//死亡数が1以上で且、生存パーティクルが存在する時生死の境界
 	if (deadCount >= 1 && deadCount <= 2) {
 		//死亡パーティクル総数 = 自分 - 1 + 3要素の死亡数
-		deadCount = (int)thread_id - 1 + (int)deadCount;
+		deadCount = (int)thread_id + (int)deadCount;
 		//境界を発見したので、引数バッファの構築
 		indirectArgs.Store(INDIRECT_ARGS_INDEX_COUNT, asuint(GPU_PARTICLE_MAX - deadCount));
 		indirectArgs.Store(INDIRECT_ARGS_INSTANCE_COUNT, asuint(1));
@@ -183,7 +182,6 @@ void SortParticle(uint3 thread_id : SV_DispatchThreadID)
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //	UpdateParticle
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-//TODO : 動きがフレームベースしか成り立たないのでデルタベースに対応する
 void UpdateIndividualParticle(uint data_offset)
 {
 	const uint aliveOffset = data_offset + PARTICLE_ELAPSED_TIME_OFFSET;
@@ -324,15 +322,15 @@ float4 GPUParticlePS(GS_OUT gs_out) : SV_Target
 	float4 color;
 switch (gs_out.texIndex)
 {
-case 0:	color = txDiffuse0.Sample(samPoint, gs_out.tex); break;
-case 1:	color = txDiffuse1.Sample(samPoint, gs_out.tex); break;
-case 2:	color = txDiffuse2.Sample(samPoint, gs_out.tex); break;
-case 3:	color = txDiffuse3.Sample(samPoint, gs_out.tex); break;
-case 4:	color = txDiffuse4.Sample(samPoint, gs_out.tex); break;
-case 5:	color = txDiffuse5.Sample(samPoint, gs_out.tex); break;
-case 6:	color = txDiffuse6.Sample(samPoint, gs_out.tex); break;
-case 7:	color = txDiffuse7.Sample(samPoint, gs_out.tex); break;
-default:	color = float4(1.0f,1.0f,1.0f,1.0f);						  break;
+case 0:	color = txDiffuse8.Sample(samPoint, gs_out.tex);  break;
+case 1:	color = txDiffuse9.Sample(samPoint, gs_out.tex);  break;
+case 2:	color = txDiffuse10.Sample(samPoint, gs_out.tex); break;
+case 3:	color = txDiffuse11.Sample(samPoint, gs_out.tex); break;
+case 4:	color = txDiffuse12.Sample(samPoint, gs_out.tex); break;
+case 5:	color = txDiffuse13.Sample(samPoint, gs_out.tex); break;
+case 6:	color = txDiffuse14.Sample(samPoint, gs_out.tex); break;
+case 7:	color = txDiffuse15.Sample(samPoint, gs_out.tex); break;
+default:	color = float4(1.0f,1.0f,1.0f,1.0f);							 break;
 }
 return color * gs_out.color;
 }

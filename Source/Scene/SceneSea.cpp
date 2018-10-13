@@ -1,7 +1,6 @@
 #include "Lobelia.hpp"
-//シェーダー側にも同じ定義がある
 //現在失敗しているので使わない
-//#define __PARABOLOID__
+#include "../Data/ShaderFile/Define.h"
 #ifdef __PARABOLOID__
 //没になった実装
 #include "ParaboloidEnvironmentMap.hpp"
@@ -226,8 +225,8 @@ namespace Lobelia::Game {
 		skyBox->Scalling(10.0f);
 		skyBox->CalcWorldMatrix();
 		//デフォルトのシェーダーの退避
-		vs = model->GetVertexShader();
-		ps = model->GetPixelShader();
+		vs = Graphics::Model::GetVertexShader();
+		ps = Graphics::Model::GetPixelShader();
 		//ラスタライザ差分作成
 		wireState = std::make_shared<Graphics::RasterizerState>(Graphics::RasterizerPreset::FRONT, true);
 		solidState = model->GetRasterizerState();
@@ -235,6 +234,7 @@ namespace Lobelia::Game {
 		waterShader = std::make_unique<WaterShader>();
 		waterShader->LoadDisplacementMap("Data/Model/displacement.png");
 		waterShader->LoadNormalMap("Data/Model/normal.png");
+		Graphics::TextureFileAccessor::Load("Data/Model/caustics.png", &caustics);
 		//waterShader->LoadDisplacementMap("Data/Model/displacementTest.png");
 		//waterShader->LoadNormalMap("Data/Model/normalTest.png");
 #ifdef __PARABOLOID__
@@ -242,7 +242,7 @@ namespace Lobelia::Game {
 		paraboloidMap = environmentManager->CreateEnvironmentMap(Math::Vector2(512, 512), Math::Vector3(0.0f, 5.0f, 0.0f), 100.0f);
 #else
 		environmentManager = std::make_unique<CubeEnvironmentMapManager>();
-		cubeMap = environmentManager->CreateEnvironmentMap(Math::Vector2(512, 512), Math::Vector3(0.0f, 0.0f, 0.0f), 100.0f);
+		cubeMap = environmentManager->CreateEnvironmentMap(Math::Vector2(512, 512), Math::Vector3(0.0f, 7.0f, 0.0f), 100.0f);
 #endif
 		//値の設定
 		wire = FALSE; sea = TRUE;
@@ -287,7 +287,7 @@ namespace Lobelia::Game {
 		stage->CalcWorldMatrix();
 		//モデルのセット
 		environmentManager->AddModelList(skyBox, false);
-		environmentManager->AddModelList(stage, true);
+		//environmentManager->AddModelList(stage, true);
 	}
 	void SceneSea::AlwaysRender() {
 		//シェーダーをデフォルトに
@@ -319,6 +319,7 @@ namespace Lobelia::Game {
 		else model->ChangeRasterizerState(solidState);
 		//環境マップのセット
 		environmentManager->Activate(model->GetTransform().position);
+		caustics->Set(5, Graphics::ShaderStageList::PS);
 		//水描画
 		model->Render(topology);
 		//ステートを戻す

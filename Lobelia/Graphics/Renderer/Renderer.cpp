@@ -75,13 +75,13 @@ namespace Lobelia::Graphics {
 		}
 	}
 	void SpriteRenderer::CutUV(const Math::Vector2& tex, const Math::Vector2& uv_pos, const Math::Vector2& uv_size) {
-		for (int index = 0; index < 4; index++) {
-			mesh->GetBuffer()[1].tex.x = mesh->GetBuffer()[3].tex.x = (uv_pos.x + uv_size.x - 0.5f) / tex.x;
-			mesh->GetBuffer()[0].tex.x = mesh->GetBuffer()[2].tex.x = (uv_pos.x + 0.5f) / tex.x;
+		//for (int index = 0; index < 4; index++) {
+		mesh->GetBuffer()[1].tex.x = mesh->GetBuffer()[3].tex.x = (uv_pos.x + uv_size.x - 0.5f) / tex.x;
+		mesh->GetBuffer()[0].tex.x = mesh->GetBuffer()[2].tex.x = (uv_pos.x + 0.5f) / tex.x;
 
-			mesh->GetBuffer()[0].tex.y = mesh->GetBuffer()[1].tex.y = (uv_pos.y + 0.5f) / tex.y;
-			mesh->GetBuffer()[2].tex.y = mesh->GetBuffer()[3].tex.y = (uv_pos.y + uv_size.y - 0.5f) / tex.y;
-		}
+		mesh->GetBuffer()[0].tex.y = mesh->GetBuffer()[1].tex.y = (uv_pos.y + 0.5f) / tex.y;
+		mesh->GetBuffer()[2].tex.y = mesh->GetBuffer()[3].tex.y = (uv_pos.y + uv_size.y - 0.5f) / tex.y;
+		//}
 	}
 	void SpriteRenderer::MeshTransform() {
 		for (int index = 0; index < 4; index++) {
@@ -96,12 +96,15 @@ namespace Lobelia::Graphics {
 		inputLayout->Set();
 		vs->Set();
 		ps->Set();
-		tex->Set(0, ShaderStageList::PS);
 		Device::GetContext()->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 		PositionPlant(transform);
 		if (transform.rotation != 0.0f)PositionRotation(transform);
 		SetMeshColor(color);
-		CutUV(tex->GetSize(), uv_pos, uv_size);
+		if (tex) {
+			tex->Set(0, ShaderStageList::PS);
+			CutUV(tex->GetSize(), uv_pos, uv_size);
+		}
+		else CutUV(uv_size - uv_pos, uv_pos, uv_size);
 		MeshTransform();
 		mesh->Set();
 		Device::GetContext()->Draw(4, 0);
@@ -118,7 +121,9 @@ namespace Lobelia::Graphics {
 		trans.position = {};
 		trans.scale = View::nowSize;
 		trans.rotation = 0.0f;
-		Render(tex, trans, Math::Vector2(0.0f, 0.0f), tex->GetSize(), color);
+		Math::Vector2 size(16, 16);
+		if (tex)size = tex->GetSize();
+		Render(tex, trans, Math::Vector2(0.0f, 0.0f), size, color);
 	}
 	void SpriteRenderer::Render(RenderTarget* rt, const Transform2D& transform, const Math::Vector2& uv_pos, const Math::Vector2& uv_size, Utility::Color color) {
 		//Texture::Clean(0, ShaderStageList::PS);

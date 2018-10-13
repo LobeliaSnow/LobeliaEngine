@@ -58,6 +58,7 @@ struct GS_OUT {
 	float4 normal : NORMAL0;
 	float4 tangentSpaceLightDirection : NORMAL1;
 	float2 tex : TEXCOORD0;
+	float alpha : ALPHA;
 };
 
 // 出力パッチ定数データ。
@@ -91,14 +92,16 @@ HS_TRI_OUT_DATA CalcTriConstants(InputPatch<VS_OUT, 3> ip, uint PatchID : SV_Pri
 	HS_TRI_OUT_DATA Output;
 	//距離に応じた分割数の算出
 	float devide = 0.0f;
-	float dist = length(cpos.xyz - ip[0].pos.xyz);
-	dist += length(cpos.xyz - ip[1].pos.xyz);
-	dist += length(cpos.xyz - ip[2].pos.xyz);
-	dist /= 3.0f;
-	if (dist < min)  dist = min;
-	else if (dist > max)  dist = max;
-	float x = (dist - min) / (max - min);
-	devide = (1 - x) * maxDevide + 1;
+	//float dist = length(cpos.xyz - ip[0].pos.xyz);
+	//dist += length(cpos.xyz - ip[1].pos.xyz);
+	//dist += length(cpos.xyz - ip[2].pos.xyz);
+	//dist /= 3.0f;
+	//if (dist < min)  dist = min;
+	//else if (dist > max)  dist = max;
+	//float x = (dist - min) / (max - min);
+	//devide = (1 - x) * maxDevide + 1;
+
+	devide = 32;
 	//分割数の定義
 	Output.edgeFactor[0] = devide;
 	Output.edgeFactor[1] = devide;
@@ -138,8 +141,8 @@ GS_OUT DS(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const Output
 	//ワールド変換等
 	output.pos = mul(output.pos, world);
 	output.eyeVector = normalize(cpos - output.pos);
-	output.pos = mul(output.pos, view);
-	output.pos = mul(output.pos, projection);
+	//output.pos = mul(output.pos, view);
+	//output.pos = mul(output.pos, projection);
 
 	return output;
 }
@@ -183,9 +186,12 @@ void GS(triangle GS_OUT gs_in[3], inout LineStream<GS_OUT> line_stream)
 		for (int j = 0; j < 2; j++) {
 			gs_out[j].pos.xyz = gs_in[i].pos.xyz + normal * j * furLength;
 			gs_out[j].pos.w = 1.0f;
+			gs_out[j].pos = mul(gs_out[j].pos, view);
+			gs_out[j].pos = mul(gs_out[j].pos, projection);
 			gs_out[j].normal.xyz = normal;
 			gs_out[j].eyeVector = gs_in[i].eyeVector;
 			gs_out[j].tex = gs_in[i].tex;
+			gs_out[j].alpha = (1 - j) * 1.0f;
 			//ストリームに出力
 			line_stream.Append(gs_out[j]);
 		}
@@ -203,8 +209,8 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	float4 diffuse = txDiffuse.Sample(samLinear, ps_in.tex);
 	//ライティング
 	float3 lambert = saturate(dot(ps_in.normal, lightDirection));
-	return float4(1.0f,1.0f,1.0f,1.0f);
-	return float4(diffuse.rgb*lambert, diffuse.a);
+	//return float4(1.0f,1.0f,1.0f,1.0f);
+	return float4(diffuse.rgb*lambert, ps_in.alpha);
 	////反射ベクトル取得
 	//float3 reflectValue = normalize(reflect(lightDirection, ps_in.normal));
 	////スぺキュラ算出

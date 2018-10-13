@@ -55,7 +55,8 @@ namespace Lobelia::Math {
 			};
 			__forceinline IVector2(int x, int y) :x(x), y(y) {}
 		};
-		__forceinline Vector2(float x, float y) noexcept : x(x), y(y) {}
+		//__forceinline Vector2(float x, float y) noexcept : x(x), y(y) {}
+		__forceinline constexpr Vector2(float x, float y) noexcept : x(x), y(y) {}
 		__forceinline Vector2(IVector2 v) noexcept : Vector2(static_cast<float>(v.x), static_cast<float>(v.y)) {}
 		__forceinline Vector2()noexcept : Vector2(0.0f, 0.0f) {}
 		/**
