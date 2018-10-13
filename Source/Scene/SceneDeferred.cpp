@@ -8,8 +8,13 @@ namespace Lobelia::Game {
 	namespace {
 		const constexpr int LIGHT_COUNT = 127;
 	}
+	//---------------------------------------------------------------------------------------------
+	//
+	//	Geometry Buffer
+	//
+	//---------------------------------------------------------------------------------------------
 	DeferredBuffer::DeferredBuffer(const Math::Vector2& size) :size(size) {
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < i_cast(BUFFER_TYPE::MAX); i++) {
 			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 });
 		}
 		//VertexShader(const char* file_path, const char* entry_point, Model shader_model, bool use_linkage = false);
@@ -23,10 +28,10 @@ namespace Lobelia::Game {
 	}
 	void DeferredBuffer::RenderGBuffer() {
 		End();
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < i_cast(BUFFER_TYPE::MAX); i++) {
 			rts[i]->Clear(0x00000000);
 		}
-		Graphics::RenderTarget::Activate(rts[0].get(), rts[1].get(), rts[2].get(), rts[3].get());
+		Graphics::RenderTarget::Activate(rts[0].get(), rts[1].get(), rts[2].get(), rts[3].get(), rts[4].get());
 		auto& defaultVS = Graphics::Model::GetVertexShader();
 		auto& defaultPS = Graphics::Model::GetPixelShader();
 		Graphics::Model::ChangeVertexShader(vs);
@@ -42,17 +47,17 @@ namespace Lobelia::Game {
 		models.clear();
 	}
 	void DeferredBuffer::Begin() {
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < i_cast(BUFFER_TYPE::MAX); i++) {
 			rts[i]->GetTexture()->Set(i, Graphics::ShaderStageList::PS);
 		}
 	}
 	void DeferredBuffer::End() {
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < i_cast(BUFFER_TYPE::MAX); i++) {
 			Graphics::Texture::Clean(i, Graphics::ShaderStageList::PS);
 		}
 	}
 	void DeferredBuffer::DebugRender() {
-		for (int i = 0; i < 4; i++) {
+		for (int i = 0; i < i_cast(BUFFER_TYPE::MAX); i++) {
 			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2(i*200.0f, 0.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), size, 0xFFFFFFFF);
 		}
 	}
@@ -86,13 +91,63 @@ namespace Lobelia::Game {
 	void PointLightDeferred::Update() {
 		cbuffer->Activate(lights);
 	}
-
-	ShadowBuffer::ShadowBuffer(const Math::Vector2& size, int split_count) {
+	//---------------------------------------------------------------------------------------------
+	ShadowBuffer::ShadowBuffer(const Math::Vector2& size, int split_count) :size(size), count(split_count) {
 		rts.resize(split_count);
 		for (int i = 0; i < split_count; i++) {
 			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 });
 		}
+		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapVS", Graphics::VertexShader::Model::VS_5_0, false);
+		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapPS", Graphics::PixelShader::Model::PS_5_0, false);
+		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(10, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
+		view = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 2.0f, 50, 400.0f);
+		info.useShadowMap = TRUE;
 	}
+	void ShadowBuffer::SetPos(const Math::Vector3& pos) { this->pos = pos; }
+	void ShadowBuffer::SetTarget(const Math::Vector3& at) { this->at = at; }
+	void ShadowBuffer::AddModel(std::shared_ptr<Graphics::Model> model) { models.push_back(model); }
+	void ShadowBuffer::CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt) {
+		Math::Vector3 front = at - pos; front.Normalize();
+		Math::Vector3 right = Math::Vector3::Cross(Math::Vector3(0.0f, 1.0f, 0.0f), front); right.Normalize();
+		up = Math::Vector3::Cross(front, right);
+		view->SetEyePos(pos);
+		view->SetEyeTarget(at);
+		view->SetEyeUpDirection(up);
+		Graphics::Texture::Clean(6, Graphics::ShaderStageList::PS);
+		auto& defaultVS = Graphics::Model::GetVertexShader();
+		auto& defaultPS = Graphics::Model::GetPixelShader();
+		Graphics::Model::ChangeVertexShader(vs);
+		Graphics::Model::ChangePixelShader(ps);
+		view->Activate();
+		for (int i = 0; i < count; i++) {
+			rts[i]->Clear(0x00000000);
+			rts[i]->Activate();
+			for (auto&& weak : models) {
+				if (weak.expired())continue;
+				auto model = weak.lock();
+				model->Render();
+			}
+		}
+		DirectX::XMStoreFloat4x4(&info.view, view->GetColumnViewMatrix());
+		DirectX::XMStoreFloat4x4(&info.proj, view->GetColumnProjectionMatrix());
+		Graphics::Model::ChangeVertexShader(defaultVS);
+		Graphics::Model::ChangePixelShader(defaultPS);
+		models.clear();
+		active_view->Activate();
+		active_rt->Activate();
+		cbuffer->Activate(info);
+		rts[0]->GetTexture()->Set(6, Graphics::ShaderStageList::PS);
+	}
+	void ShadowBuffer::DebugRender() {
+		for (int i = 0; i < count; i++) {
+			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2(i*200.0f, 200.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), size, 0xFFFFFFFF);
+		}
+	}
+	//---------------------------------------------------------------------------------------------
+	//
+	//	Post Effect
+	//
+	//---------------------------------------------------------------------------------------------
 	PostEffect::PostEffect(const Math::Vector2& size, bool create_rt) :size(size) {
 		if (create_rt)rt = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 });
 	}
@@ -104,6 +159,7 @@ namespace Lobelia::Game {
 	void PostEffect::Begin(int slot) { this->slot = slot; }
 	//基本的にポストエフェクトはピクセルシェーダーでしか使われない
 	void PostEffect::End() { Graphics::Texture::Clean(slot, Graphics::ShaderStageList::PS); }
+	//---------------------------------------------------------------------------------------------
 	UnorderedAccessView::UnorderedAccessView(Graphics::Texture* texture) {
 		D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
 		desc.Format = DXGI_FORMAT_UNKNOWN;
@@ -119,6 +175,7 @@ namespace Lobelia::Game {
 		ID3D11UnorderedAccessView* null = nullptr;
 		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, &null, nullptr);
 	}
+	//---------------------------------------------------------------------------------------------
 	SSAO::SSAO(const Math::Vector2& size) :PostEffect(size, false) {
 		cs = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "SSAOCS");
 		rwTexture = std::make_shared<Graphics::Texture>(size, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
@@ -144,13 +201,14 @@ namespace Lobelia::Game {
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::CS);
 	}
 	void SSAO::Render() {
-		Graphics::SpriteRenderer::Render(rwTexture.get(), Math::Vector2(4 * 200.0f, 0.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), rwTexture->GetSize(), 0xFFFFFFFF);
+		Graphics::SpriteRenderer::Render(rwTexture.get(), Math::Vector2(5 * 200.0f, 0.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), rwTexture->GetSize(), 0xFFFFFFFF);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
 	void SSAO::Begin(int slot) {
 		PostEffect::Begin(slot);
 		rwTexture->Set(this->slot, Graphics::ShaderStageList::PS);
 	}
+	//---------------------------------------------------------------------------------------------
 	GaussianFilter::GaussianFilter(const Math::Vector2& size) :PostEffect(size, true) {
 		csX = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianFilterCSX");
 		csY = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianFilterCSY");
@@ -158,7 +216,7 @@ namespace Lobelia::Game {
 		rwTexturePass2 = std::make_shared<Graphics::Texture>(size, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
 		uavPass1 = std::make_unique<UnorderedAccessView>(rwTexturePass1.get());
 		uavPass2 = std::make_unique<UnorderedAccessView>(rwTexturePass2.get());
-		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(8, Graphics::ShaderStageList::CS);
+		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(9, Graphics::ShaderStageList::CS);
 		view = std::make_unique<Graphics::View>(Math::Vector2(), size);
 		dispersion = 0.03f;
 	}
@@ -207,7 +265,11 @@ namespace Lobelia::Game {
 		PostEffect::Begin(slot);
 		rwTexturePass2->Set(this->slot, Graphics::ShaderStageList::PS);
 	}
-
+	//---------------------------------------------------------------------------------------------
+	//
+	//		Scene
+	//
+	//---------------------------------------------------------------------------------------------
 	void SceneDeferred::Initialize() {
 		const constexpr Math::Vector2 scale(1280, 720);
 		view = std::make_unique<Graphics::View>(Math::Vector2(), scale);
@@ -240,7 +302,7 @@ namespace Lobelia::Game {
 #ifdef USE_SSAO
 		ssao = std::make_unique<SSAO>(scale);
 #endif
-		shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 4);
+		shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1);
 		gaussian = std::make_unique<GaussianFilter>(scale*0.5f);
 	}
 	SceneDeferred::~SceneDeferred() {
@@ -289,26 +351,32 @@ namespace Lobelia::Game {
 		else deferredShader->SetUseCount(0);
 		deferredShader->Update();
 #endif
+		shadow->AddModel(model);
+		shadow->SetPos(Math::Vector3(100.0f, 80.0f, 100.0f));
+		//shadow->SetPos(pos);
 	}
 	void SceneDeferred::AlwaysRender() {
 		Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));
 		Graphics::Environment::GetInstance()->Activate();
+		Graphics::RenderTarget* backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
+		shadow->CreateShadowMap(view.get(), backBuffer);
 		view->Activate();
 		deferredBuffer->RenderGBuffer();
-		Application::GetInstance()->GetSwapChain()->GetRenderTarget()->Activate();
+		backBuffer->Activate();
 #ifdef USE_SSAO
 		ssao->CreateAO(deferredBuffer.get());
 #endif
-		ssao->Begin(4);
+		ssao->Begin(5);
 		deferredBuffer->Begin();
 		deferredShader->Render();
 		deferredBuffer->End();
 		ssao->End();
-		//gaussian->Dispatch(view.get(), Application::GetInstance()->GetSwapChain()->GetRenderTarget(), deferredBuffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::COLOR));
+		//gaussian->Dispatch(view.get(), backBuffer, deferredBuffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::COLOR));
 		//gaussian->Render();
 #ifdef _DEBUG
 		if (Application::GetInstance()->debugRender) {
 			deferredBuffer->DebugRender();
+			shadow->DebugRender();
 #ifdef USE_SSAO
 			ssao->Render();
 #endif

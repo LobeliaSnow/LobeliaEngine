@@ -8,7 +8,7 @@
 #include "RenderState.hpp"
 
 namespace Lobelia::Graphics {
-	BlendState::BlendState(BlendPreset preset, bool blend, bool alpha_coverage) {
+	BlendState::BlendState(BLEND_PRESET preset, bool blend, bool alpha_coverage) {
 		HRESULT hr = S_OK;
 		D3D11_BLEND_DESC desc = {};
 		desc.AlphaToCoverageEnable = alpha_coverage;
@@ -21,10 +21,10 @@ namespace Lobelia::Graphics {
 	}
 	BlendState::~BlendState() = default;
 	void BlendState::SettingPreset(D3D11_BLEND_DESC* desc, int preset)const {
-		BlendPreset p = static_cast<BlendPreset>(preset);
+		BLEND_PRESET p = static_cast<BLEND_PRESET>(preset);
 		switch (p) {
 		default:
-		case BlendPreset::NONE:
+		case BLEND_PRESET::NONE:
 			desc->RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].DestBlend = D3D11_BLEND_ZERO;
 			desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
@@ -32,7 +32,7 @@ namespace Lobelia::Graphics {
 			desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
 			desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 			break;
-		case BlendPreset::COPY:
+		case BLEND_PRESET::COPY:
 			desc->RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 			desc->RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
 			desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
@@ -40,7 +40,7 @@ namespace Lobelia::Graphics {
 			desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
 			desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 			break;
-		case BlendPreset::ADD:
+		case BLEND_PRESET::ADD:
 			desc->RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 			desc->RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
@@ -48,7 +48,7 @@ namespace Lobelia::Graphics {
 			desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 			break;
-		case BlendPreset::SUB:
+		case BLEND_PRESET::SUB:
 			desc->RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 			desc->RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_SUBTRACT;
@@ -56,7 +56,7 @@ namespace Lobelia::Graphics {
 			desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 			break;
-		case BlendPreset::REPLACE:
+		case BLEND_PRESET::REPLACE:
 			desc->RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 			desc->RenderTarget[0].DestBlend = D3D11_BLEND_ZERO;
 			desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
@@ -64,7 +64,7 @@ namespace Lobelia::Graphics {
 			desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
 			desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 			break;
-		case BlendPreset::MULTIPLY:
+		case BLEND_PRESET::MULTIPLY:
 			desc->RenderTarget[0].SrcBlend = D3D11_BLEND_ZERO;
 			desc->RenderTarget[0].DestBlend = D3D11_BLEND_SRC_COLOR;
 			desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
@@ -72,7 +72,7 @@ namespace Lobelia::Graphics {
 			desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;
 			desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 			break;
-		case BlendPreset::LIGHTENESS:
+		case BLEND_PRESET::LIGHTENESS:
 			desc->RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
@@ -80,7 +80,7 @@ namespace Lobelia::Graphics {
 			desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_MAX;
 			break;
-		case BlendPreset::DARKENESS:
+		case BLEND_PRESET::DARKENESS:
 			desc->RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_SUBTRACT;
@@ -88,7 +88,7 @@ namespace Lobelia::Graphics {
 			desc->RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
 			desc->RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 			break;
-		case BlendPreset::SCREEN:
+		case BLEND_PRESET::SCREEN:
 			desc->RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
 			desc->RenderTarget[0].DestBlend = D3D11_BLEND_INV_DEST_COLOR;
 			desc->RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
@@ -104,7 +104,7 @@ namespace Lobelia::Graphics {
 		Device::GetContext()->OMSetBlendState(state.Get(), blendFactory, 0xFFFFFFFF);
 	}
 
-	SamplerState::SamplerState(SamplerPreset preset, int max_anisotropy, bool is_border) {
+	SamplerState::SamplerState(SAMPLER_PRESET preset, int max_anisotropy, bool is_border) {
 		HRESULT hr = S_OK;
 		D3D11_SAMPLER_DESC desc = {};
 		SettingPreset(&desc, static_cast<int>(preset));
@@ -130,24 +130,25 @@ namespace Lobelia::Graphics {
 	}
 	SamplerState::~SamplerState() = default;
 	void SamplerState::SettingPreset(D3D11_SAMPLER_DESC* desc, int preset)const {
-		SamplerPreset p = static_cast<SamplerPreset>(preset);
+		SAMPLER_PRESET p = static_cast<SAMPLER_PRESET>(preset);
 		switch (p) {
 		default:
-		case	SamplerPreset::POINT:										desc->Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT; break;
-		case	SamplerPreset::LINEAR:										desc->Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR; break;
-		case	SamplerPreset::ANISOTROPIC:							desc->Filter = D3D11_FILTER_ANISOTROPIC; break;
-		case 	SamplerPreset::COMPARISON_POINT:				desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT; break;
-		case	SamplerPreset::COMPARISON_LINEAR:				desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR; break;
-		case	SamplerPreset::COMPARISON_ANISOTROPIC:	desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC; break;
+		case	SAMPLER_PRESET::POINT:										desc->Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT; break;
+		case	SAMPLER_PRESET::LINEAR:										desc->Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR; break;
+		case	SAMPLER_PRESET::ANISOTROPIC:							desc->Filter = D3D11_FILTER_ANISOTROPIC; break;
+		case 	SAMPLER_PRESET::COMPARISON_POINT:				desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT; break;
+		case	SAMPLER_PRESET::COMPARISON_LINEAR:				desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR; break;
+		case	SAMPLER_PRESET::COMPARISON_ANISOTROPIC:	desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC; break;
 		}
 	}
-	void SamplerState::Set(bool force_set)noexcept {
+	void SamplerState::Set(bool force_set)noexcept { Set(0, force_set); }
+	void SamplerState::Set(int slot, bool force_set)noexcept {
 		if (!force_set&&IsSet())return;
-		Device::GetContext()->PSSetSamplers(0, 1, state.GetAddressOf());
-		Device::GetContext()->DSSetSamplers(0, 1, state.GetAddressOf());
+		Device::GetContext()->PSSetSamplers(slot, 1, state.GetAddressOf());
+		Device::GetContext()->DSSetSamplers(slot, 1, state.GetAddressOf());
 	}
 
-	RasterizerState::RasterizerState(RasterizerPreset preset, bool wire_frame) {
+	RasterizerState::RasterizerState(RASTERIZER_PRESET preset, bool wire_frame) {
 		HRESULT hr = S_OK;
 		//ラスタライズの設定
 		D3D11_RASTERIZER_DESC desc = {};
@@ -163,19 +164,19 @@ namespace Lobelia::Graphics {
 	}
 	RasterizerState::~RasterizerState() = default;
 	void RasterizerState::SettingPreset(D3D11_RASTERIZER_DESC* desc, int preset)const {
-		RasterizerPreset p = static_cast<RasterizerPreset>(preset);
+		RASTERIZER_PRESET p = static_cast<RASTERIZER_PRESET>(preset);
 		switch (p) {
 		default:
-		case RasterizerPreset::FRONT:	desc->CullMode = D3D11_CULL_FRONT; break;
-		case RasterizerPreset::BACK:		desc->CullMode = D3D11_CULL_BACK;	break;
-		case RasterizerPreset::NONE:	desc->CullMode = D3D11_CULL_NONE;	break;
+		case RASTERIZER_PRESET::FRONT:	desc->CullMode = D3D11_CULL_FRONT; break;
+		case RASTERIZER_PRESET::BACK:		desc->CullMode = D3D11_CULL_BACK;	break;
+		case RASTERIZER_PRESET::NONE:	desc->CullMode = D3D11_CULL_NONE;	break;
 		}
 	}
 	void RasterizerState::Set(bool force_set)noexcept {
 		if (!force_set&&IsSet())return;
 		Device::GetContext()->RSSetState(state.Get());
 	}
-	DepthStencilState::DepthStencilState(DepthPreset preset, bool depth, StencilDesc sdesc, bool stencil) {
+	DepthStencilState::DepthStencilState(DEPTH_PRESET preset, bool depth, StencilDesc sdesc, bool stencil) {
 		HRESULT hr = S_OK;
 		D3D11_DEPTH_STENCIL_DESC desc = {};
 		desc.DepthEnable = depth;
@@ -201,17 +202,17 @@ namespace Lobelia::Graphics {
 	}
 	DepthStencilState::~DepthStencilState() = default;
 	void DepthStencilState::SettingPreset(D3D11_DEPTH_STENCIL_DESC* desc, int preset)const {
-		DepthPreset p = static_cast<DepthPreset>(preset);
+		DEPTH_PRESET p = static_cast<DEPTH_PRESET>(preset);
 		switch (p) {
 		default:
-		case DepthPreset::NEVER:					desc->DepthFunc = D3D11_COMPARISON_NEVER;					break;
-		case DepthPreset::LESS:						desc->DepthFunc = D3D11_COMPARISON_LESS;						break;
-		case DepthPreset::EQUAL:					desc->DepthFunc = D3D11_COMPARISON_EQUAL;					break;
-		case DepthPreset::LESS_EQUAL:			desc->DepthFunc = D3D11_COMPARISON_NEVER;					break;
-		case DepthPreset::GREATER:				desc->DepthFunc = D3D11_COMPARISON_GREATER;				break;
-		case DepthPreset::NOT_EQUAL:			desc->DepthFunc = D3D11_COMPARISON_NOT_EQUAL;			break;
-		case DepthPreset::GREATER_EQUAL:	desc->DepthFunc = D3D11_COMPARISON_GREATER_EQUAL;	break;
-		case DepthPreset::ALWAYS:					desc->DepthFunc = D3D11_COMPARISON_ALWAYS;				break;
+		case DEPTH_PRESET::NEVER:					desc->DepthFunc = D3D11_COMPARISON_NEVER;					break;
+		case DEPTH_PRESET::LESS:						desc->DepthFunc = D3D11_COMPARISON_LESS;						break;
+		case DEPTH_PRESET::EQUAL:					desc->DepthFunc = D3D11_COMPARISON_EQUAL;					break;
+		case DEPTH_PRESET::LESS_EQUAL:			desc->DepthFunc = D3D11_COMPARISON_NEVER;					break;
+		case DEPTH_PRESET::GREATER:				desc->DepthFunc = D3D11_COMPARISON_GREATER;				break;
+		case DEPTH_PRESET::NOT_EQUAL:			desc->DepthFunc = D3D11_COMPARISON_NOT_EQUAL;			break;
+		case DEPTH_PRESET::GREATER_EQUAL:	desc->DepthFunc = D3D11_COMPARISON_GREATER_EQUAL;	break;
+		case DEPTH_PRESET::ALWAYS:					desc->DepthFunc = D3D11_COMPARISON_ALWAYS;				break;
 		}
 	}
 	void DepthStencilState::Set(bool force_set)noexcept {

@@ -50,7 +50,7 @@ namespace Lobelia::Game {
 		//ƒ‚ƒfƒ‹“Ç‚İ‚İ
 		model = std::make_unique<Graphics::Model>("Data/Model/plane.dxd", "Data/Model/plane.mt");
 		furShader = std::make_unique<FurShader>();
-		wireState = std::make_shared<Graphics::RasterizerState>(Graphics::RasterizerPreset::FRONT, true);
+		wireState = std::make_shared<Graphics::RasterizerState>(Graphics::RASTERIZER_PRESET::FRONT, true);
 		HostConsole::GetInstance()->IntRegister("Fur Info", "wire", &wire, false);
 		wire = FALSE;
 		solidState = Graphics::Model::GetRasterizerState();

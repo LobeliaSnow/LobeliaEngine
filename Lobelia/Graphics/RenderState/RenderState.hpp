@@ -1,9 +1,9 @@
 #pragma once
 namespace Lobelia::Graphics {
-	enum class BlendPreset { MIN = -1, NONE, COPY, ADD, SUB, REPLACE, MULTIPLY, LIGHTENESS, DARKENESS, SCREEN, MAX };
-	enum class SamplerPreset { MIN, POINT, LINEAR, ANISOTROPIC, COMPARISON_POINT, COMPARISON_LINEAR, COMPARISON_ANISOTROPIC, MAX, };
-	enum class RasterizerPreset { MIN, FRONT, BACK, NONE, MAX, };
-	enum class DepthPreset { MIN, NEVER, LESS, EQUAL, LESS_EQUAL, GREATER, NOT_EQUAL, GREATER_EQUAL, ALWAYS, MAX, };
+	enum class BLEND_PRESET { MIN = -1, NONE, COPY, ADD, SUB, REPLACE, MULTIPLY, LIGHTENESS, DARKENESS, SCREEN, MAX };
+	enum class SAMPLER_PRESET { MIN, POINT, LINEAR, ANISOTROPIC, COMPARISON_POINT, COMPARISON_LINEAR, COMPARISON_ANISOTROPIC, MAX, };
+	enum class RASTERIZER_PRESET { MIN, FRONT, BACK, NONE, MAX, };
+	enum class DEPTH_PRESET { MIN, NEVER, LESS, EQUAL, LESS_EQUAL, GREATER, NOT_EQUAL, GREATER_EQUAL, ALWAYS, MAX, };
 	struct StencilDesc {
 		//読み書きしないときは0を指定してね。
 		UINT8 readMask = D3D11_DEFAULT_STENCIL_READ_MASK;
@@ -32,7 +32,7 @@ namespace Lobelia::Graphics {
 		ComPtr<ID3D11BlendState> state;
 	public:
 		//作成に失敗した場合、Exception型で例外を投げます
-		BlendState(BlendPreset preset, bool blend, bool alpha_coverage);
+		BlendState(BLEND_PRESET preset, bool blend, bool alpha_coverage);
 		~BlendState();
 		void SettingPreset(D3D11_BLEND_DESC* desc, int preset)const;
 		void Set(bool force_set = false)noexcept;
@@ -43,10 +43,11 @@ namespace Lobelia::Graphics {
 		ComPtr<ID3D11SamplerState> state;
 	public:
 		//作成に失敗した場合、Exception型で例外を投げます
-		SamplerState(SamplerPreset preset, int max_anisotropy, bool is_border = false);
+		SamplerState(SAMPLER_PRESET preset, int max_anisotropy, bool is_border = false);
 		~SamplerState();
 		void SettingPreset(D3D11_SAMPLER_DESC* desc, int preset)const;
 		void Set(bool force_set = false)noexcept;
+		void Set(int slot, bool force_set = false)noexcept;
 	};
 	class RasterizerState final :private Origin<RasterizerState> {
 	private:
@@ -54,7 +55,7 @@ namespace Lobelia::Graphics {
 		ComPtr<ID3D11RasterizerState> state;
 	public:
 		//作成に失敗した場合、Exception型で例外を投げます
-		RasterizerState(RasterizerPreset preset, bool wire_frame = false);
+		RasterizerState(RASTERIZER_PRESET preset, bool wire_frame = false);
 		~RasterizerState();
 		void SettingPreset(D3D11_RASTERIZER_DESC* desc, int preset)const;
 		void Set(bool force_set = false)noexcept;
@@ -65,7 +66,7 @@ namespace Lobelia::Graphics {
 	public:
 		//作成に失敗した場合、Exception型で例外を投げます
 		//stencilがまだよくわかっていない。
-		DepthStencilState(DepthPreset preset, bool depth, StencilDesc sdesc, bool stencil);
+		DepthStencilState(DEPTH_PRESET preset, bool depth, StencilDesc sdesc, bool stencil);
 		~DepthStencilState();
 		void SettingPreset(D3D11_DEPTH_STENCIL_DESC* desc, int preset)const;
 		void Set(bool force_set = false)noexcept;

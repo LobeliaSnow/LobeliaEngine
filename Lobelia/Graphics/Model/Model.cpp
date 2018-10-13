@@ -434,10 +434,10 @@ namespace Lobelia::Graphics {
 	// Model
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	Model::Model(const char* dxd_path, const char* mt_path) :animationCount(0), allMeshVertexCountSum(0), world(), boneCount(0) {
-		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, true);
-		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
-		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::FRONT);
-		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, true, Graphics::StencilDesc(), false);
+		if (!blend)blend = std::make_shared<BlendState>(Graphics::BLEND_PRESET::COPY, true, true);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SAMPLER_PRESET::POINT, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RASTERIZER_PRESET::FRONT);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DEPTH_PRESET::ALWAYS, true, Graphics::StencilDesc(), false);
 		if (!vs)vs = std::make_shared<VertexShader>("Data/Shaderfile/3D/VS.hlsl", "Main3DNoSkin", Graphics::VertexShader::Model::VS_4_0);
 		vsAnim = std::make_shared<VertexShader>("Data/Shaderfile/3D/VS.hlsl", "Main3D", Graphics::VertexShader::Model::VS_4_0);
 		if (!ps) {
@@ -947,10 +947,10 @@ namespace Lobelia::Graphics {
 	//	ModelInstanced
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	ModelInstanced::ModelInstanced(const char* dxd_path, const char* mt_path, const int instance_count) :mapBuffer(nullptr), renderCount(0) {
-		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, true);
-		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
-		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::FRONT);
-		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, true, Graphics::StencilDesc(), false);
+		if (!blend)blend = std::make_shared<BlendState>(Graphics::BLEND_PRESET::COPY, true, true);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SAMPLER_PRESET::POINT, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RASTERIZER_PRESET::FRONT);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DEPTH_PRESET::ALWAYS, true, Graphics::StencilDesc(), false);
 		if (!vs)vs = std::make_shared<VertexShader>("Data/Shaderfile/3D/VS.hlsl", "Main3DInstancingNoSkin", Graphics::VertexShader::Model::VS_4_0);
 		if (!ps) {
 			ps = std::make_shared<PixelShader>("Data/Shaderfile/3D/PS.hlsl", "Main3D", Graphics::PixelShader::Model::PS_5_0, true);
@@ -1102,10 +1102,10 @@ namespace Lobelia::Graphics {
 	// ModelInstancedAnimation
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	ModelInstancedAnimation::ModelInstancedAnimation(const char* dxd_path, const char* mt_path, const int instance_count) :mapBuffer(nullptr),renderCount(0) {
-		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, true);
-		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
-		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::FRONT);
-		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, true, Graphics::StencilDesc(), false);
+		if (!blend)blend = std::make_shared<BlendState>(Graphics::BLEND_PRESET::COPY, true, true);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SAMPLER_PRESET::POINT, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RASTERIZER_PRESET::FRONT);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DEPTH_PRESET::ALWAYS, true, Graphics::StencilDesc(), false);
 		if (!vs)vs = std::make_shared<VertexShader>("Data/Shaderfile/3D/VS.hlsl", "Main3DInstancing", Graphics::VertexShader::Model::VS_4_0);
 		if (!ps) {
 			ps = std::make_shared<PixelShader>("Data/Shaderfile/3D/PS.hlsl", "Main3D", Graphics::PixelShader::Model::PS_5_0, true);

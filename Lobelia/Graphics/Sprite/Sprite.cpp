@@ -41,10 +41,10 @@ namespace Lobelia::Graphics {
 
 	SpriteBatch::SpriteBatch(const char* file_path, int render_limit) :RENDER_LIMIT(render_limit), renderCount(0) {
 		TextureFileAccessor::Load(file_path, &texture);
-		if (!blend)blend = std::make_shared<BlendState>(Graphics::BlendPreset::COPY, true, false);
-		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
-		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::BACK);
-		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, false, Graphics::StencilDesc(), false);
+		if (!blend)blend = std::make_shared<BlendState>(Graphics::BLEND_PRESET::COPY, true, false);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SAMPLER_PRESET::POINT, 16);
+		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RASTERIZER_PRESET::BACK);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DEPTH_PRESET::ALWAYS, false, Graphics::StencilDesc(), false);
 		if (!vs)vs = std::make_shared<VertexShader>("Data/ShaderFile/2D/VS.hlsl", "Main2DInst", Graphics::VertexShader::Model::VS_5_0, false);
 		if (!ps) {
 			ps = std::make_shared<PixelShader>("Data/ShaderFile/2D/PS.hlsl", "Main2D", Graphics::PixelShader::Model::PS_5_0, true);

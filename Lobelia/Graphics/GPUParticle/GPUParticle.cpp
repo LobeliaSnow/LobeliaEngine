@@ -77,14 +77,14 @@ namespace Lobelia::Graphics {
 	const std::string GPUParticleSystem::BLEND_LIST[4] = { "Copy" ,"Add" ,"Sub" ,"Screen" };
 	//ブレンドプリセット
 	GPUParticleSystem::GPUParticleSystem() :textureList{} {
-		blendList[i_cast(BlendMode::Copy)] = std::make_shared<BlendState>(BlendPreset::COPY, true, false);
-		blendList[i_cast(BlendMode::Add)] = std::make_shared<BlendState>(BlendPreset::ADD, true, false);
-		blendList[i_cast(BlendMode::Sub)] = std::make_shared<BlendState>(BlendPreset::SUB, true, false);
-		blendList[i_cast(BlendMode::Screen)] = std::make_shared<BlendState>(BlendPreset::SCREEN, true, false);
+		blendList[i_cast(BlendMode::Copy)] = std::make_shared<BlendState>(BLEND_PRESET::COPY, true, false);
+		blendList[i_cast(BlendMode::Add)] = std::make_shared<BlendState>(BLEND_PRESET::ADD, true, false);
+		blendList[i_cast(BlendMode::Sub)] = std::make_shared<BlendState>(BLEND_PRESET::SUB, true, false);
+		blendList[i_cast(BlendMode::Screen)] = std::make_shared<BlendState>(BLEND_PRESET::SCREEN, true, false);
 		if (!blend)blend = blendList[i_cast(BlendMode::Add)];
-		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SamplerPreset::POINT, 16);
-		if (!rasterizer)rasterizer = std::make_shared<RasterizerState>(Graphics::RasterizerPreset::NONE);
-		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DepthPreset::ALWAYS, false, StencilDesc{}, false);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SAMPLER_PRESET::POINT, 16);
+		if (!rasterizer)rasterizer = std::make_shared<RasterizerState>(Graphics::RASTERIZER_PRESET::NONE);
+		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DEPTH_PRESET::ALWAYS, false, StencilDesc{}, false);
 		if (!vs)vs = std::make_shared<VertexShader>("Data/ShaderFile/GPUParticle/GPUParticle.hlsl", "GPUParticleVS", VertexShader::Model::VS_4_0);
 		if (!ps)ps = std::make_shared<PixelShader>("Data/ShaderFile/GPUParticle/GPUParticle.hlsl", "GPUParticlePS", PixelShader::Model::PS_5_0);
 		//バッファ作成

@@ -14,6 +14,8 @@ namespace Lobelia::Game {
 			NORMAL,
 			COLOR,
 			VIEW_POS,
+			SHADOW,
+			MAX,
 		};
 	public:
 		DeferredBuffer(const Math::Vector2& size);
@@ -36,7 +38,7 @@ namespace Lobelia::Game {
 		};
 	private:
 		//MRT用 バッファの可視性のために法線と深度を現状は分けている a部分にdepthを入れれば数は減る
-		std::shared_ptr<Graphics::RenderTarget> rts[4];
+		std::shared_ptr<Graphics::RenderTarget> rts[i_cast(BUFFER_TYPE::MAX)];
 		//情報書き込み用
 		std::shared_ptr<Graphics::VertexShader> vs;
 		std::shared_ptr<Graphics::PixelShader> ps;
@@ -79,21 +81,37 @@ namespace Lobelia::Game {
 		}lights;
 		std::unique_ptr<Graphics::ConstantBuffer<PointLights>> cbuffer;
 	};
+	class GaussianFilter;
 	//Parallel Split Shadow Map (カスケード系)
 	class ShadowBuffer {
 	public:
 		ShadowBuffer(const Math::Vector2& size, int split_count);
+		void AddModel(std::shared_ptr<Graphics::Model> model);
+		void SetPos(const Math::Vector3& pos);
+		void SetTarget(const Math::Vector3& at);
+		void CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt);
+		void DebugRender();
 	private:
-		struct Info {
-
+		ALIGN(16) struct Info {
+			DirectX::XMFLOAT4X4 view;
+			DirectX::XMFLOAT4X4 proj;
+			int useShadowMap;
 		};
 	private:
 		std::unique_ptr<Graphics::View> view;
 		std::vector<std::shared_ptr<Graphics::RenderTarget>> rts;
 		std::list<std::weak_ptr<Graphics::Model>> models;
+		std::shared_ptr<Graphics::VertexShader> vs;
+		std::shared_ptr<Graphics::PixelShader> ps;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
+		Math::Vector3 pos;
+		Math::Vector3 at;
+		Math::Vector3 up;
 		//バリアンスする際に使う予定。
 		std::unique_ptr<GaussianFilter> gaussian;
+		Info info;
+		Math::Vector2 size;
+		int count;
 	};
 	class PostEffect abstract {
 	public:

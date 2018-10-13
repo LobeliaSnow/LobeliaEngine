@@ -9,7 +9,7 @@ cbuffer SSAO :register(b7) {
 	float offsetPerPixel : packoffset(c0.x);
 	int useAO : packoffset(c0.y);
 }
-cbuffer GaussianFilter : register(b8) {
+cbuffer GaussianFilter : register(b9) {
 	float  weight0 : packoffset(c0.x);    // 重み
 	float  weight1 : packoffset(c0.y);    // 重み
 	float  weight2 : packoffset(c0.z);    // 重み

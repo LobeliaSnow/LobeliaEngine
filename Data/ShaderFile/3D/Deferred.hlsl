@@ -3,7 +3,8 @@
 #include "../2D/Header2D.hlsli"
 #include "../Define.h"
 
-#define __DEBUG
+#define _DEBUG
+
 //ワールド位置
 Texture2D txDeferredPos : register(t0);
 //ワールド法線
@@ -12,28 +13,41 @@ Texture2D txDeferredNormal : register(t1);
 Texture2D txDeferredColor : register(t2);
 //ビュー空間での位置
 Texture2D txDeferredViewPos : register(t3);
+//影つけ
+Texture2D txShadow : register(t4);
 //アンビエントオクルージョン項
-Texture2D txDeferredAO : register(t4);
+Texture2D txDeferredAO : register(t5);
+//深度バッファ
+Texture2D txLightSpaceDepthMap0 : register(t6);
 
 //深度バッファ用
 struct ShadowOut {
 	float4 pos :SV_POSITION;
+	float4 depth :DEPTH;
+	float2 tex :TEXCOORD0;
 };
 //MRT用構造体
 struct GBufferPS_IN {
 	float4 pos : SV_POSITION;
 	float4 worldPos : WPOSITION0;
+	//法線マップ用
 	float4 normal : NORMAL0;
 	float4 tangent : NORMAL1;
 	float4 binormal : NORMAL2;
+	//テクスチャ用
 	float2 tex : TEXCOORD0;
+	//ビュー空間での位置
 	float4 viewPos : TEXCOORD1;
+	//影用
+	float4 lightTex: TEXCOORD2;
+	float4 lightViewPos : LVPOSITION0;
 };
 struct MRTOutput {
 	float4 pos : SV_Target0;
 	float4 normal : SV_Target1;
 	float4 color : SV_Target2;
 	float4 viewPos : SV_Target3;
+	float4 shadow : SV_Target4;
 };
 
 //ポイントライト用定数バッファ
@@ -54,9 +68,21 @@ cbuffer DeferredOption : register(b8) {
 	int useNormalMap : packoffset(c0.x);
 	int useSpecularMap : packoffset(c0.y);
 };
+//9番はガウスで使用
+cbuffer ShadowInfo : register(b10) {
+	//影用
+	column_major float4x4 lightView;
+	column_major float4x4 lightProj;
+	//影を付けるか否か
+	int useShadowMap;
+};
+//定数
+//単位行列
+static const column_major float4x4 IDENTITY_MATRIX = float4x4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
+//影用
+static const column_major float4x4 UVTRANS_MATRIX = float4x4(0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 0.5f, 0.0f, 1.0f);
 
-inline float4x4 TangentMatrix(float3 tangent, float3 binormal, float3 normal)
-{
+inline float4x4 TangentMatrix(float3 tangent, float3 binormal, float3 normal) {
 	float4x4 mat =
 	{
 		{ float4(tangent, 0.0f) },
@@ -71,13 +97,14 @@ inline float4x4 TangentMatrix(float3 tangent, float3 binormal, float3 normal)
 ShadowOut CreateShadowMapVS(VS_IN vs_in) {
 	ShadowOut output = (ShadowOut)0;
 	output.pos = mul(vs_in.pos, world);
-	output.pos = mul(vs_in.pos, view);
-	output.pos = mul(vs_in.pos, projection);
+	output.pos = mul(output.pos, view);
+	output.pos = mul(output.pos, projection);
+	output.depth = output.pos;
+	output.tex = vs_in.tex;
 	return output;
 }
 //G-Buffer作成
-GBufferPS_IN CreateGBufferVS(VS_IN vs_in)
-{
+GBufferPS_IN CreateGBufferVS(VS_IN vs_in) {
 	GBufferPS_IN vs_out = (GBufferPS_IN)0;
 	vs_out.pos = mul(vs_in.pos, world);
 	vs_out.worldPos = vs_out.pos;
@@ -95,67 +122,25 @@ GBufferPS_IN CreateGBufferVS(VS_IN vs_in)
 	vs_out.viewPos = vs_out.pos;
 
 	vs_out.tex = vs_in.tex;
-
+	//影生成
+	if (useShadowMap) {
+		//ライト空間位置へ変換
+		column_major float4x4 wlp = mul(lightView, lightProj);
+		vs_out.lightViewPos = mul(vs_out.worldPos, wlp);
+		vs_out.lightTex = mul(vs_out.lightViewPos, UVTRANS_MATRIX);
+	}
 	return vs_out;
 }
-//
-//[maxvertexcount(3)]
-//void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
-//	GS_OUT gs_out[3] = (GS_OUT[3])0;
-//	//接空間算出 げーむつくろーから。理解は一旦後回し。
-//	//5次元から3次元に
-//	float3 cp0[3] = (float3[3])0;
-//	cp0[0] = float3(gs_in[0].environmentPos.x, gs_in[0].tex.x, gs_in[0].tex.y);
-//	cp0[1] = float3(gs_in[0].environmentPos.y, gs_in[0].tex.x, gs_in[0].tex.y);
-//	cp0[2] = float3(gs_in[0].environmentPos.z, gs_in[0].tex.x, gs_in[0].tex.y);
-//	float3 cp1[3] = (float3[3])0;
-//	cp1[0] = float3(gs_in[1].environmentPos.x, gs_in[1].tex.x, gs_in[1].tex.y);
-//	cp1[1] = float3(gs_in[1].environmentPos.y, gs_in[1].tex.x, gs_in[1].tex.y);
-//	cp1[2] = float3(gs_in[1].environmentPos.z, gs_in[1].tex.x, gs_in[1].tex.y);
-//	float3 cp2[3] = (float3[3])0;
-//	cp2[0] = float3(gs_in[2].environmentPos.x, gs_in[2].tex.x, gs_in[2].tex.y);
-//	cp2[1] = float3(gs_in[2].environmentPos.y, gs_in[2].tex.x, gs_in[2].tex.y);
-//	cp2[2] = float3(gs_in[2].environmentPos.z, gs_in[2].tex.x, gs_in[2].tex.y);
-//	//平面からＵＶ座標算出
-//	float u[3] = (float[3])0;
-//	float v[3] = (float[3])0;
-//	for (int i = 0; i < 3; i++) {
-//		float3 v0 = cp1[i] - cp0[i];
-//		float3 v1 = cp2[i] - cp1[i];
-//		float3 crossVector = cross(v0, v1);
-//		//縮退だけどどうしようもない
-//		//if (crossVector.x == 0.0f);
-//		u[i] = -crossVector.y / crossVector.x;
-//		v[i] = -crossVector.z / crossVector.x;
-//	}
-//	float4 tangent = normalize(float4(u[0], u[1], u[2], 0.0f));
-//	float4 binormal = normalize(float4(v[0], v[1], v[2], 0.0f));
-//	float4 normal = float4(normalize(cross(tangent, binormal)), 0.0f);
-//	//接空間へ変換するための行列
-//	const column_major float4x4 tangentMatrix = InvTangentMatrix(tangent, binormal, normal);
-//	float4 tangentLight = normalize(mul(lightDirection, tangentMatrix));
-//	for (int i = 0; i < 3; i++) {
-//		gs_out[i].pos = gs_in[i].pos;
-//		gs_out[i].normal.xyz = normal;
-//		gs_out[i].tangent.xyz = tangent;
-//		gs_out[i].binormal.xyz = binormal;
-//		gs_out[i].tangentLight = tangentLight;
-//		gs_out[i].eyeVector = normalize(mul(gs_in[i].eyeVector, tangentMatrix));
-//		//環境マップ用のカメラから位置へのベクトルを接空間へ変換
-//		gs_out[i].environmentEyeVector = normalize(mul(gs_in[i].environmentEyeVector, tangentMatrix));
-//		gs_out[i].tex = gs_in[i].tex;
-//		//ストリームに出力
-//		stream.Append(gs_out[i]);
-//	}
-//	stream.RestartStrip();
-//}
 
-////深度マップを作成
-//float4 CreateShadowMapPS(ShadowOut input) {
-//	//αテスト ある程度αがあればシャドウが落ちない
-//	clip(txDiffuse.Sample(samLinear, input.tex).a - 0.9f);
-//	return input.pos.z / input.pos.w;
-//}
+//深度マップを作成
+float4 CreateShadowMapPS(ShadowOut input) :SV_Target{
+	//αテスト ある程度αがあればシャドウが落ちない
+	float alpha = txDiffuse.Sample(samLinear, input.tex).a;
+	clip(alpha - 0.9f);
+	float4 depth = input.depth.z / input.depth.w;
+	depth.a = 1.0f;
+	return depth;
+}
 //GBuffer作成
 MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	MRTOutput output = (MRTOutput)0;
@@ -171,7 +156,29 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 		output.normal = normalMap * 0.5f + 0.5f;
 	}
 	else output.normal = ps_in.normal * 0.5f + 0.5f;
-#ifdef __DEBUG
+	//影生成
+	//とりあえず何のひねりもない単純なもの
+	if (useShadowMap) {
+		float4 shadowTex = ps_in.lightTex / ps_in.lightTex.w;
+		//最大深度傾斜を求める
+		float maxDepthSlope = max(abs(ddx(shadowTex.z)), abs(ddy(shadowTex.z)));
+		//固定バイアス
+		const float bias = 0.01f;
+		//深度傾斜
+		const float slopedScaleBias = 0.01f;
+		//深度クランプ値
+		const float depthBiasClamp = 0.1f;
+		float shadowBias = bias + slopedScaleBias * maxDepthSlope;
+		//SampleCmpLevelZeroこれ使うべき?
+		float lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).x;
+		float lightSpaceLength = ps_in.lightViewPos.z / ps_in.lightViewPos.w;
+		if (lightSpaceLength > lightDepth + min(shadowBias, depthBiasClamp)) {
+			output.shadow = float4((float3)1.0f / 2.0f, 1.0f);
+		}
+		else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
+	}
+	//else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
+#ifdef _DEBUG
 	//デバッグ表示用
 	output.normal.a = 1.0f;
 #endif
@@ -220,7 +227,9 @@ float4 PointLightDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 		ao = saturate(ao);
 		color.rgb *= ao;
 	}
-	//この先ポイントライト Tiled - Based Renderingにしても良いかも(?)
+	//影
+	if (useShadowMap) color.rgb *= txShadow.Sample(samLinear, ps_in.tex);
+	//最適化などはまだしていない
 	float4 lightColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	[unroll]//attribute
 	for (int i = 0; i < usedLightCount; i++) {

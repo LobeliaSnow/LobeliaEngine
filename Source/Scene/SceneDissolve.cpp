@@ -35,7 +35,7 @@ namespace Lobelia::Game {
 		up = Math::Vector3(0.0f, 1.0f, 0.0f);
 		//モデル読み込み
 		model = std::make_unique<Graphics::Model>("Data/Model/plane.dxd", "Data/Model/plane.mt");
-		model->ChangeBlendState(std::make_shared<Graphics::BlendState>(Graphics::BlendPreset::COPY, true, false));
+		model->ChangeBlendState(std::make_shared<Graphics::BlendState>(Graphics::BLEND_PRESET::COPY, true, false));
 		//ディゾルブ
 		dissolve = std::make_unique<DissolveShader>();
 	}

@@ -209,7 +209,7 @@ namespace Lobelia::Game {
 		//モデル読み込み、ワールド変換行列作成
 		model = std::make_unique<Graphics::Model>("Data/Model/plane.dxd", "Data/Model/plane.mt");
 		//model = std::make_unique<Graphics::Model>("Data/Model/sphere.dxd", "Data/Model/sphere.mt");
-		model->ChangeBlendState(std::make_shared<Graphics::BlendState>(Graphics::BlendPreset::COPY, true, false));
+		model->ChangeBlendState(std::make_shared<Graphics::BlendState>(Graphics::BLEND_PRESET::COPY, true, false));
 		//model->RotationRollPitchYow(Math::Vector3(-PI / 5.0f, 0.0, 0.0f));
 		//model->Scalling(3.0f);
 		model->CalcWorldMatrix();
@@ -228,7 +228,7 @@ namespace Lobelia::Game {
 		vs = Graphics::Model::GetVertexShader();
 		ps = Graphics::Model::GetPixelShader();
 		//ラスタライザ差分作成
-		wireState = std::make_shared<Graphics::RasterizerState>(Graphics::RasterizerPreset::FRONT, true);
+		wireState = std::make_shared<Graphics::RasterizerState>(Graphics::RASTERIZER_PRESET::FRONT, true);
 		solidState = model->GetRasterizerState();
 		//水シェーダー周り読み込み
 		waterShader = std::make_unique<WaterShader>();
