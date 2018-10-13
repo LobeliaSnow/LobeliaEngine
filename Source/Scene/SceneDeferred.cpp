@@ -15,7 +15,7 @@ namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
 	DeferredBuffer::DeferredBuffer(const Math::Vector2& size) :size(size) {
 		for (int i = 0; i < i_cast(BUFFER_TYPE::MAX); i++) {
-			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 });
+			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16B16A16_FLOAT);
 		}
 		//VertexShader(const char* file_path, const char* entry_point, Model shader_model, bool use_linkage = false);
 		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateGBufferVS", Graphics::VertexShader::Model::VS_4_0);
@@ -95,7 +95,7 @@ namespace Lobelia::Game {
 	ShadowBuffer::ShadowBuffer(const Math::Vector2& size, int split_count, bool use_variance) :size(size), count(split_count) {
 		rts.resize(split_count);
 		for (int i = 0; i < split_count; i++) {
-			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 });
+			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16_FLOAT);
 		}
 		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapVS", Graphics::VertexShader::Model::VS_5_0, false);
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapPS", Graphics::PixelShader::Model::PS_5_0, false);
@@ -193,7 +193,7 @@ namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
 	SSAO::SSAO(const Math::Vector2& size) :PostEffect(size, false) {
 		cs = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "SSAOCS");
-		rwTexture = std::make_shared<Graphics::Texture>(size, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
+		rwTexture = std::make_shared<Graphics::Texture>(size, DXGI_FORMAT_R16G16B16A16_FLOAT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
 		//rt = std::make_shared<Graphics::RenderTarget>(rwTexture);
 		uav = std::make_unique<UnorderedAccessView>(rwTexture.get());
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(7, Graphics::ShaderStageList::CS | Graphics::ShaderStageList::PS);

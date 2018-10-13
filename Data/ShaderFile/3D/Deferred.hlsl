@@ -162,6 +162,9 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	//とりあえず何のひねりもない単純なもの
 	if (useShadowMap) {
 		float4 shadowTex = ps_in.lightTex / ps_in.lightTex.w;
+		if (useVariance) {
+			float w = 1.0f / shadowTex.w;
+		}
 		//最大深度傾斜を求める
 		float maxDepthSlope = max(abs(ddx(shadowTex.z)), abs(ddy(shadowTex.z)));
 		//固定バイアス
