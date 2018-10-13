@@ -92,7 +92,7 @@ namespace Lobelia::Game {
 		cbuffer->Activate(lights);
 	}
 	//---------------------------------------------------------------------------------------------
-	ShadowBuffer::ShadowBuffer(const Math::Vector2& size, int split_count) :size(size), count(split_count) {
+	ShadowBuffer::ShadowBuffer(const Math::Vector2& size, int split_count, bool use_variance) :size(size), count(split_count) {
 		rts.resize(split_count);
 		for (int i = 0; i < split_count; i++) {
 			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 });
@@ -101,7 +101,8 @@ namespace Lobelia::Game {
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapPS", Graphics::PixelShader::Model::PS_5_0, false);
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(10, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
 		view = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 2.0f, 50, 400.0f);
-		info.useShadowMap = TRUE;
+		info.useShadowMap = TRUE; info.useVariance = i_cast(use_variance);
+		gaussian = std::make_unique<GaussianFilter>(size);
 	}
 	void ShadowBuffer::SetPos(const Math::Vector3& pos) { this->pos = pos; }
 	void ShadowBuffer::SetTarget(const Math::Vector3& at) { this->at = at; }
@@ -113,7 +114,6 @@ namespace Lobelia::Game {
 		view->SetEyePos(pos);
 		view->SetEyeTarget(at);
 		view->SetEyeUpDirection(up);
-		Graphics::Texture::Clean(6, Graphics::ShaderStageList::PS);
 		auto& defaultVS = Graphics::Model::GetVertexShader();
 		auto& defaultPS = Graphics::Model::GetPixelShader();
 		Graphics::Model::ChangeVertexShader(vs);
@@ -128,19 +128,28 @@ namespace Lobelia::Game {
 				model->Render();
 			}
 		}
-		DirectX::XMStoreFloat4x4(&info.view, view->GetColumnViewMatrix());
-		DirectX::XMStoreFloat4x4(&info.proj, view->GetColumnProjectionMatrix());
 		Graphics::Model::ChangeVertexShader(defaultVS);
 		Graphics::Model::ChangePixelShader(defaultPS);
 		models.clear();
 		active_view->Activate();
 		active_rt->Activate();
+		if (info.useVariance)gaussian->Dispatch(active_view, active_rt, rts[0]->GetTexture());
+	}
+	void ShadowBuffer::Begin() { 
+		DirectX::XMStoreFloat4x4(&info.view, view->GetColumnViewMatrix());
+		DirectX::XMStoreFloat4x4(&info.proj, view->GetColumnProjectionMatrix());
 		cbuffer->Activate(info);
-		rts[0]->GetTexture()->Set(6, Graphics::ShaderStageList::PS);
+		if(info.useVariance)gaussian->Begin(6);
+		else rts[0]->GetTexture()->Set(6, Graphics::ShaderStageList::PS);
+	}
+	void ShadowBuffer::End() { 
+		if(info.useVariance)gaussian->End();
+		else Graphics::Texture::Clean(6, Graphics::ShaderStageList::PS);
 	}
 	void ShadowBuffer::DebugRender() {
+		gaussian->DebugRender(Math::Vector2(0.0f, 200.0f), Math::Vector2(200.0f, 200.0f));
 		for (int i = 0; i < count; i++) {
-			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2(i*200.0f, 200.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), size, 0xFFFFFFFF);
+			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2((i + 1)*200.0f, 200.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), size, 0xFFFFFFFF);
 		}
 	}
 	//---------------------------------------------------------------------------------------------
@@ -232,7 +241,7 @@ namespace Lobelia::Game {
 			active_view->ViewportActivate();
 			this->rt->GetTexture()->Set(0, Graphics::ShaderStageList::CS);
 		}
-		else rt->GetTexture()->Set(0, Graphics::ShaderStageList::CS);
+		else texture->Set(0, Graphics::ShaderStageList::CS);
 		static constexpr const UINT DIVISION = 7;
 		if (dispersion <= 0.0f)dispersion = 0.01f;
 		float total = 0.0f;
@@ -264,6 +273,10 @@ namespace Lobelia::Game {
 	void GaussianFilter::Begin(int slot) {
 		PostEffect::Begin(slot);
 		rwTexturePass2->Set(this->slot, Graphics::ShaderStageList::PS);
+	}
+	void GaussianFilter::DebugRender(const Math::Vector2& pos, const Math::Vector2& size) {
+		Graphics::SpriteRenderer::Render(rwTexturePass2.get(), pos, size, 0.0f, Math::Vector2(), rwTexturePass2->GetSize(), 0xFFFFFFFF);
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
 	//---------------------------------------------------------------------------------------------
 	//
@@ -302,8 +315,8 @@ namespace Lobelia::Game {
 #ifdef USE_SSAO
 		ssao = std::make_unique<SSAO>(scale);
 #endif
-		shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1);
-		gaussian = std::make_unique<GaussianFilter>(scale*0.5f);
+		shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, true);
+		//gaussian = std::make_unique<GaussianFilter>(scale);
 	}
 	SceneDeferred::~SceneDeferred() {
 #ifdef _DEBUG
@@ -361,7 +374,9 @@ namespace Lobelia::Game {
 		Graphics::RenderTarget* backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
 		shadow->CreateShadowMap(view.get(), backBuffer);
 		view->Activate();
+		shadow->Begin();
 		deferredBuffer->RenderGBuffer();
+		shadow->End();
 		backBuffer->Activate();
 #ifdef USE_SSAO
 		ssao->CreateAO(deferredBuffer.get());

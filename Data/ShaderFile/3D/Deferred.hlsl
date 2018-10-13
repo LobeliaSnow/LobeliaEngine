@@ -71,10 +71,11 @@ cbuffer DeferredOption : register(b8) {
 //9番はガウスで使用
 cbuffer ShadowInfo : register(b10) {
 	//影用
-	column_major float4x4 lightView;
-	column_major float4x4 lightProj;
+	column_major float4x4 lightView :packoffset(c0.x);
+	column_major float4x4 lightProj :packoffset(c4.x);
 	//影を付けるか否か
-	int useShadowMap;
+	int useShadowMap : packoffset(c8.x);
+	int useVariance :packoffset(c8.y);
 };
 //定数
 //単位行列

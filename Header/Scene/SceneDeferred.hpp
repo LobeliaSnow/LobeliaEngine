@@ -85,17 +85,21 @@ namespace Lobelia::Game {
 	//Parallel Split Shadow Map (カスケード系)
 	class ShadowBuffer {
 	public:
-		ShadowBuffer(const Math::Vector2& size, int split_count);
+		ShadowBuffer(const Math::Vector2& size, int split_count, bool use_variance);
 		void AddModel(std::shared_ptr<Graphics::Model> model);
 		void SetPos(const Math::Vector3& pos);
 		void SetTarget(const Math::Vector3& at);
 		void CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt);
+		//シャドウマップをセットする
+		void Begin();
+		void End();
 		void DebugRender();
 	private:
 		ALIGN(16) struct Info {
 			DirectX::XMFLOAT4X4 view;
 			DirectX::XMFLOAT4X4 proj;
 			int useShadowMap;
+			int useVariance;
 		};
 	private:
 		std::unique_ptr<Graphics::View> view;
@@ -183,6 +187,7 @@ namespace Lobelia::Game {
 		//XYブラー結果を描画
 		void Render()override;
 		void Begin(int slot);
+		void DebugRender(const Math::Vector2& pos, const Math::Vector2& size);
 	private:
 		ALIGN(16) struct Info {
 			float weight[7];
