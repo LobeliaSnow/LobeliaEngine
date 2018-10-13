@@ -159,40 +159,54 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	}
 	else output.normal = ps_in.normal * 0.5f + 0.5f;
 	//影生成
-	//とりあえず何のひねりもない単純なもの
 	if (useShadowMap) {
 		float4 shadowTex = ps_in.lightTex / ps_in.lightTex.w;
-		float lightSpaceLength = ps_in.lightViewPos.z / ps_in.lightViewPos.w;
-		//if (useVariance) {
-		//	float2 lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).xy;
-		//	float depthSQ = lightDepth.x*lightDepth.x;
-		//	float variance = lightDepth.y - depthSQ;
-		//	float md = lightSpaceLength - lightDepth.x;
-		//	float p = variance / (variance + (md*md));
-		//	float shadow = saturate(max(p, lightDepth.x <= lightSpaceLength));
-		//	shadow *= 0.5f;
-		//	shadow += 0.5f;
-		//	output.shadow = float4((float3)shadow, 1.0f);
-		//}
-		//else 
-		{
-			//最大深度傾斜を求める
-			float maxDepthSlope = max(abs(ddx(shadowTex.z)), abs(ddy(shadowTex.z)));
-			//固定バイアス
-			const float bias = 0.01f;
-			//深度傾斜
-			const float slopedScaleBias = 0.01f;
-			//深度クランプ値
-			const float depthBiasClamp = 0.1f;
-			float shadowBias = bias + slopedScaleBias * maxDepthSlope;
-			//SampleCmpLevelZeroこれ使うべき?
-			//float threshold = txLightSpaceDepthMap0.SampleCmpLevelZero(samComparsionLinear, shadowTex.xy, lightSpaceLength + min(shadowBias, depthBiasClamp));
-			//output.shadow = float4((float3)lerp(float3(0.34f, 0.34f, 0.34f), float3(1.0f, 1.0f, 1.0f), threshold), 1.0f);
-			float lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).x;
-			if (lightSpaceLength > lightDepth + min(shadowBias, depthBiasClamp)) {
-				output.shadow = float4((float3)1.0f / 2.0f, 1.0f);
+		//シャドウマップの範囲外は影なし
+		if (shadowTex.x < 0.0f || shadowTex.x > 1.0f || shadowTex.y < 0.0f || shadowTex.y > 1.0f) {
+			output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
+		}
+		else {
+			//現在の描画対象の距離算出
+			float lightSpaceLength = ps_in.lightViewPos.z / ps_in.lightViewPos.w;
+			//カメラ位置からのZ値を見て、遮蔽物の深度値取得(無ければ上と同じものが入る)
+			float2 lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).rg;
+			if (useVariance) {//分散シャドウマップ
+				//参考
+				//http://maverickproj.web.fc2.com/d3d11_28.html
+				//https://riyaaaaasan.hatenablog.com/entry/2018/03/15/215910
+				if (lightSpaceLength - 0.01f > lightDepth.x) {
+					//チェビシェフの不等式
+					float variance = lightDepth.y - lightDepth.x * lightDepth.x;
+					float md = lightSpaceLength - lightDepth.x;
+					float p = variance / (variance + (md*md));
+					float shadow = max(0.5f, p);
+					//float shadow = saturate(max(p, lightSpaceLength <= lightDepth.x));
+					output.shadow = float4((float3)shadow, 1.0f);
+				}
+				else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
 			}
-			else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
+			else
+			{	//何のひねりもない単純なもの
+				//Slope Scale Depth Bias
+				//http://www.project-asura.com/program/d3d11/d3d11_009.html
+				//最大深度傾斜を求める
+				float maxDepthSlope = max(abs(ddx(shadowTex.z)), abs(ddy(shadowTex.z)));
+				//固定バイアス
+				const float bias = 0.01f;
+				//深度傾斜
+				const float slopedScaleBias = 0.01f;
+				//深度クランプ値
+				const float depthBiasClamp = 0.1f;
+				float shadowBias = bias + slopedScaleBias * maxDepthSlope;
+				//SampleCmpLevelZeroこれ使うべき?
+				//float threshold = txLightSpaceDepthMap0.SampleCmpLevelZero(samComparsionLinear, shadowTex.xy, lightSpaceLength + min(shadowBias, depthBiasClamp));
+				//output.shadow = float4((float3)lerp(float3(0.34f, 0.34f, 0.34f), float3(1.0f, 1.0f, 1.0f), threshold), 1.0f);
+				//float lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).x;
+				if (lightSpaceLength > lightDepth.x + min(shadowBias, depthBiasClamp)) {
+					output.shadow = float4((float3)1.0f / 2.0f, 1.0f);
+				}
+				else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
+			}
 		}
 	}
 	//else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -246,7 +260,7 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 		ao = saturate(ao);
 		color.rgb *= ao;
 	}
-	//影
+	//影 この段階ではもうバリアンスとかは考慮の必要がない
 	if (useShadowMap) color.rgb *= txShadow.Sample(samLinear, ps_in.tex);
 	//最適化などはまだしていない
 	float4 lightColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
