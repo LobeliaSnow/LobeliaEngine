@@ -6,6 +6,11 @@
 //Compute Shader版で実装しているものパフォーマンス計測の為、Pixel Shader版も実装したい
 
 namespace Lobelia::Game {
+	//---------------------------------------------------------------------------------------------
+	//
+	//	Geometry Buffer
+	//
+	//---------------------------------------------------------------------------------------------
 	//GBuffer周り
 	class DeferredBuffer {
 	public:
@@ -46,6 +51,7 @@ namespace Lobelia::Game {
 		const Math::Vector2 size;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
 	};
+	//---------------------------------------------------------------------------------------------
 	//実際にシェーディングする部分
 	class DeferredShader {
 	public:
@@ -56,10 +62,12 @@ namespace Lobelia::Game {
 		std::shared_ptr<Graphics::VertexShader> vs;
 		std::shared_ptr<Graphics::PixelShader> ps;
 	};
+	//---------------------------------------------------------------------------------------------
 	class SimpleDeferred :public DeferredShader {
 	public:
 		SimpleDeferred();
 	};
+	//---------------------------------------------------------------------------------------------
 	class PointLightDeferred :public DeferredShader {
 	public:
 		struct PointLight {
@@ -81,8 +89,9 @@ namespace Lobelia::Game {
 		}lights;
 		std::unique_ptr<Graphics::ConstantBuffer<PointLights>> cbuffer;
 	};
+	//---------------------------------------------------------------------------------------------
 	class GaussianFilter;
-	//Parallel Split Shadow Map (カスケード系)
+	//Parallel Split Shadow Map (カスケード系)実装予定
 	class ShadowBuffer {
 	public:
 		ShadowBuffer(const Math::Vector2& size, int split_count, bool use_variance);
@@ -95,6 +104,8 @@ namespace Lobelia::Game {
 		void End();
 		void DebugRender();
 	private:
+		void CameraUpdate();
+	private:
 		ALIGN(16) struct Info {
 			DirectX::XMFLOAT4X4 view;
 			DirectX::XMFLOAT4X4 proj;
@@ -103,11 +114,13 @@ namespace Lobelia::Game {
 		};
 	private:
 		std::unique_ptr<Graphics::View> view;
+		//カスケードへの布石
 		std::vector<std::shared_ptr<Graphics::RenderTarget>> rts;
 		std::list<std::weak_ptr<Graphics::Model>> models;
 		std::shared_ptr<Graphics::VertexShader> vs;
 		std::shared_ptr<Graphics::PixelShader> ps;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
+		std::unique_ptr<Graphics::SamplerState> sampler;
 		Math::Vector3 pos;
 		Math::Vector3 at;
 		Math::Vector3 up;
@@ -117,6 +130,11 @@ namespace Lobelia::Game {
 		Math::Vector2 size;
 		int count;
 	};
+	//---------------------------------------------------------------------------------------------
+	//
+	//	Post Effect
+	//
+	//---------------------------------------------------------------------------------------------
 	class PostEffect abstract {
 	public:
 		PostEffect(const Math::Vector2& size, bool create_rt);
@@ -133,6 +151,7 @@ namespace Lobelia::Game {
 		Math::Vector2 size;
 		int slot;
 	};
+	//---------------------------------------------------------------------------------------------
 	class UnorderedAccessView {
 	public:
 		UnorderedAccessView(Graphics::Texture* texture);
@@ -141,6 +160,7 @@ namespace Lobelia::Game {
 	private:
 		ComPtr<ID3D11UnorderedAccessView> uav;
 	};
+	//---------------------------------------------------------------------------------------------
 	//ブラーパスは省いています
 	//Compute Shaderによる実装
 	//パフォーマンス計測結果
@@ -168,6 +188,7 @@ namespace Lobelia::Game {
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
 		Info info;
 	};
+	//---------------------------------------------------------------------------------------------
 	//ちょっと不具合あるかも (?)
 	//Compute Shaderによる実装
 	//パフォーマンス計測結果
@@ -205,8 +226,11 @@ namespace Lobelia::Game {
 		//分散率
 		float dispersion;
 	};
-	//SSAOもやりたいかも
-	//deferredでの法線マップもそのうち
+	//---------------------------------------------------------------------------------------------
+	//
+	//		Scene
+	//
+	//---------------------------------------------------------------------------------------------
 	class SceneDeferred :public Scene {
 	public:
 		SceneDeferred() = default;

@@ -78,7 +78,7 @@ namespace Lobelia::Game {
 
 	SimpleDeferred::SimpleDeferred() :DeferredShader("Data/ShaderFile/3D/deferred.hlsl", "", "SimpleDeferredPS") {
 	}
-	PointLightDeferred::PointLightDeferred() : DeferredShader("Data/ShaderFile/3D/deferred.hlsl", "", "PointLightDeferredPS") {
+	PointLightDeferred::PointLightDeferred() : DeferredShader("Data/ShaderFile/3D/deferred.hlsl", "", "FullDeferredPS") {
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<PointLights>>(6, Graphics::ShaderStageList::PS);
 		sizeof(PointLights);
 	}
@@ -103,17 +103,21 @@ namespace Lobelia::Game {
 		view = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 2.0f, 50, 400.0f);
 		info.useShadowMap = TRUE; info.useVariance = i_cast(use_variance);
 		gaussian = std::make_unique<GaussianFilter>(size);
+		sampler = std::make_unique<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::COMPARISON_LINEAR, 16);
 	}
 	void ShadowBuffer::SetPos(const Math::Vector3& pos) { this->pos = pos; }
 	void ShadowBuffer::SetTarget(const Math::Vector3& at) { this->at = at; }
-	void ShadowBuffer::AddModel(std::shared_ptr<Graphics::Model> model) { models.push_back(model); }
-	void ShadowBuffer::CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt) {
+	void ShadowBuffer::CameraUpdate() {
 		Math::Vector3 front = at - pos; front.Normalize();
 		Math::Vector3 right = Math::Vector3::Cross(Math::Vector3(0.0f, 1.0f, 0.0f), front); right.Normalize();
 		up = Math::Vector3::Cross(front, right);
 		view->SetEyePos(pos);
 		view->SetEyeTarget(at);
 		view->SetEyeUpDirection(up);
+	}
+	void ShadowBuffer::AddModel(std::shared_ptr<Graphics::Model> model) { models.push_back(model); }
+	void ShadowBuffer::CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt) {
+		CameraUpdate();
 		auto& defaultVS = Graphics::Model::GetVertexShader();
 		auto& defaultPS = Graphics::Model::GetPixelShader();
 		Graphics::Model::ChangeVertexShader(vs);
@@ -133,17 +137,19 @@ namespace Lobelia::Game {
 		models.clear();
 		active_view->Activate();
 		active_rt->Activate();
+		//ƒKƒEƒX‚É‚æ‚é‚Ú‚©‚µ
 		if (info.useVariance)gaussian->Dispatch(active_view, active_rt, rts[0]->GetTexture());
 	}
-	void ShadowBuffer::Begin() { 
+	void ShadowBuffer::Begin() {
 		DirectX::XMStoreFloat4x4(&info.view, view->GetColumnViewMatrix());
 		DirectX::XMStoreFloat4x4(&info.proj, view->GetColumnProjectionMatrix());
 		cbuffer->Activate(info);
-		if(info.useVariance)gaussian->Begin(6);
+		sampler->Set(1);
+		if (info.useVariance)gaussian->Begin(6);
 		else rts[0]->GetTexture()->Set(6, Graphics::ShaderStageList::PS);
 	}
-	void ShadowBuffer::End() { 
-		if(info.useVariance)gaussian->End();
+	void ShadowBuffer::End() {
+		if (info.useVariance)gaussian->End();
 		else Graphics::Texture::Clean(6, Graphics::ShaderStageList::PS);
 	}
 	void ShadowBuffer::DebugRender() {

@@ -19,6 +19,7 @@ Texture2D txShadow : register(t4);
 Texture2D txDeferredAO : register(t5);
 //深度バッファ
 Texture2D txLightSpaceDepthMap0 : register(t6);
+//SamplerComparisonState samComparsionLinear :register(s1);
 
 //深度バッファ用
 struct ShadowOut {
@@ -75,7 +76,7 @@ cbuffer ShadowInfo : register(b10) {
 	column_major float4x4 lightProj :packoffset(c4.x);
 	//影を付けるか否か
 	int useShadowMap : packoffset(c8.x);
-	int useVariance :packoffset(c8.y);
+	int useVariance : packoffset(c8.y);
 };
 //定数
 //単位行列
@@ -171,6 +172,8 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 		const float depthBiasClamp = 0.1f;
 		float shadowBias = bias + slopedScaleBias * maxDepthSlope;
 		//SampleCmpLevelZeroこれ使うべき?
+		//float threshold = txLightSpaceDepthMap0.SampleCmpLevelZero(samComparsionLinear, shadowTex.xy, lightSpaceLength + min(shadowBias, depthBiasClamp));
+		//output.shadow = float4((float3)lerp(float3(0.34f, 0.34f, 0.34f), float3(1.0f, 1.0f, 1.0f), threshold), 1.0f);
 		float lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).x;
 		float lightSpaceLength = ps_in.lightViewPos.z / ps_in.lightViewPos.w;
 		if (lightSpaceLength > lightDepth + min(shadowBias, depthBiasClamp)) {
@@ -188,7 +191,7 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	return output;
 }
 
-//G-Bufferを用いたシェーディング
+//G-Bufferを用いた最小シェーディング
 float4 SimpleDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	float4 pos = txDeferredPos.Sample(samLinear, ps_in.tex);
 	//デコード
@@ -200,6 +203,7 @@ float4 SimpleDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	color.rgb *= lambert;
 	return color;
 }
+//ポイントライトの色を返す
 //eye_vectorは正規化されていないもの
 float3 PointLightShading(int index, float3 pos, float3 normal) {
 	float3 lightVector = pointLightPos[index] - pos;
@@ -211,8 +215,8 @@ float3 PointLightShading(int index, float3 pos, float3 normal) {
 	// float attenuation = 1.0f / (dist + pointLightAttenuation[index] * dist * dist);
 	return pointLightColor[index] * attenuation;
 }
-
-float4 PointLightDeferredPS(PS_IN_TEX ps_in) :SV_Target{
+//実際のシェーディングを行う部分
+float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	float4 pos = txDeferredPos.Sample(samLinear, ps_in.tex);
 	//デコード
 	float4 normal = txDeferredNormal.Sample(samLinear, ps_in.tex) * 2.0 - 1.0;
