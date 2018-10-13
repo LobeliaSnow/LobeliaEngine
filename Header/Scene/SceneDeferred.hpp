@@ -198,7 +198,7 @@ namespace Lobelia::Game {
 	//‘å‘Ì1.0ms
 	class GaussianFilter :public PostEffect {
 	public:
-		GaussianFilter(const Math::Vector2& size);
+		GaussianFilter(const Math::Vector2& size, DXGI_FORMAT format = DXGI_FORMAT_R32G32B32A32_FLOAT);
 		~GaussianFilter() = default;
 		//•ªU—¦‚Ìİ’è
 		void SetDispersion(float dispersion);

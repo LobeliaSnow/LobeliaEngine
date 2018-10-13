@@ -162,27 +162,38 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	//とりあえず何のひねりもない単純なもの
 	if (useShadowMap) {
 		float4 shadowTex = ps_in.lightTex / ps_in.lightTex.w;
-		if (useVariance) {
-			float w = 1.0f / shadowTex.w;
-		}
-		//最大深度傾斜を求める
-		float maxDepthSlope = max(abs(ddx(shadowTex.z)), abs(ddy(shadowTex.z)));
-		//固定バイアス
-		const float bias = 0.01f;
-		//深度傾斜
-		const float slopedScaleBias = 0.01f;
-		//深度クランプ値
-		const float depthBiasClamp = 0.1f;
-		float shadowBias = bias + slopedScaleBias * maxDepthSlope;
-		//SampleCmpLevelZeroこれ使うべき?
-		//float threshold = txLightSpaceDepthMap0.SampleCmpLevelZero(samComparsionLinear, shadowTex.xy, lightSpaceLength + min(shadowBias, depthBiasClamp));
-		//output.shadow = float4((float3)lerp(float3(0.34f, 0.34f, 0.34f), float3(1.0f, 1.0f, 1.0f), threshold), 1.0f);
-		float lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).x;
 		float lightSpaceLength = ps_in.lightViewPos.z / ps_in.lightViewPos.w;
-		if (lightSpaceLength > lightDepth + min(shadowBias, depthBiasClamp)) {
-			output.shadow = float4((float3)1.0f / 2.0f, 1.0f);
+		//if (useVariance) {
+		//	float2 lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).xy;
+		//	float depthSQ = lightDepth.x*lightDepth.x;
+		//	float variance = lightDepth.y - depthSQ;
+		//	float md = lightSpaceLength - lightDepth.x;
+		//	float p = variance / (variance + (md*md));
+		//	float shadow = saturate(max(p, lightDepth.x <= lightSpaceLength));
+		//	shadow *= 0.5f;
+		//	shadow += 0.5f;
+		//	output.shadow = float4((float3)shadow, 1.0f);
+		//}
+		//else 
+		{
+			//最大深度傾斜を求める
+			float maxDepthSlope = max(abs(ddx(shadowTex.z)), abs(ddy(shadowTex.z)));
+			//固定バイアス
+			const float bias = 0.01f;
+			//深度傾斜
+			const float slopedScaleBias = 0.01f;
+			//深度クランプ値
+			const float depthBiasClamp = 0.1f;
+			float shadowBias = bias + slopedScaleBias * maxDepthSlope;
+			//SampleCmpLevelZeroこれ使うべき?
+			//float threshold = txLightSpaceDepthMap0.SampleCmpLevelZero(samComparsionLinear, shadowTex.xy, lightSpaceLength + min(shadowBias, depthBiasClamp));
+			//output.shadow = float4((float3)lerp(float3(0.34f, 0.34f, 0.34f), float3(1.0f, 1.0f, 1.0f), threshold), 1.0f);
+			float lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).x;
+			if (lightSpaceLength > lightDepth + min(shadowBias, depthBiasClamp)) {
+				output.shadow = float4((float3)1.0f / 2.0f, 1.0f);
+			}
+			else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
 		}
-		else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
 	}
 	//else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
 #ifdef _DEBUG

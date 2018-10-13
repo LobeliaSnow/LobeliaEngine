@@ -102,7 +102,7 @@ namespace Lobelia::Game {
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(10, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
 		view = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 2.0f, 50, 400.0f);
 		info.useShadowMap = TRUE; info.useVariance = i_cast(use_variance);
-		gaussian = std::make_unique<GaussianFilter>(size);
+		gaussian = std::make_unique<GaussianFilter>(size, DXGI_FORMAT_R16G16_FLOAT);
 		sampler = std::make_unique<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::COMPARISON_LINEAR, 16);
 	}
 	void ShadowBuffer::SetPos(const Math::Vector3& pos) { this->pos = pos; }
@@ -224,11 +224,11 @@ namespace Lobelia::Game {
 		rwTexture->Set(this->slot, Graphics::ShaderStageList::PS);
 	}
 	//---------------------------------------------------------------------------------------------
-	GaussianFilter::GaussianFilter(const Math::Vector2& size) :PostEffect(size, true) {
+	GaussianFilter::GaussianFilter(const Math::Vector2& size, DXGI_FORMAT format) :PostEffect(size, true) {
 		csX = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianFilterCSX");
 		csY = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianFilterCSY");
-		rwTexturePass1 = std::make_shared<Graphics::Texture>(size, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
-		rwTexturePass2 = std::make_shared<Graphics::Texture>(size, DXGI_FORMAT_R32G32B32A32_FLOAT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
+		rwTexturePass1 = std::make_shared<Graphics::Texture>(size, format, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
+		rwTexturePass2 = std::make_shared<Graphics::Texture>(size, format, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
 		uavPass1 = std::make_unique<UnorderedAccessView>(rwTexturePass1.get());
 		uavPass2 = std::make_unique<UnorderedAccessView>(rwTexturePass2.get());
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(9, Graphics::ShaderStageList::CS);
