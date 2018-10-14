@@ -91,6 +91,7 @@ namespace Lobelia::Game {
 	};
 	//---------------------------------------------------------------------------------------------
 	class GaussianFilter;
+	//現状遠距離がすごく荒いので、カスケード急ぎたい。
 	//Parallel Split Shadow Map (カスケード系)実装予定
 	class ShadowBuffer {
 	public:
@@ -168,10 +169,12 @@ namespace Lobelia::Game {
 	//AO無し 9.2ms/約108FPS
 	//AO有り 10.2ms/約98FPS
 	//大体1ms
-	class SSAO :public PostEffect {
+	class SSAOCS :public PostEffect {
+		friend class SSAOPS;
 	public:
 		//TODO : 解像度下げれるようにする
-		SSAO(const Math::Vector2& size);
+		SSAOCS(const Math::Vector2& size);
+		//テクスチャそのまま渡せばいいだけの方式にすれば汎用性は上がる
 		void CreateAO(DeferredBuffer* deferred_buffer);
 		//AOを直接描画することはないため、デバッグ描画を入れている
 		void Render()override;
@@ -180,11 +183,28 @@ namespace Lobelia::Game {
 		ALIGN(16) struct Info {
 			float offsetPerPixel;
 			int useAO;
+			float offsetPerPixelX;
+			float offsetPerPixelY;
 		};
 	private:
 		std::unique_ptr<Graphics::ComputeShader> cs;
 		std::shared_ptr<Graphics::Texture> rwTexture;
 		std::unique_ptr<UnorderedAccessView> uav;
+		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
+		Info info;
+	};
+	//パフォーマンス比較表
+	class SSAOPS :public PostEffect {
+	public:
+		SSAOPS(const Math::Vector2& size);
+		void CreateAO(Graphics::RenderTarget* active_rt, DeferredBuffer* deferred_buffer);
+		//AOを直接描画することはないため、デバッグ描画を入れている
+		void Render()override;
+		void Begin(int slot);
+	private:
+		using Info = SSAOCS::Info;
+	private:
+		std::shared_ptr<Graphics::PixelShader> ps;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
 		Info info;
 	};
@@ -198,7 +218,7 @@ namespace Lobelia::Game {
 	//大体1.0ms
 	class GaussianFilter :public PostEffect {
 	public:
-		GaussianFilter(const Math::Vector2& size);
+		GaussianFilter(const Math::Vector2& size, DXGI_FORMAT format = DXGI_FORMAT_R32G32B32A32_FLOAT);
 		~GaussianFilter() = default;
 		//分散率の設定
 		void SetDispersion(float dispersion);
@@ -244,11 +264,16 @@ namespace Lobelia::Game {
 #ifdef SIMPLE_SHADER
 		std::unique_ptr<DeferredShader> deferredShader;
 #endif
-#ifdef POINT_LIGHT
+#ifdef FULL_EFFECT
 		std::unique_ptr<PointLightDeferred> deferredShader;
 #endif
 #ifdef USE_SSAO
-		std::unique_ptr<SSAO> ssao;
+#ifdef POST_PS
+		std::unique_ptr<SSAOPS> ssao;
+#endif
+#ifdef POST_CS
+		std::unique_ptr<SSAOCS> ssao;
+#endif
 #endif
 		std::unique_ptr<GaussianFilter> gaussian;
 		std::unique_ptr<ShadowBuffer> shadow;
