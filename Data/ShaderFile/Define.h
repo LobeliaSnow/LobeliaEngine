@@ -5,12 +5,14 @@
 //#define SIMPLE_SHADER
 #define FULL_EFFECT
 //SSAO用定義
-#define USE_SSAO
 #define SSAO_BLOCK_SIZE 32
 #define SSAO_RECT_RANGE 8
 //ガウスフィルタ用
 //周囲何ピクセルをフェッチするか
 #define GAUSSIAN_BLOCK 32
 //テスト用
-//#define POST_PS
-#define POST_CS
+#define USE_SSAO
+//#define SSAO_PS
+#define SSAO_CS
+#define GAUSSIAN_PS
+//#define GAUSSIAN_CS

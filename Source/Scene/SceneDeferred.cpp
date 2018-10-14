@@ -106,7 +106,12 @@ namespace Lobelia::Game {
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(10, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
 		view = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 2.0f, 50, 400.0f);
 		info.useShadowMap = TRUE; info.useVariance = i_cast(use_variance);
-		gaussian = std::make_unique<GaussianFilter>(size, DXGI_FORMAT_R16G16_FLOAT);
+#ifdef GAUSSIAN_CS
+		gaussian = std::make_unique<GaussianFilterCS>(size, DXGI_FORMAT_R16G16_FLOAT);
+#endif
+#ifdef GAUSSIAN_PS
+		gaussian = std::make_unique<GaussianFilterPS>(size, DXGI_FORMAT_R16G16_FLOAT);
+#endif
 		gaussian->SetDispersion(0.01f);
 		sampler = std::make_unique<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::COMPARISON_LINEAR, 16);
 	}
@@ -170,8 +175,8 @@ namespace Lobelia::Game {
 	//	Post Effect
 	//
 	//---------------------------------------------------------------------------------------------
-	PostEffect::PostEffect(const Math::Vector2& size, bool create_rt) :size(size) {
-		if (create_rt)rt = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 });
+	PostEffect::PostEffect(const Math::Vector2& size, bool create_rt, DXGI_FORMAT format) :size(size) {
+		if (create_rt)rt = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, format);
 	}
 	std::shared_ptr<Graphics::RenderTarget>& PostEffect::GetRenderTarget() {
 		if (!rt)STRICT_THROW("作成されていないバッファです");
@@ -198,7 +203,7 @@ namespace Lobelia::Game {
 		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, &null, nullptr);
 	}
 	//---------------------------------------------------------------------------------------------
-	SSAOCS::SSAOCS(const Math::Vector2& size) :PostEffect(size, false) {
+	SSAOCS::SSAOCS(const Math::Vector2& size) :PostEffect(size, false/*, DXGI_FORMAT_R16_FLOAT*/) {
 		cs = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "SSAOCS");
 		rwTexture = std::make_shared<Graphics::Texture>(size, DXGI_FORMAT_R16_FLOAT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
 		//rt = std::make_shared<Graphics::RenderTarget>(rwTexture);
@@ -234,9 +239,8 @@ namespace Lobelia::Game {
 		PostEffect::Begin(slot);
 		rwTexture->Set(this->slot, Graphics::ShaderStageList::PS);
 	}
-	SSAOPS::SSAOPS(const Math::Vector2& size) :PostEffect(size, false) {
+	SSAOPS::SSAOPS(const Math::Vector2& size) :PostEffect(size, true, DXGI_FORMAT_R16_FLOAT) {
 		//SSAO書き込み対象
-		rt = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16_FLOAT);
 		ps = std::make_unique<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "SSAOPS", Graphics::PixelShader::Model::PS_5_0, false);
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(7, Graphics::ShaderStageList::PS);
 		info.offsetPerPixel = 20.0f;
@@ -270,7 +274,7 @@ namespace Lobelia::Game {
 	}
 
 	//---------------------------------------------------------------------------------------------
-	GaussianFilter::GaussianFilter(const Math::Vector2& size, DXGI_FORMAT format) :PostEffect(size, true) {
+	GaussianFilterCS::GaussianFilterCS(const Math::Vector2& size, DXGI_FORMAT format) :PostEffect(size, true) {
 		csX = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianFilterCSX");
 		csY = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianFilterCSY");
 		rwTexturePass1 = std::make_shared<Graphics::Texture>(size, format, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
@@ -281,8 +285,8 @@ namespace Lobelia::Game {
 		view = std::make_unique<Graphics::View>(Math::Vector2(), size);
 		dispersion = 0.03f;
 	}
-	void GaussianFilter::SetDispersion(float dispersion) { this->dispersion = dispersion; }
-	void GaussianFilter::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, Graphics::Texture* texture) {
+	void GaussianFilterCS::SetDispersion(float dispersion) { this->dispersion = dispersion; }
+	void GaussianFilterCS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, Graphics::Texture* texture) {
 		if (size != texture->GetSize()) {
 			//解像度合わせる、基本ダウンサンプリングされる
 			this->rt->Clear(0x00000000);
@@ -317,19 +321,80 @@ namespace Lobelia::Game {
 		uavPass2->Clean(0);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::CS);
 	}
-	void GaussianFilter::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, std::shared_ptr<Graphics::RenderTarget> rt) { Dispatch(active_view, active_rt, rt->GetTexture()); }
-	void GaussianFilter::Render() {
+	void GaussianFilterCS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, std::shared_ptr<Graphics::RenderTarget> rt) { Dispatch(active_view, active_rt, rt->GetTexture()); }
+	void GaussianFilterCS::Render() {
 		Graphics::SpriteRenderer::Render(rwTexturePass2.get());
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
-	void GaussianFilter::Begin(int slot) {
+	void GaussianFilterCS::Begin(int slot) {
 		PostEffect::Begin(slot);
 		rwTexturePass2->Set(this->slot, Graphics::ShaderStageList::PS);
 	}
-	void GaussianFilter::DebugRender(const Math::Vector2& pos, const Math::Vector2& size) {
+	void GaussianFilterCS::DebugRender(const Math::Vector2& pos, const Math::Vector2& size) {
 		Graphics::SpriteRenderer::Render(rwTexturePass2.get(), pos, size, 0.0f, Math::Vector2(), rwTexturePass2->GetSize(), 0xFFFFFFFF);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
+	GaussianFilterPS::GaussianFilterPS(const Math::Vector2& size, DXGI_FORMAT format) :PostEffect(size, true, format) {
+		view = std::make_unique<Graphics::View>(Math::Vector2(), size);
+		vsX = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianFilterVSX", Graphics::VertexShader::Model::VS_5_0, false);
+		vsY = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianFilterVSY", Graphics::VertexShader::Model::VS_5_0, false);
+		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianFilterPS", Graphics::PixelShader::Model::PS_5_0, false);
+		pass2 = std::make_unique<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, format);
+		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(9, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
+		dispersion = 0.03f;
+	}
+	//分散率の設定
+	void GaussianFilterPS::SetDispersion(float dispersion) { this->dispersion = dispersion; }
+	//第三引数が実際にぼかす対象
+	void GaussianFilterPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, Graphics::Texture* texture) {
+		info.width = texture->GetSize().x;
+		info.height = texture->GetSize().y;
+		static constexpr const UINT DIVISION = 7;
+		if (dispersion <= 0.0f)dispersion = 0.01f;
+		float total = 0.0f;
+		// ガウス関数による重みの計算
+		for (int i = 0; i < DIVISION; i++) {
+			float pos = (float)i * 2.0f;
+			info.weight[i] = expf(-pos * pos * dispersion);
+			total += info.weight[i];
+		}
+		// 重みの規格化
+		for (int i = 0; i < DIVISION; i++) {
+			info.weight[i] = info.weight[i] / total * 0.5f;
+		}
+		cbuffer->Activate(info);
+		rt->Activate();
+		auto& defaultVS = Graphics::SpriteRenderer::GetVertexShader();
+		auto& defaultPS = Graphics::SpriteRenderer::GetPixelShader();
+		Graphics::SpriteRenderer::ChangeVertexShader(vsX);
+		Graphics::SpriteRenderer::ChangePixelShader(ps);
+		Graphics::SpriteRenderer::Render(texture);
+		pass2->Activate();
+		Graphics::SpriteRenderer::ChangeVertexShader(vsY);
+		Graphics::SpriteRenderer::Render(rt.get());
+		Graphics::SpriteRenderer::ChangeVertexShader(defaultVS);
+		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+		active_view->Activate();
+		active_rt->Activate();
+	}
+	void GaussianFilterPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, std::shared_ptr<Graphics::RenderTarget> rt) {
+		Dispatch(active_view, active_rt, rt->GetTexture());
+	}
+	//XYブラー結果を描画
+	void GaussianFilterPS::Render() {
+		Graphics::SpriteRenderer::Render(pass2.get());
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+	}
+	void GaussianFilterPS::Begin(int slot) {
+		PostEffect::Begin(slot);
+		pass2->GetTexture()->Set(this->slot, Graphics::ShaderStageList::PS);
+	}
+	void GaussianFilterPS::DebugRender(const Math::Vector2& pos, const Math::Vector2& size) {
+		Graphics::SpriteRenderer::Render(pass2.get(), pos, size, 0.0f, Math::Vector2(), pass2->GetTexture()->GetSize(), 0xFFFFFFFF);
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+	}
+
 	//---------------------------------------------------------------------------------------------
 	//
 	//		Scene
@@ -365,16 +430,16 @@ namespace Lobelia::Game {
 		}
 #endif
 #ifdef USE_SSAO
-#ifdef POST_PS
+#ifdef SSAO_PS
 		ssao = std::make_unique<SSAOPS>(scale);
 #endif
-#ifdef POST_CS
+#ifdef SSAO_CS
 		ssao = std::make_unique<SSAOCS>(scale);
 #endif
 #endif
 		shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, true);
 		//shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, false);
-		//gaussian = std::make_unique<GaussianFilter>(scale);
+		//gaussian = std::make_unique<GaussianFilterCS>(scale);
 	}
 	SceneDeferred::~SceneDeferred() {
 #ifdef _DEBUG
@@ -437,18 +502,20 @@ namespace Lobelia::Game {
 		shadow->End();
 		backBuffer->Activate();
 #ifdef USE_SSAO
-#ifdef POST_PS
+#ifdef SSAO_PS
 		ssao->CreateAO(backBuffer, deferredBuffer.get());
 #endif
-#ifdef POST_CS
+#ifdef SSAO_CS
 		ssao->CreateAO(deferredBuffer.get());
 #endif
-#endif
 		ssao->Begin(5);
+#endif
 		deferredBuffer->Begin();
 		deferredShader->Render();
 		deferredBuffer->End();
+#ifdef USE_SSAO
 		ssao->End();
+#endif
 		//gaussian->Dispatch(view.get(), backBuffer, deferredBuffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::COLOR));
 		//gaussian->Render();
 #ifdef _DEBUG

@@ -15,13 +15,16 @@ cbuffer SSAO :register(b7) {
 	float offsetPerPixelY : packoffset(c0.w);
 }
 cbuffer GaussianFilter : register(b9) {
-	float  weight0 : packoffset(c0.x);    // 重み
-	float  weight1 : packoffset(c0.y);    // 重み
-	float  weight2 : packoffset(c0.z);    // 重み
-	float  weight3 : packoffset(c0.w);    // 重み
-	float  weight4 : packoffset(c1.x);    // 重み
-	float  weight5 : packoffset(c1.y);    // 重み
-	float  weight6 : packoffset(c1.z);    // 重み
+	float  weight0 : packoffset(c0.x);
+	float  weight1 : packoffset(c0.y);
+	float  weight2 : packoffset(c0.z);
+	float  weight3 : packoffset(c0.w);
+	float  weight4 : packoffset(c1.x);
+	float  weight5 : packoffset(c1.y);
+	float  weight6 : packoffset(c1.z);
+	//PS専用
+	float  width : packoffset(c1.w);
+	float  height : packoffset(c2.x);
 };
 // static const float offsetPerPixel = 20.0f;
 //入力用
@@ -190,5 +193,54 @@ float4 SSAOPS(PS_IN_TEX ps_in) : SV_Target{
 	}
 	float4 ret = 1.0f - occ / pixel;
 	ret.a = 1.0f;
+	return ret;
+}
+
+struct GAUSSIAN_VS_OUT {
+	float4 pos    : SV_POSITION;
+	float2 tex0 : TEXCOORD0;   // テクセル
+	float2 tex1 : TEXCOORD1;   // テクセル
+	float2 tex2 : TEXCOORD2;   // テクセル
+	float2 tex3 : TEXCOORD3;   // テクセル
+	float2 tex4 : TEXCOORD4;   // テクセル
+	float2 tex5 : TEXCOORD5;   // テクセル
+	float2 tex6 : TEXCOORD6;   // テクセル
+	float2 tex7 : TEXCOORD7;   // テクセル
+};
+GAUSSIAN_VS_OUT GaussianFilterVSX(VS_IN_TEX vs_in) {
+	GAUSSIAN_VS_OUT output = (GAUSSIAN_VS_OUT)0;
+	output.pos = vs_in.pos;
+	output.tex0 = vs_in.tex + float2(-3.0f / width, 0.0f);
+	output.tex1 = vs_in.tex + float2(-2.0f / width, 0.0f);
+	output.tex2 = vs_in.tex + float2(-1.0f / width, 0.0f);
+	output.tex3 = vs_in.tex + float2(0.0f, 0.0f);
+	output.tex4 = vs_in.tex + float2(1.0f / width, 0.0f);
+	output.tex5 = vs_in.tex + float2(2.0f / width, 0.0f);
+	output.tex6 = vs_in.tex + float2(3.0f / width, 0.0f);
+	return output;
+}
+GAUSSIAN_VS_OUT GaussianFilterVSY(VS_IN_TEX vs_in) {
+	GAUSSIAN_VS_OUT output = (GAUSSIAN_VS_OUT)0;
+	output.pos = vs_in.pos;
+	output.tex0 = vs_in.tex + float2(0.0f, -3.0f / height);
+	output.tex1 = vs_in.tex + float2(0.0f, -2.0f / height);
+	output.tex2 = vs_in.tex + float2(0.0f, -1.0f / height);
+	output.tex3 = vs_in.tex + float2(0.0f, 0.0f);
+	output.tex4 = vs_in.tex + float2(0.0f, 1.0f / height);
+	output.tex5 = vs_in.tex + float2(0.0f, 2.0f / height);
+	output.tex6 = vs_in.tex + float2(0.0f, 3.0f / height);
+	return output;
+
+}
+//共通
+float4 GaussianFilterPS(GAUSSIAN_VS_OUT ps_in) :SV_Target{
+	float4 ret = (float4)0;
+	ret += (inputTex.Sample(samLinear, ps_in.tex0) + inputTex.Sample(samLinear, ps_in.tex6)) * weight0;
+	ret += (inputTex.Sample(samLinear, ps_in.tex1) + inputTex.Sample(samLinear, ps_in.tex5)) * weight1;
+	ret += (inputTex.Sample(samLinear, ps_in.tex2) + inputTex.Sample(samLinear, ps_in.tex4)) * weight2;
+	ret += (inputTex.Sample(samLinear, ps_in.tex3) + inputTex.Sample(samLinear, ps_in.tex3)) * weight3;
+	ret += (inputTex.Sample(samLinear, ps_in.tex4) + inputTex.Sample(samLinear, ps_in.tex2)) * weight4;
+	ret += (inputTex.Sample(samLinear, ps_in.tex5) + inputTex.Sample(samLinear, ps_in.tex1)) * weight5;
+	ret += (inputTex.Sample(samLinear, ps_in.tex6) + inputTex.Sample(samLinear, ps_in.tex0)) * weight6;
 	return ret;
 }

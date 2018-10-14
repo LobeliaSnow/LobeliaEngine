@@ -90,9 +90,14 @@ namespace Lobelia::Game {
 		std::unique_ptr<Graphics::ConstantBuffer<PointLights>> cbuffer;
 	};
 	//---------------------------------------------------------------------------------------------
-	class GaussianFilter;
 	//現状遠距離がすごく荒いので、カスケード急ぎたい。
 	//Parallel Split Shadow Map (カスケード系)実装予定
+#ifdef GAUSSIAN_CS
+	class GaussianFilterCS;
+#endif
+#ifdef GAUSSIAN_PS
+	class GaussianFilterPS;
+#endif
 	class ShadowBuffer {
 	public:
 		ShadowBuffer(const Math::Vector2& size, int split_count, bool use_variance);
@@ -125,8 +130,12 @@ namespace Lobelia::Game {
 		Math::Vector3 pos;
 		Math::Vector3 at;
 		Math::Vector3 up;
-		//バリアンスする際に使う予定。
-		std::unique_ptr<GaussianFilter> gaussian;
+#ifdef GAUSSIAN_CS
+		std::unique_ptr<GaussianFilterCS> gaussian;
+#endif
+#ifdef GAUSSIAN_PS
+		std::unique_ptr<GaussianFilterPS> gaussian;
+#endif
 		Info info;
 		Math::Vector2 size;
 		int count;
@@ -138,7 +147,7 @@ namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
 	class PostEffect abstract {
 	public:
-		PostEffect(const Math::Vector2& size, bool create_rt);
+		PostEffect(const Math::Vector2& size, bool create_rt, DXGI_FORMAT format = DXGI_FORMAT_R32G32B32A32_FLOAT);
 		virtual ~PostEffect() = default;
 		std::shared_ptr<Graphics::RenderTarget>& GetRenderTarget();
 		//デフォルトの動作は、rtの描画
@@ -216,10 +225,12 @@ namespace Lobelia::Game {
 	//何もしない時 6.0ms/約165FPS
 	//ぼかし有効化 7.0ms/約138FPS
 	//大体1.0ms
-	class GaussianFilter :public PostEffect {
+	//現状PSのほうが早い。なんでや。
+	class GaussianFilterCS :public PostEffect {
+		friend class GaussianFilterPS;
 	public:
-		GaussianFilter(const Math::Vector2& size, DXGI_FORMAT format = DXGI_FORMAT_R32G32B32A32_FLOAT);
-		~GaussianFilter() = default;
+		GaussianFilterCS(const Math::Vector2& size, DXGI_FORMAT format = DXGI_FORMAT_R32G32B32A32_FLOAT);
+		~GaussianFilterCS() = default;
 		//分散率の設定
 		void SetDispersion(float dispersion);
 		//第三引数が実際にぼかす対象
@@ -232,6 +243,8 @@ namespace Lobelia::Game {
 	private:
 		ALIGN(16) struct Info {
 			float weight[7];
+			float width;
+			float height;
 		};
 	private:
 		std::unique_ptr<Graphics::View> view;
@@ -241,6 +254,32 @@ namespace Lobelia::Game {
 		std::shared_ptr<Graphics::Texture> rwTexturePass2;
 		std::unique_ptr<UnorderedAccessView> uavPass1;
 		std::unique_ptr<UnorderedAccessView> uavPass2;
+		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
+		Info info;
+		//分散率
+		float dispersion;
+	};
+	class GaussianFilterPS :public PostEffect {
+	public:
+		GaussianFilterPS(const Math::Vector2& size, DXGI_FORMAT format = DXGI_FORMAT_R32G32B32A32_FLOAT);
+		~GaussianFilterPS() = default;
+		//分散率の設定
+		void SetDispersion(float dispersion);
+		//第三引数が実際にぼかす対象
+		void Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, Graphics::Texture* texture);
+		void Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, std::shared_ptr<Graphics::RenderTarget> rt);
+		//XYブラー結果を描画
+		void Render()override;
+		void Begin(int slot);
+		void DebugRender(const Math::Vector2& pos, const Math::Vector2& size);
+	private:
+		using Info = GaussianFilterCS::Info;
+	private:
+		std::unique_ptr<Graphics::View> view;
+		std::shared_ptr<Graphics::VertexShader> vsX;
+		std::shared_ptr<Graphics::VertexShader> vsY;
+		std::shared_ptr<Graphics::PixelShader> ps;
+		std::shared_ptr<Graphics::RenderTarget> pass2;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
 		Info info;
 		//分散率
@@ -268,14 +307,14 @@ namespace Lobelia::Game {
 		std::unique_ptr<PointLightDeferred> deferredShader;
 #endif
 #ifdef USE_SSAO
-#ifdef POST_PS
+#ifdef SSAO_PS
 		std::unique_ptr<SSAOPS> ssao;
 #endif
-#ifdef POST_CS
+#ifdef SSAO_CS
 		std::unique_ptr<SSAOCS> ssao;
 #endif
 #endif
-		std::unique_ptr<GaussianFilter> gaussian;
+		std::unique_ptr<GaussianFilterCS> gaussian;
 		std::unique_ptr<ShadowBuffer> shadow;
 		Math::Vector3 pos;
 		Math::Vector3 at;
