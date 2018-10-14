@@ -321,7 +321,7 @@ namespace Lobelia::Game {
 #ifdef USE_SSAO
 		ssao = std::make_unique<SSAO>(scale);
 #endif
-		shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, true);
+		shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720)*0.5f, 1, true);
 		//gaussian = std::make_unique<GaussianFilter>(scale);
 	}
 	SceneDeferred::~SceneDeferred() {
