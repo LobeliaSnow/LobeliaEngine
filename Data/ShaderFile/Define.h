@@ -3,7 +3,7 @@
 //#define __PARABOLOID__
 #define LIGHT_SUM 128
 //#define SIMPLE_SHADER
-#define POINT_LIGHT
+#define FULL_EFFECT
 //SSAO用定義
 #define USE_SSAO
 #define SSAO_BLOCK_SIZE 32
@@ -11,3 +11,6 @@
 //ガウスフィルタ用
 //周囲何ピクセルをフェッチするか
 #define GAUSSIAN_BLOCK 32
+//テスト用
+//#define POST_PS
+#define POST_CS

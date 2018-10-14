@@ -1,4 +1,5 @@
 #include "../Define.h"
+#include "Header2D.hlsli"
 
 //参照
 //https://sites.google.com/site/monshonosuana/directxno-hanashi-1/directx-109
@@ -7,7 +8,11 @@
 cbuffer SSAO :register(b7) {
 	//チェックする深度の範囲
 	float offsetPerPixel : packoffset(c0.x);
+	//AO使うか否か
 	int useAO : packoffset(c0.y);
+	//PS用
+	float offsetPerPixelX : packoffset(c0.z);
+	float offsetPerPixelY : packoffset(c0.w);
 }
 cbuffer GaussianFilter : register(b9) {
 	float  weight0 : packoffset(c0.x);    // 重み
@@ -21,6 +26,7 @@ cbuffer GaussianFilter : register(b9) {
 // static const float offsetPerPixel = 20.0f;
 //入力用
 Texture2D inputTex :register(t0);
+//CS実装
 //出力用
 RWTexture2D<float4> outputTex :register(u0);
 //共有メモリ
@@ -164,3 +170,25 @@ void GaussianFilterCSY(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread
 //	}
 //	outputTex[uint2(thread_id.x, thread_id.y)] = (float4)color / pixel;
 //}
+
+//PS実装
+SamplerState samLinear : register(s0);
+
+float4 SSAOPS(PS_IN_TEX ps_in) : SV_Target{
+	float own = inputTex.Sample(samLinear,ps_in.tex).z;
+	float occ = 0.0f;
+	float pixel = 0.0f;
+	for (int x = -SSAO_RECT_RANGE; x <= SSAO_RECT_RANGE; x++) {
+		for (int y = -SSAO_RECT_RANGE; y <= SSAO_RECT_RANGE; y++) {
+			float check = inputTex.Sample(samLinear, ps_in.tex + float2(offsetPerPixelX, offsetPerPixelY) * float2(x,y)).z;
+			float depth = own - check;
+			if (depth <= offsetPerPixel) {
+				occ += max(-1.0f, depth / offsetPerPixel);
+				pixel += 1.0f;
+			}
+		}
+	}
+	float4 ret = 1.0f - occ / pixel;
+	ret.a = 1.0f;
+	return ret;
+}

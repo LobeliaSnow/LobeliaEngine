@@ -5,6 +5,8 @@
 
 #define _DEBUG
 
+//最終的にはリンケージにてある程度は解決できるようにしたい
+
 //ワールド位置
 Texture2D txDeferredPos : register(t0);
 //ワールド法線
@@ -43,6 +45,7 @@ struct GBufferPS_IN {
 	float4 lightTex: TEXCOORD2;
 	float4 lightViewPos : LVPOSITION0;
 };
+//出力構造体
 struct MRTOutput {
 	float4 pos : SV_Target0;
 	float4 normal : SV_Target1;
@@ -140,10 +143,15 @@ float4 CreateShadowMapPS(ShadowOut input) :SV_Target{
 	float alpha = txDiffuse.Sample(samLinear, input.tex).a;
 	clip(alpha - 0.9f);
 	float4 depth = input.depth.z / input.depth.w;
+	//大事！
+	//xが深度の期待値で、yが深度の期待値の2乗
+	//この値がぼかされて周辺の平均値となり、チェビシェフの不等式に使えるようになる
+	if (useVariance)depth.y = depth.x*depth.x;
 	depth.a = 1.0f;
 	return depth;
 }
 //GBuffer作成
+//TODO : 各所関数化
 MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	MRTOutput output = (MRTOutput)0;
 	output.pos = ps_in.worldPos;
@@ -160,6 +168,7 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	else output.normal = ps_in.normal * 0.5f + 0.5f;
 	//影生成
 	if (useShadowMap) {
+		//シャドウマップサンプル先を求める
 		float4 shadowTex = ps_in.lightTex / ps_in.lightTex.w;
 		//シャドウマップの範囲外は影なし
 		if (shadowTex.x < 0.0f || shadowTex.x > 1.0f || shadowTex.y < 0.0f || shadowTex.y > 1.0f) {
@@ -174,19 +183,22 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 				//参考
 				//http://maverickproj.web.fc2.com/d3d11_28.html
 				//https://riyaaaaasan.hatenablog.com/entry/2018/03/15/215910
+				//特にお世話になった シャドウマップ作成時にyに二乗データを入れないといけない。
+				//http://marupeke296.com/cgi-bin/cbbs/cbbs.cgi?mode=al2&namber=2399&rev=&no=0&P=R&KLOG=3
 				if (lightSpaceLength - 0.01f > lightDepth.x) {
 					//チェビシェフの不等式
-					float variance = lightDepth.y - lightDepth.x * lightDepth.x;
+					float variance = lightDepth.y - (lightDepth.x * lightDepth.x);
+					//variance = min(1.0f, max(0.0f, variance + 0.01f));
 					float md = lightSpaceLength - lightDepth.x;
 					float p = variance / (variance + (md*md));
-					float shadow = max(0.5f, p);
-					//float shadow = saturate(max(p, lightSpaceLength <= lightDepth.x));
+					float shadow = max(p, lightSpaceLength <= lightDepth.x);
+					shadow = saturate(shadow * 0.5f + 0.5f);
 					output.shadow = float4((float3)shadow, 1.0f);
 				}
 				else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
 			}
-			else
-			{	//何のひねりもない単純なもの
+			else {	//何のひねりもない単純なもの
+				//SampleCmpLevelZero使うべき?
 				//Slope Scale Depth Bias
 				//http://www.project-asura.com/program/d3d11/d3d11_009.html
 				//最大深度傾斜を求める
@@ -197,11 +209,9 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 				const float slopedScaleBias = 0.01f;
 				//深度クランプ値
 				const float depthBiasClamp = 0.1f;
+				//アクネ対策の補正値算出
 				float shadowBias = bias + slopedScaleBias * maxDepthSlope;
-				//SampleCmpLevelZeroこれ使うべき?
-				//float threshold = txLightSpaceDepthMap0.SampleCmpLevelZero(samComparsionLinear, shadowTex.xy, lightSpaceLength + min(shadowBias, depthBiasClamp));
-				//output.shadow = float4((float3)lerp(float3(0.34f, 0.34f, 0.34f), float3(1.0f, 1.0f, 1.0f), threshold), 1.0f);
-				//float lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).x;
+				//深度判定
 				if (lightSpaceLength > lightDepth.x + min(shadowBias, depthBiasClamp)) {
 					output.shadow = float4((float3)1.0f / 2.0f, 1.0f);
 				}
@@ -214,6 +224,7 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	//デバッグ表示用
 	output.normal.a = 1.0f;
 #endif
+	//現状SSAO用 深度値のみ使用している形だが、あればほかのことにも使えそうなので全て書き出し
 	output.viewPos = ps_in.viewPos;
 	output.viewPos.a = 1.0f;
 	return output;
@@ -256,12 +267,12 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	color.rgb *= lambert;
 	//アンビエントオクルージョン
 	if (useAO) {
-		float ao = txDeferredAO.Sample(samLinear, ps_in.tex).x;
+		float ao = txDeferredAO.Sample(samLinear, ps_in.tex).r;
 		ao = saturate(ao);
 		color.rgb *= ao;
 	}
 	//影 この段階ではもうバリアンスとかは考慮の必要がない
-	if (useShadowMap) color.rgb *= txShadow.Sample(samLinear, ps_in.tex);
+	if (useShadowMap) color.rgb *= txShadow.Sample(samLinear, ps_in.tex).r;
 	//最適化などはまだしていない
 	float4 lightColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	[unroll]//attribute
