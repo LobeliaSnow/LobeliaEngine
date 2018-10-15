@@ -8,7 +8,6 @@
 #define SSAO_BLOCK_SIZE 32
 #define SSAO_RECT_RANGE 8
 //ガウスフィルタ用
-//周囲何ピクセルをフェッチするか
 #define GAUSSIAN_BLOCK 32
 //テスト用
 #define USE_SSAO
@@ -16,3 +15,4 @@
 #define SSAO_CS
 #define GAUSSIAN_PS
 //#define GAUSSIAN_CS
+#define CASCADE

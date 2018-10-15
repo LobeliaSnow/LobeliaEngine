@@ -97,44 +97,106 @@ namespace Lobelia::Game {
 	}
 	//---------------------------------------------------------------------------------------------
 	ShadowBuffer::ShadowBuffer(const Math::Vector2& size, int split_count, bool use_variance) :size(size), count(split_count) {
-		rts.resize(split_count);
+		rts.resize(split_count); views.resize(split_count);
+		//分割する際のnear/farを持つ、+1の理由は、最初のnearから始まって次のfarだけを記録していくが
+		//最初のfarだけはnearとして共有されないので、その分の+1
+		cascadeValues.resize(split_count + 1);
+		splitPositions.resize(split_count);
+		gaussian.resize(split_count);
+		DXGI_FORMAT format = DXGI_FORMAT_R16G16_FLOAT;
 		for (int i = 0; i < split_count; i++) {
-			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16_FLOAT);
+			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, format);
+			views[i] = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 4.0f, 50, 400.0f);
+#ifdef GAUSSIAN_CS
+			gaussian[i] = std::make_unique<GaussianFilterCS>(size, format);
+#endif
+#ifdef GAUSSIAN_PS
+			gaussian[i] = std::make_unique<GaussianFilterPS>(size, format);
+#endif
+			gaussian[i]->SetDispersion(0.01f);
 		}
+		//sampler = std::make_unique<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::COMPARISON_LINEAR, 16);
 		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapVS", Graphics::VertexShader::Model::VS_5_0, false);
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapPS", Graphics::PixelShader::Model::PS_5_0, false);
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(10, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
-		view = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 2.0f, 50, 400.0f);
 		info.useShadowMap = TRUE; info.useVariance = i_cast(use_variance);
-#ifdef GAUSSIAN_CS
-		gaussian = std::make_unique<GaussianFilterCS>(size, DXGI_FORMAT_R16G16_FLOAT);
+#ifdef CASCADE
+		float nearZ = 1.0f;
+		float farZ = 1000.0f;
+		ComputeSplit(0.5f, nearZ, farZ);
 #endif
-#ifdef GAUSSIAN_PS
-		gaussian = std::make_unique<GaussianFilterPS>(size, DXGI_FORMAT_R16G16_FLOAT);
+		//縮小バッファにして処理稼ぐのもいいかも
+#ifdef _DEBUG
+		HostConsole::GetInstance()->IntRegister("deferred", "use shadow", &info.useShadowMap, false);
+		HostConsole::GetInstance()->IntRegister("deferred", "use variance", &info.useVariance, false);
 #endif
-		gaussian->SetDispersion(0.01f);
-		sampler = std::make_unique<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::COMPARISON_LINEAR, 16);
 	}
 	void ShadowBuffer::SetPos(const Math::Vector3& pos) { this->pos = pos; }
 	void ShadowBuffer::SetTarget(const Math::Vector3& at) { this->at = at; }
+	//ちょっと大丈夫かは不明、ダメそうなら調整します
+	void ShadowBuffer::ComputeSplit(float lamda, float near_z, float far_z) {
+#ifdef CASCADE
+		//通常のシャドウマップ
+		if (count == 1) {
+			cascadeValues[0] = near_z;
+			cascadeValues[1] = far_z;
+			return;
+		}
+		//カスケード
+		float invM = 1.0f / f_cast(count);
+		float farDivisionNear = far_z / near_z;
+		float farSubNear = far_z - near_z;
+		//実用分割スキームを適用
+		// ※ GPU Gems 3, Chapter 10. Parallel-Split Shadow Maps on Programmable GPUs.
+		//    http://http.developer.nvidia.com/GPUGems3/gpugems3_ch10.html を参照.
+		for (int i = 1; i < count + 1; i++) {
+			//対数分割スキーム
+			float log = near_z * powf(farDivisionNear, invM*i);
+			//一様分割スキーム
+			float uni = near_z + farSubNear * i*invM;
+			//上記の2つの演算結果を線形補間する
+			cascadeValues[i] = lamda * log + uni * (1.0f - lamda);
+		}
+		cascadeValues[0] = near_z;
+		cascadeValues[count] = far_z;
+		for (int i = 1; i < count + 1; i++) {
+			info.splitPos[i - 1] = cascadeValues[i];
+		}
+#endif
+	}
 	void ShadowBuffer::CameraUpdate() {
 		Math::Vector3 front = at - pos; front.Normalize();
 		up = Math::Vector3(0.01f, 1.0f, 0.01f); up.Normalize();
 		Math::Vector3 right = Math::Vector3::Cross(up, front); right.Normalize();
 		up = Math::Vector3::Cross(front, right);
-		view->SetEyePos(pos);
-		view->SetEyeTarget(at);
-		view->SetEyeUpDirection(up);
+#ifdef CASCADE
+		info.pos.x = pos.x; info.pos.y = pos.y; info.pos.z = pos.z; info.pos.w = 1.0f;
+		info.front.x = front.x; info.front.y = front.y; info.front.z = front.z; info.front.w = 0.0f;
+#endif
+		for (int i = 0; i < count; i++) {
+			views[i]->SetEyePos(pos);
+			views[i]->SetEyeTarget(at);
+			views[i]->SetEyeUpDirection(up);
+#ifdef CASCADE
+			views[i]->SetNear(cascadeValues[i]);
+			views[i]->SetFar(cascadeValues[count]);
+#endif
+		}
 	}
 	void ShadowBuffer::AddModel(std::shared_ptr<Graphics::Model> model) { models.push_back(model); }
 	void ShadowBuffer::CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt) {
+#ifdef _DEBUG
+		if (Input::GetKeyboardKey(DIK_0) == 1)info.useShadowMap = !info.useShadowMap;
+		if (Input::GetKeyboardKey(DIK_9) == 1)info.useVariance = !info.useVariance;
+#endif
+		if (!info.useShadowMap)return;
 		CameraUpdate();
 		auto& defaultVS = Graphics::Model::GetVertexShader();
 		auto& defaultPS = Graphics::Model::GetPixelShader();
 		Graphics::Model::ChangeVertexShader(vs);
 		Graphics::Model::ChangePixelShader(ps);
-		view->Activate();
 		for (int i = 0; i < count; i++) {
+			views[i]->Activate();
 			rts[i]->Clear(0x00000000);
 			rts[i]->Activate();
 			for (auto&& weak : models) {
@@ -149,25 +211,38 @@ namespace Lobelia::Game {
 		active_view->Activate();
 		active_rt->Activate();
 		//ガウスによるぼかし バリアンス用
-		if (info.useVariance)gaussian->Dispatch(active_view, active_rt, rts[0]->GetTexture());
+		if (info.useVariance) {
+			for (int i = 0; i < count; i++) {
+				gaussian[i]->Dispatch(active_view, active_rt, rts[i]->GetTexture());
+			}
+		}
 	}
 	void ShadowBuffer::Begin() {
 		//情報の更新
-		DirectX::XMStoreFloat4x4(&info.view, view->GetColumnViewMatrix());
-		DirectX::XMStoreFloat4x4(&info.proj, view->GetColumnProjectionMatrix());
+		DirectX::XMStoreFloat4x4(&info.view, views[0]->GetColumnViewMatrix());
+		for (int i = 0; i < count; i++) {
+			DirectX::XMStoreFloat4x4(&info.proj[i], views[i]->GetColumnProjectionMatrix());
+			if (info.useVariance)gaussian[i]->Begin(6 + i);
+			else rts[i]->GetTexture()->Set(6 + i, Graphics::ShaderStageList::PS);
+		}
 		cbuffer->Activate(info);
-		sampler->Set(1);
-		if (info.useVariance)gaussian->Begin(6);
-		else rts[0]->GetTexture()->Set(6, Graphics::ShaderStageList::PS);
 	}
 	void ShadowBuffer::End() {
-		if (info.useVariance)gaussian->End();
-		else Graphics::Texture::Clean(6, Graphics::ShaderStageList::PS);
+		if (info.useVariance) {
+			for (int i = 0; i < count; i++) {
+				gaussian[i]->End();
+			}
+		}
+		else {
+			for (int i = 0; i < count; i++) {
+				Graphics::Texture::Clean(6 + i, Graphics::ShaderStageList::PS);
+			}
+		}
 	}
 	void ShadowBuffer::DebugRender() {
-		gaussian->DebugRender(Math::Vector2(0.0f, 200.0f), Math::Vector2(200.0f, 200.0f));
 		for (int i = 0; i < count; i++) {
-			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2((i + 1)*200.0f, 200.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), size, 0xFFFFFFFF);
+			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2(i*200.0f, 200.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), size, 0xFFFFFFFF);
+			gaussian[i]->DebugRender(Math::Vector2(i*200.0f, 400.0f), Math::Vector2(200.0f, 200.0f));
 		}
 	}
 	//---------------------------------------------------------------------------------------------
@@ -221,9 +296,10 @@ namespace Lobelia::Game {
 	void SSAOCS::CreateAO(DeferredBuffer* deferred_buffer) {
 		//int slot, ID3D11ShaderResourceView* uav
 #ifdef _DEBUG
-		if (Input::GetKeyboardKey(DIK_SPACE) == 1)info.useAO = !info.useAO;
+		if (Input::GetKeyboardKey(DIK_8) == 1) info.useAO = !info.useAO;
 #endif
 		cbuffer->Activate(info);
+		if (!info.useAO)return;
 		deferred_buffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::VIEW_POS)->GetTexture()->Set(0, Graphics::ShaderStageList::CS);
 		uav->Set(0);
 		const Math::Vector2& size = Application::GetInstance()->GetWindow()->GetSize();
@@ -254,7 +330,7 @@ namespace Lobelia::Game {
 	}
 	void SSAOPS::CreateAO(Graphics::RenderTarget* active_rt, DeferredBuffer* deferred_buffer) {
 #ifdef _DEBUG
-		if (Input::GetKeyboardKey(DIK_SPACE) == 1)info.useAO = !info.useAO;
+		if (Input::GetKeyboardKey(DIK_8) == 1) info.useAO = !info.useAO;
 #endif
 		rt->Activate();
 		cbuffer->Activate(info);
@@ -364,14 +440,15 @@ namespace Lobelia::Game {
 		}
 		cbuffer->Activate(info);
 		rt->Activate();
+		view->Activate();
 		auto& defaultVS = Graphics::SpriteRenderer::GetVertexShader();
 		auto& defaultPS = Graphics::SpriteRenderer::GetPixelShader();
 		Graphics::SpriteRenderer::ChangeVertexShader(vsX);
 		Graphics::SpriteRenderer::ChangePixelShader(ps);
-		Graphics::SpriteRenderer::Render(texture);
+		Graphics::SpriteRenderer::Render(texture, Math::Vector2(), rt->GetTexture()->GetSize(), 0.0f, Math::Vector2(), texture->GetSize(), 0xFFFFFFFF);
 		pass2->Activate();
 		Graphics::SpriteRenderer::ChangeVertexShader(vsY);
-		Graphics::SpriteRenderer::Render(rt.get());
+		Graphics::SpriteRenderer::Render(rt.get(), Math::Vector2(), rt->GetTexture()->GetSize(), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFF);
 		Graphics::SpriteRenderer::ChangeVertexShader(defaultVS);
 		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
@@ -437,7 +514,11 @@ namespace Lobelia::Game {
 		ssao = std::make_unique<SSAOCS>(scale);
 #endif
 #endif
-		shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, true);
+#ifdef CASCADE
+		shadow = std::make_unique<ShadowBuffer>(scale*2.0f, 4, true);
+#else
+		shadow = std::make_unique<ShadowBuffer>(scale, 1, true);
+#endif
 		//shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, false);
 		//gaussian = std::make_unique<GaussianFilterCS>(scale);
 	}
@@ -488,7 +569,7 @@ namespace Lobelia::Game {
 		deferredShader->Update();
 #endif
 		shadow->AddModel(model);
-		shadow->SetPos(Math::Vector3(100.0f, 80.0f, 100.0f));
+		shadow->SetPos(Math::Vector3(200.0f, 130.0f, 200.0f));
 		//shadow->SetPos(pos);
 	}
 	void SceneDeferred::AlwaysRender() {

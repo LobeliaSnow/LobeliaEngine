@@ -92,12 +92,15 @@ namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
 	//現状遠距離がすごく荒いので、カスケード急ぎたい。
 	//Parallel Split Shadow Map (カスケード系)実装予定
+	//カスケードの参考
+	//http://www.project-asura.com/program/d3d11/d3d11_009.html
 #ifdef GAUSSIAN_CS
 	class GaussianFilterCS;
 #endif
 #ifdef GAUSSIAN_PS
 	class GaussianFilterPS;
 #endif
+	//後に作り直す
 	class ShadowBuffer {
 	public:
 		ShadowBuffer(const Math::Vector2& size, int split_count, bool use_variance);
@@ -106,39 +109,67 @@ namespace Lobelia::Game {
 		void SetTarget(const Math::Vector3& at);
 		void CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt);
 		//シャドウマップをセットする
+		//テクスチャスロット6~6+split_countセットする
+		//コンスタントバッファは
+		//ALIGN(16) struct Info {
+		//	DirectX::XMFLOAT4X4 view;
+		//	DirectX::XMFLOAT4X4 proj[split_count];
+		//#ifdef CASCADE
+		//	Math::Vector4 lpos;
+		// Math::Vector4 ldir;
+		//	Math::Vector4 splitPos;
+		//#endif
+		//	int useShadowMap;
+		//	int useVariance;
+		//};
+		//の形式でバインドされる
 		void Begin();
 		void End();
 		void DebugRender();
 	private:
+		//void AdjustClipPlanes();
+		void ComputeSplit(float lamda, float near_z, float far_z);
 		void CameraUpdate();
 	private:
+		//後に代わる
 		ALIGN(16) struct Info {
 			DirectX::XMFLOAT4X4 view;
-			DirectX::XMFLOAT4X4 proj;
+#ifdef CASCADE
+			//4前提
+			std::array<DirectX::XMFLOAT4X4, 4> proj;
+			Math::Vector4 pos;
+			Math::Vector4 front;
+			float splitPos[4];
+#else
+			std::array<DirectX::XMFLOAT4X4, 1> proj;
+#endif
 			int useShadowMap;
 			int useVariance;
 		};
 	private:
-		std::unique_ptr<Graphics::View> view;
-		//カスケードへの布石
+		std::vector<std::unique_ptr<Graphics::View>> views;
 		std::vector<std::shared_ptr<Graphics::RenderTarget>> rts;
+		//near/farが入ってます
+		std::vector<float> cascadeValues;
+		//分割位置が入ってます
+		std::vector<float> splitPositions;
 		std::list<std::weak_ptr<Graphics::Model>> models;
 		std::shared_ptr<Graphics::VertexShader> vs;
 		std::shared_ptr<Graphics::PixelShader> ps;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
-		std::unique_ptr<Graphics::SamplerState> sampler;
+		//std::unique_ptr<Graphics::SamplerState> sampler;
 		Math::Vector3 pos;
 		Math::Vector3 at;
 		Math::Vector3 up;
 #ifdef GAUSSIAN_CS
-		std::unique_ptr<GaussianFilterCS> gaussian;
+		std::vector<std::unique_ptr<GaussianFilterCS>> gaussian;
 #endif
 #ifdef GAUSSIAN_PS
-		std::unique_ptr<GaussianFilterPS> gaussian;
+		std::vector<std::unique_ptr<GaussianFilterPS>> gaussian;
 #endif
 		Info info;
 		Math::Vector2 size;
-		int count;
+		const int count;
 	};
 	//---------------------------------------------------------------------------------------------
 	//
@@ -184,6 +215,7 @@ namespace Lobelia::Game {
 		//TODO : 解像度下げれるようにする
 		SSAOCS(const Math::Vector2& size);
 		//テクスチャそのまま渡せばいいだけの方式にすれば汎用性は上がる
+		//useAOオプションが無効の時はAOマップは作成されない
 		void CreateAO(DeferredBuffer* deferred_buffer);
 		//AOを直接描画することはないため、デバッグ描画を入れている
 		void Render()override;
@@ -314,7 +346,7 @@ namespace Lobelia::Game {
 		std::unique_ptr<SSAOCS> ssao;
 #endif
 #endif
-		std::unique_ptr<GaussianFilterCS> gaussian;
+		//std::unique_ptr<GaussianFilterCS> gaussian;
 		std::unique_ptr<ShadowBuffer> shadow;
 		Math::Vector3 pos;
 		Math::Vector3 at;
