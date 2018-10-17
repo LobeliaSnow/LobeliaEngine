@@ -19,6 +19,7 @@ Texture2D txDeferredViewPos : register(t3);
 Texture2D txShadow : register(t4);
 //アンビエントオクルージョン項
 Texture2D txDeferredAO : register(t5);
+
 //深度バッファ
 //カスケード用
 Texture2D txLightSpaceDepthMap0 : register(t6);
@@ -136,6 +137,7 @@ ShadowOut CreateShadowMapVS(VS_IN vs_in) {
 	output.tex = vs_in.tex;
 	return output;
 }
+
 //G-Buffer作成
 GBufferPS_IN CreateGBufferVS(VS_IN vs_in) {
 	GBufferPS_IN vs_out = (GBufferPS_IN)0;
@@ -148,7 +150,7 @@ GBufferPS_IN CreateGBufferVS(VS_IN vs_in) {
 	vs_out.normal = mul(float4(vs_in.normal.xyz, 0), world);
 	if (useNormalMap) {
 		//偽従法線生成
-		vs_out.binormal = float4(cross(normalize(float3(0.0f, 1.0f, 0.1f)), vs_out.normal.xyz), 0.0f);
+		vs_out.binormal = float4(cross(normalize(float3(0.001f, 1.0f, 0.001f)), vs_out.normal.xyz), 0.0f);
 		//偽接線生成
 		vs_out.tangent = float4(cross(vs_out.normal, vs_out.binormal.xyz), 0.0f);
 	}
@@ -267,6 +269,9 @@ float4 CascadeShadow(GBufferPS_IN ps_in) {
 		shadowTex = ps_in.lightTex[3] / ps_in.lightTex[3].w;
 		lightDepth = txLightSpaceDepthMap3.Sample(samLinear, shadowTex.xy).rg;
 		lightSpaceLength = ps_in.lightViewPos[3].z / ps_in.lightViewPos[3].w;
+	}
+	if (shadowTex.x < 0.0f || shadowTex.x > 1.0f || shadowTex.y < 0.0f || shadowTex.y > 1.0f) {
+		return float4(1.0f, 1.0f, 1.0f, 1.0f);
 	}
 	//最大深度傾斜を求める
 	float maxDepthSlope = max(abs(ddx(shadowTex.z)), abs(ddy(shadowTex.z)));
@@ -407,16 +412,29 @@ float3 PointLightShading(int index, float3 pos, float3 normal) {
 	// float attenuation = 1.0f / (dist + pointLightAttenuation[index] * dist * dist);
 	return pointLightColor[index] * attenuation;
 }
+//線形フォグのフォグファクター算出
+float CalcLinearFogFactor(float view_depth) {
+	float fog = (fogEnd - view_depth) / (fogEnd - fogBegin);
+	fog *= density;
+	fog = saturate(fog);
+	return fog;
+}
+
 //実際のシェーディングを行う部分
 float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	float4 pos = txDeferredPos.Sample(samLinear, ps_in.tex);
+	float4 vpos = txDeferredViewPos.Sample(samLinear, ps_in.tex);
 	//デコード
 	float4 normal = txDeferredNormal.Sample(samLinear, ps_in.tex) * 2.0 - 1.0;
 	normal.a = 0.0f;
 	float4 color = txDeferredColor.Sample(samLinear, ps_in.tex);
 	//環境光
-	float3 eyeVector = normalize(cpos - pos);
-	float lambert = saturate(dot(eyeVector,normal));
+	//float3 eyeVector = normalize(cpos - pos);
+	//float lambert = saturate(dot(eyeVector, normal));
+	//ハーフランバート
+	float lambert = saturate(dot(lightDirection,normal));
+	lambert = lambert * 0.5f + 0.5f;
+	lambert = lambert * lambert;
 	color.rgb *= lambert;
 	//アンビエントオクルージョン
 	if (useAO) {
@@ -435,5 +453,13 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 			color.rgb += PointLightShading(i, pos.xyz, normal.xyz);
 		}
 	}
-	return color;
+	//Linear Fog
+	//距離を0.0~1.0の間に正規化
+	float fog = 1.0f;
+	float4 fogValue = (float4)0;
+	if (useLinearFog) {
+		fog = CalcLinearFogFactor(vpos.z);
+	}
+	fogValue = (1.0f - fog)*float4(fogColor, 1.0f);
+	return color * fog + fogValue;
 }

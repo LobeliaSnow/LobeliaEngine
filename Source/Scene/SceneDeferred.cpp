@@ -1,8 +1,32 @@
 #include "Lobelia.hpp"
 #include "SceneDeferred.hpp"
 
-//ComputeShaderを用いたSSAOをやってみたい
-//ComputeShaderを用いたアンチエイリアスをやってみたい
+//Screen Space Motion Blurやってみたい
+//被写界深度やってみたい
+
+//スキンメッシュのキャラを歩かせて、当たり判定(Raypick)をGPGPUでとるのも面白いと思う
+//歩かせるのはActorクラス使えばすぐ
+
+//TODO : SSAOPSの可変解像度対応(ビューを作ってやるだけ？)
+//TODO : シェーダーの整理
+
+//テストシーン
+//最終的にここでの経験と結果を用いてレンダリングエンジンを作る予定ではいるが、就活終わった後になると思われる。
+
+//現状実装されてるもの一覧(このシーンはディファードシェーディングです)
+//Define.hのスイッチで一部の機能のスイッチが可能
+//ハーフランバート
+//線形フォグ
+//法線マップ
+//複数ポイントライト
+//SSAOPS 遅い
+//SSAOCS PSより早い
+//ガウスフィルタPS
+//ガウスフィルタCS 現状遅い 最適化不足
+//シャドウマップ
+//バリアンスシャドウマップ
+//カスケードシャドウマップ
+//カスケードバリアンスシャドウマップ(カスケードシャドウマップと、バリアンスシャドウマップの合わせ技)
 
 namespace Lobelia::Game {
 	namespace {
@@ -18,6 +42,7 @@ namespace Lobelia::Game {
 		//	rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16B16A16_FLOAT);
 		//}
 		rts[i_cast(BUFFER_TYPE::POS)] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16B16A16_FLOAT);
+		//さらに速度重視なら、精度はやばいがこれもありDXGI_FORMAT_R11G11B10_FLOAT
 		rts[i_cast(BUFFER_TYPE::NORMAL)] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16B16A16_FLOAT);
 		rts[i_cast(BUFFER_TYPE::COLOR)] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R8G8B8A8_SNORM);
 		rts[i_cast(BUFFER_TYPE::VIEW_POS)] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16B16A16_FLOAT);
@@ -104,6 +129,7 @@ namespace Lobelia::Game {
 		splitPositions.resize(split_count);
 		gaussian.resize(split_count);
 		DXGI_FORMAT format = DXGI_FORMAT_R16G16_FLOAT;
+		Math::Vector2 ssize = size;
 		for (int i = 0; i < split_count; i++) {
 			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, format);
 			views[i] = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 4.0f, 50, 400.0f);
@@ -120,11 +146,6 @@ namespace Lobelia::Game {
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapPS", Graphics::PixelShader::Model::PS_5_0, false);
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(10, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
 		info.useShadowMap = TRUE; info.useVariance = i_cast(use_variance);
-#ifdef CASCADE
-		float nearZ = 1.0f;
-		float farZ = 1000.0f;
-		ComputeSplit(0.5f, nearZ, farZ);
-#endif
 		//縮小バッファにして処理稼ぐのもいいかも
 #ifdef _DEBUG
 		HostConsole::GetInstance()->IntRegister("deferred", "use shadow", &info.useShadowMap, false);
@@ -172,6 +193,9 @@ namespace Lobelia::Game {
 #ifdef CASCADE
 		info.pos.x = pos.x; info.pos.y = pos.y; info.pos.z = pos.z; info.pos.w = 1.0f;
 		info.front.x = front.x; info.front.y = front.y; info.front.z = front.z; info.front.w = 0.0f;
+		float nearZ = 1.0f;
+		float farZ = 1000.0f;
+		ComputeSplit(0.5f, nearZ, farZ);
 #endif
 		for (int i = 0; i < count; i++) {
 			views[i]->SetEyePos(pos);
@@ -189,7 +213,10 @@ namespace Lobelia::Game {
 		if (Input::GetKeyboardKey(DIK_0) == 1)info.useShadowMap = !info.useShadowMap;
 		if (Input::GetKeyboardKey(DIK_9) == 1)info.useVariance = !info.useVariance;
 #endif
-		if (!info.useShadowMap)return;
+		if (!info.useShadowMap) {
+			models.clear();
+			return;
+		}
 		CameraUpdate();
 		auto& defaultVS = Graphics::Model::GetVertexShader();
 		auto& defaultPS = Graphics::Model::GetPixelShader();
@@ -205,9 +232,9 @@ namespace Lobelia::Game {
 				model->Render();
 			}
 		}
+		models.clear();
 		Graphics::Model::ChangeVertexShader(defaultVS);
 		Graphics::Model::ChangePixelShader(defaultPS);
-		models.clear();
 		active_view->Activate();
 		active_rt->Activate();
 		//ガウスによるぼかし バリアンス用
@@ -278,13 +305,15 @@ namespace Lobelia::Game {
 		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, &null, nullptr);
 	}
 	//---------------------------------------------------------------------------------------------
-	SSAOCS::SSAOCS(const Math::Vector2& size) :PostEffect(size, false/*, DXGI_FORMAT_R16_FLOAT*/) {
+	//DXGI_FORMAT_R16G16B16A16_FLOATでするとちらついてバグる。理由不明。
+	SSAOCS::SSAOCS(const Math::Vector2& size) :PostEffect(size, true, /*DXGI_FORMAT_R16G16B16A16_FLOAT*/DXGI_FORMAT_R32G32B32A32_FLOAT) {
 		cs = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/2D/PostEffect.hlsl", "SSAOCS");
+		//解像度合わせるよう
+		view = std::make_unique<Graphics::View>(Math::Vector2(), size);
 		rwTexture = std::make_shared<Graphics::Texture>(size, DXGI_FORMAT_R16_FLOAT, D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET | D3D11_BIND_UNORDERED_ACCESS, DXGI_SAMPLE_DESC{ 1,0 });
-		//rt = std::make_shared<Graphics::RenderTarget>(rwTexture);
 		uav = std::make_unique<UnorderedAccessView>(rwTexture.get());
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(7, Graphics::ShaderStageList::CS | Graphics::ShaderStageList::PS);
-		info.offsetPerPixel = 20.0f;
+		info.offsetPerPixel = 5.0f;
 		info.useAO = TRUE;
 		//PS用 使わないパラメーター
 		info.offsetPerPixelX = 1.0f; info.offsetPerPixelY = 1.0f;
@@ -293,22 +322,32 @@ namespace Lobelia::Game {
 		HostConsole::GetInstance()->FloatRegister("deferred", "use offset per pixel", &info.offsetPerPixel, false);
 #endif
 	}
-	void SSAOCS::CreateAO(DeferredBuffer* deferred_buffer) {
+	void SSAOCS::CreateAO(Graphics::RenderTarget* active_rt, Graphics::View* active_view, DeferredBuffer* deferred_buffer) {
 		//int slot, ID3D11ShaderResourceView* uav
 #ifdef _DEBUG
 		if (Input::GetKeyboardKey(DIK_8) == 1) info.useAO = !info.useAO;
 #endif
 		cbuffer->Activate(info);
 		if (!info.useAO)return;
-		deferred_buffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::VIEW_POS)->GetTexture()->Set(0, Graphics::ShaderStageList::CS);
 		uav->Set(0);
-		const Math::Vector2& size = Application::GetInstance()->GetWindow()->GetSize();
-		cs->Run(((int)size.x + SSAO_BLOCK_SIZE - 1) / SSAO_BLOCK_SIZE, ((int)size.y + SSAO_BLOCK_SIZE - 1) / SSAO_BLOCK_SIZE, 1);
+		Graphics::RenderTarget* viewRT = deferred_buffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::VIEW_POS).get();
+		//バッファのコピー
+		if (size != viewRT->GetTexture()->GetSize()) {
+			rt->Clear(0x00000000);
+			rt->Activate();
+			view->ViewportActivate();
+			Graphics::SpriteRenderer::Render(viewRT);
+			active_rt->Activate();
+			active_view->Activate();
+			rt->GetTexture()->Set(0, Graphics::ShaderStageList::CS);
+		}
+		else viewRT->GetTexture()->Set(0, Graphics::ShaderStageList::CS);
+		cs->Run(i_cast(size.x + SSAO_BLOCK_SIZE - 1) / SSAO_BLOCK_SIZE, i_cast(size.y + SSAO_BLOCK_SIZE - 1) / SSAO_BLOCK_SIZE, 1);
 		uav->Clean(0);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::CS);
 	}
 	void SSAOCS::Render() {
-		Graphics::SpriteRenderer::Render(rwTexture.get(), Math::Vector2(5 * 200.0f, 0.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), rwTexture->GetSize(), 0xFFFFFFFF);
+		Graphics::SpriteRenderer::Render(rwTexture.get(), Math::Vector2(5 * 200.0f, 0.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFF);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
 	void SSAOCS::Begin(int slot) {
@@ -332,8 +371,9 @@ namespace Lobelia::Game {
 #ifdef _DEBUG
 		if (Input::GetKeyboardKey(DIK_8) == 1) info.useAO = !info.useAO;
 #endif
-		rt->Activate();
 		cbuffer->Activate(info);
+		if (!info.useAO)return;
+		rt->Activate();
 		auto& defaultPS = Graphics::SpriteRenderer::GetPixelShader();
 		Graphics::SpriteRenderer::ChangePixelShader(ps);
 		Graphics::SpriteRenderer::Render(deferred_buffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::VIEW_POS)->GetTexture());
@@ -471,7 +511,83 @@ namespace Lobelia::Game {
 		Graphics::SpriteRenderer::Render(pass2.get(), pos, size, 0.0f, Math::Vector2(), pass2->GetTexture()->GetSize(), 0xFFFFFFFF);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
-
+	//---------------------------------------------------------------------------------------------
+	//
+	//		Camera
+	//
+	//---------------------------------------------------------------------------------------------
+	Camera::Camera(const Math::Vector2& scale, const Math::Vector3& pos, const Math::Vector3& at) :pos(pos), at(at) {
+		//複数のビューを使わない前提 使いたい場合は引数でとる
+		view = std::make_shared<Graphics::View>(Math::Vector2(), scale);
+		up = TakeUp();
+	}
+	void Camera::SetPos(const Math::Vector3& pos) { this->pos = pos; }
+	void Camera::SetTarget(const Math::Vector3& at) { this->at = at; }
+	std::shared_ptr<Graphics::View> Camera::GetView() { return view; }
+	Math::Vector3 Camera::TakeFront() {
+		Math::Vector3 ret = at - pos; ret.Normalize();
+		return ret;
+	}
+	Math::Vector3 Camera::TakeRight() {
+		Math::Vector3 front = TakeFront();
+		Math::Vector3 tempUP(0.001f, 1.0f, 0.001f); tempUP.Normalize();
+		Math::Vector3 ret = Math::Vector3::Cross(tempUP, front); /*ret.Normalize();*/
+		return ret;
+	}
+	Math::Vector3 Camera::TakeUp() {
+		Math::Vector3 tempFront = TakeFront();
+		Math::Vector3 tempRight = TakeRight();
+		Math::Vector3 ret = Math::Vector3::Cross(tempFront, tempRight); /*ret.Normalize();*/
+		return ret;
+	}
+	void Camera::Activate() {
+		view->SetEyePos(pos);
+		view->SetEyeTarget(at);
+		view->SetEyeUpDirection(up);
+		view->Activate();
+	}
+	DebugCamera::DebugCamera(const Math::Vector2& scale, const Math::Vector3& pos, const Math::Vector3& at) :Camera(scale, pos, at) {
+		radius = (pos - at).Length();
+		front = TakeFront();
+		right = TakeRight();
+	}
+	void DebugCamera::Update() {
+		float elapsedTime = Application::GetInstance()->GetProcessTimeSec();
+		Math::Vector3 rightMove = {};
+		Math::Vector3 upMove = {};
+		//直径
+		float circumference = radius * PI;
+		//ちょうどいい感じに動く割合算出
+		circumference /= 600.0f;
+		float wheel = Input::Mouse::GetInstance()->GetWheel();
+		//注視点までの距離
+		Math::Vector2 mmove = Input::Mouse::GetInstance()->GetMove();
+		rightMove += right * mmove.x * circumference;
+		upMove += up * mmove.y * circumference;
+		if (wheel)radius -= (wheel*circumference*0.1f);
+		if (Input::GetMouseKey(0)) pos += rightMove + upMove;
+		else if (Input::GetMouseKey(1)) at += rightMove + upMove;
+		else if (Input::GetMouseKey(2)) {
+			pos -= rightMove + upMove;
+			at -= rightMove + upMove;
+		}
+		if (radius < 2.0f)radius = 2.0f;
+		front = TakeFront();
+		pos = at - front * radius;
+		right = Math::Vector3::Cross(up, front); 
+		up = Math::Vector3::Cross(front, right);
+		//ここ外から追加できるようにしても良いが、外から使う予定もないためこれで
+		//カメラをAOが映える場所へ
+		if (Input::GetKeyboardKey(DIK_P)) {
+			pos = Math::Vector3(57.0f, 66.0f, 106.0f);
+			at = Math::Vector3();
+		}
+		//ライトが映える場所へ
+		if (Input::GetKeyboardKey(DIK_O)) {
+			pos = Math::Vector3(-343.0f, 33.0f, -11.0f);
+			at = Math::Vector3();
+		}
+	}
 	//---------------------------------------------------------------------------------------------
 	//
 	//		Scene
@@ -479,16 +595,14 @@ namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
 	void SceneDeferred::Initialize() {
 		const constexpr Math::Vector2 scale(1280, 720);
-		view = std::make_unique<Graphics::View>(Math::Vector2(), scale);
+		camera = std::make_unique<DebugCamera>(scale, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3(0.0f, 0.0f, 0.0f));
 		deferredBuffer = std::make_unique<DeferredBuffer>(scale);
-		normalMap = TRUE; useLight = TRUE;
+		normalMap = TRUE; useLight = TRUE; useFog = TRUE;
 #ifdef _DEBUG
 		HostConsole::GetInstance()->IntRegister("deferred", "normal map", &normalMap, false);
 		HostConsole::GetInstance()->IntRegister("deferred", "use light", &useLight, false);
+		HostConsole::GetInstance()->IntRegister("deferred", "use fog", &useFog, false);
 #endif
-		pos = Math::Vector3(57.0f, 66.0f, 106.0f);
-		at = Math::Vector3(0.0f, 0.0f, 0.0f);
-		up = Math::Vector3(0.0f, 1.0f, 0.0f);
 		//model = std::make_shared<Graphics::Model>("Data/Model/Deferred/stage.dxd", "Data/Model/Deferred/stage.mt");
 		model = std::make_shared<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
 #ifdef SIMPLE_SHADER
@@ -511,11 +625,11 @@ namespace Lobelia::Game {
 		ssao = std::make_unique<SSAOPS>(scale);
 #endif
 #ifdef SSAO_CS
-		ssao = std::make_unique<SSAOCS>(scale);
+		ssao = std::make_unique<SSAOCS>(scale*(QUALITY > 1.0f ? 1.0f : QUALITY));
 #endif
 #endif
 #ifdef CASCADE
-		shadow = std::make_unique<ShadowBuffer>(scale*2.0f, 4, true);
+		shadow = std::make_unique<ShadowBuffer>(scale*QUALITY, 4, true);
 #else
 		shadow = std::make_unique<ShadowBuffer>(scale, 1, true);
 #endif
@@ -528,32 +642,10 @@ namespace Lobelia::Game {
 #endif
 	}
 	void SceneDeferred::AlwaysUpdate() {
-		//カメラ移動
-		//情報算出
-		Math::Vector3 front;
-		Math::Vector3 right;
-		front = pos - at; front.Normalize();
-		right = Math::Vector3::Cross(up, front);
-		float elapsedTime = Application::GetInstance()->GetProcessTimeSec();
-		//前後
-		if (Input::GetKeyboardKey(DIK_S)) pos += front * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_W)) pos -= front * 20.0f*elapsedTime;
-		//左右%
-		if (Input::GetKeyboardKey(DIK_A)) pos += right * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_D)) pos -= right * 20.0f*elapsedTime;
-		//上下
-		if (Input::GetKeyboardKey(DIK_Z)) pos += up * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_X)) pos -= up * 20.0f*elapsedTime;
-		//カメラをAOが映える場所へ
-		if (Input::GetKeyboardKey(DIK_P))pos = Math::Vector3(57.0f, 66.0f, 106.0f);
-		//ライトが映える場所へ
-		if (Input::GetKeyboardKey(DIK_O))pos = Math::Vector3(-343.0f, 33.0f, -11.0f);
-		//+1はカメラ位置のカメラの分
-		deferredShader->SetUseCount(LIGHT_COUNT + 1);
-		//カメラ更新
-		view->SetEyePos(pos);
-		view->SetEyeTarget(at);
-		view->SetEyeUpDirection(up);
+		if (Input::GetKeyboardKey(DIK_7) == 1) normalMap = !normalMap;
+		if (Input::GetKeyboardKey(DIK_6) == 1) useFog = !useFog;
+		if (Input::GetKeyboardKey(DIK_5) == 1) useLight = !useLight;
+
 		deferredBuffer->AddModel(model, normalMap);
 #ifdef FULL_EFFECT
 		//自分のカメラ位置にも光源を置く
@@ -571,13 +663,17 @@ namespace Lobelia::Game {
 		shadow->AddModel(model);
 		shadow->SetPos(Math::Vector3(200.0f, 130.0f, 200.0f));
 		//shadow->SetPos(pos);
+		camera->Update();
 	}
 	void SceneDeferred::AlwaysRender() {
 		Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));
+		Graphics::Environment::GetInstance()->SetActiveLinearFog(useFog);
 		Graphics::Environment::GetInstance()->Activate();
+		camera->Activate();
 		Graphics::RenderTarget* backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
-		shadow->CreateShadowMap(view.get(), backBuffer);
-		view->Activate();
+		//shadow->CreateShadowMap(view.get(), backBuffer);
+		shadow->CreateShadowMap(camera->GetView().get(), backBuffer);
+		//view->Activate();
 		shadow->Begin();
 		deferredBuffer->RenderGBuffer();
 		shadow->End();
@@ -587,7 +683,7 @@ namespace Lobelia::Game {
 		ssao->CreateAO(backBuffer, deferredBuffer.get());
 #endif
 #ifdef SSAO_CS
-		ssao->CreateAO(deferredBuffer.get());
+		ssao->CreateAO(backBuffer, camera->GetView().get(), deferredBuffer.get());
 #endif
 		ssao->Begin(5);
 #endif
@@ -597,8 +693,6 @@ namespace Lobelia::Game {
 #ifdef USE_SSAO
 		ssao->End();
 #endif
-		//gaussian->Dispatch(view.get(), backBuffer, deferredBuffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::COLOR));
-		//gaussian->Render();
 #ifdef _DEBUG
 		if (Application::GetInstance()->debugRender) {
 			deferredBuffer->DebugRender();

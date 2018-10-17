@@ -216,7 +216,7 @@ namespace Lobelia::Game {
 		SSAOCS(const Math::Vector2& size);
 		//テクスチャそのまま渡せばいいだけの方式にすれば汎用性は上がる
 		//useAOオプションが無効の時はAOマップは作成されない
-		void CreateAO(DeferredBuffer* deferred_buffer);
+		void CreateAO(Graphics::RenderTarget* active_rt, Graphics::View* active_view, DeferredBuffer* deferred_buffer);
 		//AOを直接描画することはないため、デバッグ描画を入れている
 		void Render()override;
 		void Begin(int slot);
@@ -228,6 +228,7 @@ namespace Lobelia::Game {
 			float offsetPerPixelY;
 		};
 	private:
+		std::unique_ptr<Graphics::View> view;
 		std::unique_ptr<Graphics::ComputeShader> cs;
 		std::shared_ptr<Graphics::Texture> rwTexture;
 		std::unique_ptr<UnorderedAccessView> uav;
@@ -319,6 +320,38 @@ namespace Lobelia::Game {
 	};
 	//---------------------------------------------------------------------------------------------
 	//
+	//		Camera
+	//
+	//---------------------------------------------------------------------------------------------
+	class Camera {
+	public:
+		Camera(const Math::Vector2& scale, const Math::Vector3& pos, const Math::Vector3& at);
+		virtual ~Camera() = default;
+		void SetPos(const Math::Vector3& pos);
+		void SetTarget(const Math::Vector3& at);
+		std::shared_ptr<Graphics::View> GetView();
+		Math::Vector3 TakeFront();
+		Math::Vector3 TakeRight();
+		Math::Vector3 TakeUp();
+		virtual void Update() {}
+		void Activate();
+	protected:
+		std::shared_ptr<Graphics::View> view;
+		Math::Vector3 pos;
+		Math::Vector3 at;
+		Math::Vector3 up;
+	};
+	class DebugCamera :public Camera {
+	public:
+		DebugCamera(const Math::Vector2& scale, const Math::Vector3& pos, const Math::Vector3& at);
+		void Update();
+	private:
+		float radius;
+		Math::Vector3 front;
+		Math::Vector3 right;
+	};
+	//---------------------------------------------------------------------------------------------
+	//
 	//		Scene
 	//
 	//---------------------------------------------------------------------------------------------
@@ -330,7 +363,8 @@ namespace Lobelia::Game {
 		void AlwaysUpdate()override;
 		void AlwaysRender()override;
 	private:
-		std::unique_ptr<Graphics::View> view;
+		std::unique_ptr<Camera> camera;
+		//std::unique_ptr<Graphics::View> view;
 		std::unique_ptr<DeferredBuffer> deferredBuffer;
 #ifdef SIMPLE_SHADER
 		std::unique_ptr<DeferredShader> deferredShader;
@@ -348,12 +382,14 @@ namespace Lobelia::Game {
 #endif
 		//std::unique_ptr<GaussianFilterCS> gaussian;
 		std::unique_ptr<ShadowBuffer> shadow;
-		Math::Vector3 pos;
-		Math::Vector3 at;
-		Math::Vector3 up;
+		//Math::Vector3 pos;
+		//Math::Vector3 at;
+		//Math::Vector3 up;
 		//描画オブジェクト
 		std::shared_ptr<Graphics::Model> model;
+		//描画制御用パラメーター
 		int normalMap;
 		int useLight;
+		int useFog;
 	};
 }

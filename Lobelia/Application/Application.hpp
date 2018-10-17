@@ -25,6 +25,8 @@ namespace Lobelia {
 		std::shared_ptr<Window> window;
 		std::unique_ptr<Graphics::SwapChain> swapChain;
 		float processTimer;
+		float processTimeStack;
+		int loopCount;
 		float timeScale;
 #ifdef _DEBUG
 	public:
