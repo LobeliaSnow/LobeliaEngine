@@ -30,8 +30,6 @@ inline float IndexFogCalc(float4 pos)
 	static const float e = 2.71828f;
 	//距離
 	float dist = pos.z * pos.w;
-	//密度
-	float density = fogInfo.w;
 	//フォグファクター
 	float f = pow(e, -dist * density);
 	//フォグの量
@@ -43,7 +41,7 @@ inline float IndexFogCalc(float4 pos)
 //fog適用
 inline float4 GetFogColor(float4 diffuseColor, float fog)
 {
-	return float4(fog * diffuseColor.xyz + (1.0f - fog) * fogInfo.rgb, diffuseColor.a);
+	return float4(fog * diffuseColor.xyz + (1.0f - fog) * fogColor, diffuseColor.a);
 }
 
 inline float4 LightingBias(float3 normalized_normal, float3 normalized_light_direction)

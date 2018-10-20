@@ -5,7 +5,13 @@ namespace Lobelia {
 		timer->End();
 		processTimer = timer->GetMilisecondResult();
 		if (processTimer <= 1000.0f / Config::GetRefPreference().updateFPS)return false;
-		HostConsole::GetInstance()->SetProcessTime(processTimer);
+		processTimeStack += processTimer;
+		loopCount++;
+		if (processTimeStack > 1000.0f) {
+			processTimeStack /= loopCount;
+			HostConsole::GetInstance()->SetProcessTime(processTimeStack);
+			processTimeStack = 0.0f; loopCount = 0;
+		}
 		timer->Begin();
 
 		return true;
@@ -41,7 +47,7 @@ namespace Lobelia {
 		swapChain->Present();
 	}
 
-	Application::Application() : processTimer(0.0f), timer(std::make_unique<Timer>()), timeScale(1.0f)/*, changeScene(false), tempScene(nullptr) */ {}
+	Application::Application() : processTimer(0.0f), processTimeStack(0), loopCount(0), timer(std::make_unique<Timer>()), timeScale(1.0f)/*, changeScene(false), tempScene(nullptr) */ {}
 	Application::~Application() = default;
 	float Application::CalcFps() { return 1000.0f / processTimer; }
 

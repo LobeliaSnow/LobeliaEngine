@@ -1,41 +1,45 @@
 cbuffer View : register(b0)
 {
-    column_major float4x4 view;
-    column_major float4x4 projection;
-    column_major float4x4 billboardMat;
-    float4 cpos;
-    struct Frustum
-    {
+	column_major float4x4 view;
+	column_major float4x4 projection;
+	column_major float4x4 billboardMat;
+	float4 cpos;
+	struct Frustum
+	{
 		float4 center[6];
 		float4 normal[6];
-    } frustum;
+	} frustum;
 };
 
 cbuffer World : register(b1)
 {
-    column_major float4x4 world;
+	column_major float4x4 world;
 };
 
 cbuffer Material : register(b2)
 {
-    float4 diffuse;
-    float4 ambient;
-    float4 specular;
-    float4 texColor;
+	float4 diffuse;
+	float4 ambient;
+	float4 specular;
+	float4 texColor;
 }
 
 cbuffer Bone : register(b3)
 {
 	//1meshï”ÇË255ñ{ÇÃÉ{Å[Éì
-    column_major float4x4 keyFrames[256];
+	column_major float4x4 keyFrames[256];
 }
 
 cbuffer Environment : register(b4)
 {
 	//ê≥ãKâªÇ≥ÇÍÇƒÇ¢Ç‹Ç∑
-    float4 lightDirection;
-    float4 ambientColor;
-    float4 fogInfo;
+	float4 lightDirection :packoffset(c0.x);
+	float4 ambientColor :packoffset(c1.x);
+	float3 fogColor :packoffset(c2.x);
+	float fogBegin :packoffset(c2.w);
+	float fogEnd :packoffset(c3.x);
+	float density : packoffset(c3.y);
+	int useLinearFog :packoffset(c3.z);
 }
 
 cbuffer GaussianFilterInfo : register(b5)

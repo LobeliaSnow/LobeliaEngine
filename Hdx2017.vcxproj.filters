@@ -235,6 +235,9 @@
     <Filter Include="Lobelia\Game\Fuzzy">
       <UniqueIdentifier>{c715e4b1-ec3c-4fde-8a18-c06dfd156862}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Data\ShaderFile\GPGPU">
+      <UniqueIdentifier>{5d4e8e18-bc43-485b-9c8c-636eb78840b6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="System\WinMain.cpp">
@@ -743,6 +746,9 @@
     </FxCompile>
     <FxCompile Include="Data\ShaderFile\2D\PostEffect.hlsl">
       <Filter>Data\ShaderFile\2D</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\GPGPU\GPGPU.hlsl">
+      <Filter>Data\ShaderFile\GPGPU</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

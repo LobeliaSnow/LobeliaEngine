@@ -1,7 +1,7 @@
 #pragma once
 //デュアルパラボロイドマップを用いた環境マップを使用
 //#define __PARABOLOID__
-#define LIGHT_SUM 128
+#define LIGHT_SUM 256
 //#define SIMPLE_SHADER
 #define FULL_EFFECT
 //SSAO用定義
@@ -16,3 +16,11 @@
 #define GAUSSIAN_PS
 //#define GAUSSIAN_CS
 #define CASCADE
+//クオリティ設定、影とSSAOの解像度にかけられる倍率
+//SSAOには倍率1.0f以上はありません
+//高
+//#define QUALITY 2.0f
+//中
+//#define QUALITY 1.0f
+//低
+#define QUALITY 0.5f
