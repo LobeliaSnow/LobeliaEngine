@@ -207,6 +207,6 @@ namespace Lobelia::Graphics {
 		static void SetShaderResourceView(int slot, int sum, ID3D11ShaderResourceView** srvs);
 		static void SetUnorderedAccessView(int slot, ID3D11UnorderedAccessView* uav);
 		static void SetUnorderedAccessView(int slot, int sum, ID3D11UnorderedAccessView** uavs);
-		void Run(int thread_x, int thread_y, int thread_z);
+		void Dispatch(int thread_x, int thread_y, int thread_z);
 	};
 }

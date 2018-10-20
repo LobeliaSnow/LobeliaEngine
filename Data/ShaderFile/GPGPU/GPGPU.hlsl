@@ -1,22 +1,29 @@
+//そのうちバイトニックソートも頑張って汎用化したいけど思いつかない。。。。
+
+
 //定数バッファ
 cbuffer Raycaster :register(b11) {
 	float4 rayBegin;
 	float4 rayEnd;
+	column_major float4x4 world;
+	column_major float4x4 worldInverse;
 };
 
 //StructuredBuffer用
 struct RayInput {
 	float3 pos[3];
 };
+//RWStructuredBuffer用
 struct RayOutput {
-	bool hit;
+	int hit;
 	float length;
+	float3 normal;
 };
 
 //入力用バッファ
 StructuredBuffer<RayInput> rayInput :register(t0);
 //出力用バッファ
-RWStructuredBuffer<RayInput> rayOutput :register(u0);
+RWStructuredBuffer<RayOutput> rayOutput :register(u0);
 
 //平面方程式を計算する
 //参考
@@ -66,7 +73,7 @@ bool IsInside(float3 pos, float3 v0, float3 v1, float3 v2) {
 //参考
 //http://www.hiramine.com/programming/graphics/3d_planesegmentintersection.html
 //NorthBrain書籍
-float Intersect(float4 plane, float3 ray_begin, float3 ray_end, float3 v0, float3 v1, float3 v2) {
+float4 Intersect(float4 plane, float3 ray_begin, float3 ray_end, float3 v0, float3 v1, float3 v2) {
 	//平面との交点を算出
 	//plane * ray_end
 	float4 prb = float4(plane.xyz * ray_begin, plane.w);
@@ -80,26 +87,34 @@ float Intersect(float4 plane, float3 ray_begin, float3 ray_end, float3 v0, float
 		float3 pos = ray_begin * t + ray_end * (1.0f - t);
 		//その交点の内点判定
 		if (IsInside(pos, v0, v1, v2)) {
-			return length = (pos - ray_begin);
+			//当たった場所を返す
+			return float4(pos, 1.0f);
 		}
-		return 0;
+		//nanに飛ばす
+		return (float4)0.0f / 0.0f;
 	}
-	return 0;
+	//nanに飛ばす
+	return (float4)0.0f / 0.0f;
 }
 
 //スレッド数はアプリ側で指定する
 [numthreads(1, 1, 1)]
 void RaycastCS(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupID) {
-	float3 v0 = rayInput[id.x].v[0];
-	float3 v1 = rayInput[id.x].v[1];
-	float3 v2 = rayInput[id.x].v[2];
-	float3 begin = rayBegin.xyz;
-	float3 end = rayEnd.xyz;
+	float3 v0 = rayInput[id.x].pos[0];
+	float3 v1 = rayInput[id.x].pos[1];
+	float3 v2 = rayInput[id.x].pos[2];
+	//ローカル空間へRayを引き込む
+	float3 begin = mul(rayBegin, worldInverse).xyz;
+	float3 end = mul(rayEnd, worldInverse).xyz;
 	//平面方程式を算出
 	float4 plane = ComputePlaneEquation(v0, v1, v2);
 	//交点算出し、交点距離を求める
-	float length = Intersect(plane, begin, end, v0, v1, v2);
-	if (length != 0) rayOutput[id.x].hit = true;
-	else rayOutput[id.x].hit = false;
-	rayOutput[id.x].length = length;
+	float4 pos = Intersect(plane, begin, end, v0, v1, v2);
+	//ローカルでの計算からワールドへもっていく
+	pos = mul(pos, world);
+	rayOutput[id.x].hit = !isnan(pos);
+	//当たった長さ算出
+	float dist = length(pos - rayBegin);
+	rayOutput[id.x].length = dist;
+	rayOutput[id.x].normal = normalize(plane.xyz);
 }

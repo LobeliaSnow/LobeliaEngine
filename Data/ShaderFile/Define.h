@@ -24,3 +24,5 @@
 //#define QUALITY 1.0f
 //’á
 #define QUALITY 0.5f
+//#define CPU_RAYCASTER
+#define GPU_RAYCASTER

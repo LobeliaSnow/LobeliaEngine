@@ -309,7 +309,7 @@ namespace Lobelia::Graphics {
 	void ComputeShader::SetUnorderedAccessView(int slot, int sum, ID3D11UnorderedAccessView** uavs) {
 		Device::GetContext()->CSSetUnorderedAccessViews(slot, sum, uavs, nullptr);
 	}
-	void ComputeShader::Run(int thread_x, int thread_y, int thread_z) {
+	void ComputeShader::Dispatch(int thread_x, int thread_y, int thread_z) {
 		Device::GetContext()->CSSetShader(cs.Get(), nullptr, 0);
 		Device::GetContext()->Dispatch(thread_x, thread_y, thread_z);
 		Device::GetContext()->CSSetShader(nullptr, nullptr, 0);

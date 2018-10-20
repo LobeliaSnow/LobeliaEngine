@@ -37,6 +37,7 @@ namespace Lobelia {
 		SceneManager::GetInstance()->Render();
 #ifdef _DEBUG
 		Graphics::DebugRenderer::GetInstance()->End();
+		Graphics::DebugRenderer::GetInstance()->Render();
 #endif
 		//Game::GameObject2DManager::GetInstance()->Render();
 #ifdef USE_IMGUI_AND_CONSOLE

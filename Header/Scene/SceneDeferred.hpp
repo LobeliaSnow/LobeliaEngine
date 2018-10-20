@@ -206,15 +206,24 @@ namespace Lobelia::Game {
 		int slot;
 	};
 	//---------------------------------------------------------------------------------------------
+	//templateにしよかな
 	class StructuredBuffer {
 		friend class UnorderedAccessView;
+		friend class ReadGPUBuffer;
 	public:
 		StructuredBuffer(int struct_size, int count);
 		~StructuredBuffer() = default;
-		//void Set();
+		//配列サイズ分しっかりと確保されたメモリのポインタ以外はダメ
+		void Update(const void* resource);
+		void Set(int slot, Graphics::ShaderStageList stage);
+		int GetStructSize();
+		int GetCount();
+		int GetBufferSize();
 	private:
 		ComPtr<ID3D11Buffer> buffer;
 		ComPtr<ID3D11ShaderResourceView> srv;
+		const int STRUCT_SIZE;
+		const int COUNT;
 	};
 	//---------------------------------------------------------------------------------------------
 	class UnorderedAccessView {
@@ -225,6 +234,25 @@ namespace Lobelia::Game {
 		void Clean(int slot);
 	private:
 		ComPtr<ID3D11UnorderedAccessView> uav;
+	};
+	//---------------------------------------------------------------------------------------------
+	//STAGINGで作られるバッファ
+	//最終的に作り直すときはBufferクラスができる予定なので
+	//それを引数対象とする予定だが、プロトタイプなので特定のクラスのみに対応する
+	class ReadGPUBuffer {
+	public:
+		ReadGPUBuffer(std::shared_ptr<StructuredBuffer> buffer);
+		~ReadGPUBuffer() = default;
+		//ソースのバッファから読める形にコピーする
+		void ReadCopy();
+		//マップの開始
+		void* ReadBegin();
+		template<class T> T* ReadBegin() { return r_cast<T*>(ReadBegin()); }
+		//アンマップ
+		void ReadEnd();
+	private:
+		ComPtr<ID3D11Buffer> buffer;
+		std::weak_ptr<StructuredBuffer> origin;
 	};
 	//---------------------------------------------------------------------------------------------
 	//ブラーパスは省いています
@@ -348,38 +376,65 @@ namespace Lobelia::Game {
 	//	Raycaster
 	//
 	//---------------------------------------------------------------------------------------------
-	class MeshBuffer {
+	//Ray用に作成されるメッシュの形状バッファ
+	class RayMesh {
+		friend class RayResult;
 	public:
-		MeshBuffer(Graphics::Model* model);
-		~MeshBuffer() = default;
+		RayMesh(Graphics::Model* model);
+		~RayMesh() = default;
+		void Set();
+		int GetPolygonCount();
 	private:
 		//GPUへの入力 ポリゴン情報
 		struct Input {
 			Math::Vector3 pos[3];
 		};
 	private:
-		std::unique_ptr<StructuredBuffer> structuredBuffer;
+		std::shared_ptr<StructuredBuffer> structuredBuffer;
+		int polygonCount;
 	};
+	//---------------------------------------------------------------------------------------------
+	class RayResult {
+	private:
+		//GPUからの出力用バッファ
+		struct Output {
+			int hit;
+			float length;
+			Math::Vector3 normal;
+		};
+	public:
+		RayResult(RayMesh* mesh);
+		~RayResult() = default;
+		void Set();
+		void Clean();
+		const Output* Lock();
+		void UnLock();
+	private:
+		std::shared_ptr<StructuredBuffer> structuredBuffer;
+		std::unique_ptr<UnorderedAccessView> uav;
+		std::unique_ptr<ReadGPUBuffer> readBuffer;
+	};
+	//---------------------------------------------------------------------------------------------
+	//Rayをうつクラス
+	//Singletonでもよいかも？
 	class Raycaster {
 	public:
 		Raycaster();
 		~Raycaster() = default;
+		//第一引数はワールド変換行列
+		void Dispatch(const DirectX::XMMATRIX& world, RayMesh* mesh, RayResult* result, const Math::Vector3& begin, const Math::Vector3& end);
 	private:
 		//コンスタントバッファ
 		struct Info {
 			Math::Vector4 rayBegin;
 			Math::Vector4 rayEnd;
-		};
-		//GPUからの出力用バッファ
-		struct Output {
-			bool hit;
-			float length;
+			DirectX::XMFLOAT4X4 world;
+			DirectX::XMFLOAT4X4 worldInverse;
 		};
 	private:
 		std::unique_ptr<Graphics::ComputeShader> cs;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
-		std::unique_ptr<StructuredBuffer> structuredBuffer;
-		std::unique_ptr<UnorderedAccessView> uav;
+		Info info;
 	};
 	//---------------------------------------------------------------------------------------------
 	//
@@ -452,6 +507,10 @@ namespace Lobelia::Game {
 		//描画オブジェクト
 		std::shared_ptr<Graphics::Model> model;
 		std::unique_ptr<SkyBox> skybox;
+		//レイ判定用オブジェクト
+		std::unique_ptr<Raycaster> raycaster;
+		std::unique_ptr<RayMesh> rayMesh;
+		std::unique_ptr<RayResult> rayResult;
 		//描画制御用パラメーター
 		int normalMap;
 		int useLight;

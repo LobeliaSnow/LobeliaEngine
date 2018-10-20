@@ -125,7 +125,7 @@ namespace Lobelia::Graphics {
 		ID3D11UnorderedAccessView* uavs[4] = { appendData->uav.Get(),indexBuffer->uav.Get(),dataBuffer->uav.Get() ,indirectArgs->uav.Get() };
 		ComputeShader::SetUnorderedAccessView(0, 4, uavs);
 		//GPUへのパーティクルの追加を実行
-		appendCS->Run(1, 1, 1);
+		appendCS->Dispatch(1, 1, 1);
 		info.appendCount = 0;
 		ID3D11UnorderedAccessView* resetUavs[4] = {};
 		ComputeShader::SetUnorderedAccessView(0, 4, resetUavs);
@@ -143,7 +143,7 @@ namespace Lobelia::Graphics {
 				//定数バッファの更新
 				infoCBuffer->Activate(info);
 				//ソート実行
-				sortCS->Run(GPU_PARTICLE_MAX / LOCAL_THREAD_COUNT, 1, 1);
+				sortCS->Dispatch(GPU_PARTICLE_MAX / LOCAL_THREAD_COUNT, 1, 1);
 			}
 		}
 		ID3D11UnorderedAccessView* resetUavs[4] = {};
@@ -153,7 +153,7 @@ namespace Lobelia::Graphics {
 		ID3D11UnorderedAccessView* uavs[4] = { appendData->uav.Get(),indexBuffer->uav.Get(),dataBuffer->uav.Get() ,indirectArgs->uav.Get() };
 		ComputeShader::SetUnorderedAccessView(0, 4, uavs);
 		//パーティクル更新処理
-		updateCS->Run(GPU_PARTICLE_MAX / (LOCAL_THREAD_COUNT*THREAD_PER_COUNT), 1, 1);
+		updateCS->Dispatch(GPU_PARTICLE_MAX / (LOCAL_THREAD_COUNT*THREAD_PER_COUNT), 1, 1);
 		ID3D11UnorderedAccessView* resetUavs[4] = {};
 		ComputeShader::SetUnorderedAccessView(0, 4, resetUavs);
 	}

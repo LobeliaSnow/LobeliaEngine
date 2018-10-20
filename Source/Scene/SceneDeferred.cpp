@@ -4,11 +4,13 @@
 //Screen Space Motion Blurやってみたい
 //被写界深度やってみたい
 
+//シェーダーのコンパイルが長すぎる、デバッグ時以外はcsoに逃がしてやりたい感
 //スキンメッシュのキャラを歩かせて、当たり判定(Raypick)をGPGPUでとるのも面白いと思う
 //歩かせるのはActorクラス使えばすぐ
 
 //TODO : SSAOPSの可変解像度対応(ビューを作ってやるだけ？)
 //TODO : シェーダーの整理
+//TODO : 警告消す
 
 //テストシーン
 //最終的にここでの経験と結果を用いてレンダリングエンジンを作る予定ではいるが、就活終わった後になると思われる。
@@ -312,31 +314,7 @@ namespace Lobelia::Game {
 	//基本的にポストエフェクトはピクセルシェーダーでしか使われない
 	void PostEffect::End() { Graphics::Texture::Clean(slot, Graphics::ShaderStageList::PS); }
 	//---------------------------------------------------------------------------------------------
-	UnorderedAccessView::UnorderedAccessView(Graphics::Texture* texture) {
-		D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-		desc.Format = DXGI_FORMAT_UNKNOWN;
-		desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-		desc.Texture2D.MipSlice = 0;
-		HRESULT hr = Graphics::Device::Get()->CreateUnorderedAccessView(texture->Get().Get(), &desc, uav.GetAddressOf());
-		if (FAILED(hr))STRICT_THROW("UAVの作成に失敗");
-	}
-	UnorderedAccessView::UnorderedAccessView(StructuredBuffer* structured_buffer) {
-		D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
-		desc.Format = DXGI_FORMAT_UNKNOWN;
-		desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-		desc.Texture2D.MipSlice = 0;
-		HRESULT hr = Graphics::Device::Get()->CreateUnorderedAccessView(structured_buffer->buffer.Get(), &desc, uav.GetAddressOf());
-		if (FAILED(hr))STRICT_THROW("UAVの作成に失敗");
-	}
-	void UnorderedAccessView::Set(int slot) {
-		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, uav.GetAddressOf(), nullptr);
-	}
-	void UnorderedAccessView::Clean(int slot) {
-		ID3D11UnorderedAccessView* null = nullptr;
-		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, &null, nullptr);
-	}
-	//---------------------------------------------------------------------------------------------
-	StructuredBuffer::StructuredBuffer(int struct_size, int count) {
+	StructuredBuffer::StructuredBuffer(int struct_size, int count) :STRUCT_SIZE(struct_size), COUNT(count) {
 		D3D11_BUFFER_DESC desc = {};
 		desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 		desc.ByteWidth = struct_size * count;
@@ -350,9 +328,73 @@ namespace Lobelia::Game {
 		srdesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
 		srdesc.Format = DXGI_FORMAT_UNKNOWN;
 		srdesc.BufferEx.NumElements = count;
-		Graphics::Device::Get()->CreateShaderResourceView(buffer.Get(), &srdesc, srv.GetAddressOf());
+		HRESULT hr = Graphics::Device::Get()->CreateShaderResourceView(buffer.Get(), &srdesc, srv.GetAddressOf());
+		if (FAILED(hr))STRICT_THROW("SRV作成に失敗");
 	}
+	void StructuredBuffer::Update(const void* resource) { Graphics::Device::GetContext()->UpdateSubresource(buffer.Get(), 0, nullptr, resource, 0, 0); }
+	void StructuredBuffer::Set(int slot, Graphics::ShaderStageList stage) {
+		switch (stage) {
+		case Graphics::ShaderStageList::VS:	Graphics::Device::GetContext()->VSSetShaderResources(slot, 1, srv.GetAddressOf());	break;
+		case Graphics::ShaderStageList::PS:	Graphics::Device::GetContext()->PSSetShaderResources(slot, 1, srv.GetAddressOf());	break;
+		case Graphics::ShaderStageList::HS:	Graphics::Device::GetContext()->HSSetShaderResources(slot, 1, srv.GetAddressOf());	break;
+		case Graphics::ShaderStageList::GS:	Graphics::Device::GetContext()->GSSetShaderResources(slot, 1, srv.GetAddressOf());	break;
+		case Graphics::ShaderStageList::DS:	Graphics::Device::GetContext()->DSSetShaderResources(slot, 1, srv.GetAddressOf());	break;
+		case Graphics::ShaderStageList::CS:	Graphics::Device::GetContext()->CSSetShaderResources(slot, 1, srv.GetAddressOf());	break;
+		default:	STRICT_THROW("範囲外の値です");
+		}
 
+	}
+	int StructuredBuffer::GetStructSize() { return STRUCT_SIZE; }
+	int StructuredBuffer::GetCount() { return COUNT; }
+	int StructuredBuffer::GetBufferSize() { return STRUCT_SIZE * COUNT; }
+	//---------------------------------------------------------------------------------------------
+	UnorderedAccessView::UnorderedAccessView(Graphics::Texture* texture) {
+		D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		desc.Texture2D.MipSlice = 0;
+		HRESULT hr = Graphics::Device::Get()->CreateUnorderedAccessView(texture->Get().Get(), &desc, uav.GetAddressOf());
+		if (FAILED(hr))STRICT_THROW("UAVの作成に失敗");
+	}
+	UnorderedAccessView::UnorderedAccessView(StructuredBuffer* structured_buffer) {
+		D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.Buffer.NumElements = structured_buffer->GetCount();
+		desc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+		desc.Texture2D.MipSlice = 0;
+		HRESULT hr = Graphics::Device::Get()->CreateUnorderedAccessView(structured_buffer->buffer.Get(), &desc, uav.GetAddressOf());
+		if (FAILED(hr))STRICT_THROW("UAVの作成に失敗");
+	}
+	void UnorderedAccessView::Set(int slot) {
+		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, uav.GetAddressOf(), nullptr);
+	}
+	void UnorderedAccessView::Clean(int slot) {
+		ID3D11UnorderedAccessView* null = nullptr;
+		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, &null, nullptr);
+	}
+	//---------------------------------------------------------------------------------------------
+	ReadGPUBuffer::ReadGPUBuffer(std::shared_ptr<StructuredBuffer> buffer) :origin(buffer) {
+		if (!buffer)STRICT_THROW("オリジナルのバッファが存在しません");
+		D3D11_BUFFER_DESC desc = {};
+		buffer->buffer->GetDesc(&desc);
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		desc.Usage = D3D11_USAGE_STAGING;
+		desc.BindFlags = 0; desc.MiscFlags = 0;
+		HRESULT hr = Graphics::Device::Get()->CreateBuffer(&desc, nullptr, this->buffer.GetAddressOf());
+		if (FAILED(hr))STRICT_THROW("STAGINGバッファ作成に失敗");
+	}
+	void ReadGPUBuffer::ReadCopy() {
+		if (origin.expired())STRICT_THROW("オリジナルのバッファが存在しません");
+		std::shared_ptr<StructuredBuffer> src = origin.lock();
+		Graphics::Device::GetContext()->CopyResource(buffer.Get(), src->buffer.Get());
+	}
+	void* ReadGPUBuffer::ReadBegin() {
+		D3D11_MAPPED_SUBRESOURCE resource = {};
+		HRESULT hr = Graphics::Device::GetContext()->Map(buffer.Get(), 0, D3D11_MAP_READ, 0, &resource);
+		if (FAILED(hr))STRICT_THROW("マップに失敗");
+		return resource.pData;
+	}
+	void ReadGPUBuffer::ReadEnd() { Graphics::Device::GetContext()->Unmap(buffer.Get(), 0); }
 	//---------------------------------------------------------------------------------------------
 	//DXGI_FORMAT_R16G16B16A16_FLOATでするとちらついてバグる。理由不明。
 	SSAOCS::SSAOCS(const Math::Vector2& size) :PostEffect(size, true, /*DXGI_FORMAT_R16G16B16A16_FLOAT*/DXGI_FORMAT_R32G32B32A32_FLOAT) {
@@ -391,7 +433,7 @@ namespace Lobelia::Game {
 			rt->GetTexture()->Set(0, Graphics::ShaderStageList::CS);
 		}
 		else viewRT->GetTexture()->Set(0, Graphics::ShaderStageList::CS);
-		cs->Run(i_cast(size.x + SSAO_BLOCK_SIZE - 1) / SSAO_BLOCK_SIZE, i_cast(size.y + SSAO_BLOCK_SIZE - 1) / SSAO_BLOCK_SIZE, 1);
+		cs->Dispatch(i_cast(size.x + SSAO_BLOCK_SIZE - 1) / SSAO_BLOCK_SIZE, i_cast(size.y + SSAO_BLOCK_SIZE - 1) / SSAO_BLOCK_SIZE, 1);
 		uav->Clean(0);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::CS);
 	}
@@ -478,11 +520,11 @@ namespace Lobelia::Game {
 		}
 		cbuffer->Activate(info);
 		uavPass1->Set(0);
-		csX->Run(i_cast((size.x + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), i_cast((size.y + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), 1);
+		csX->Dispatch(i_cast((size.x + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), i_cast((size.y + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), 1);
 		uavPass1->Clean(0);
 		uavPass2->Set(0);
 		rwTexturePass1->Set(0, Graphics::ShaderStageList::CS);
-		csY->Run(i_cast((size.x + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), i_cast((size.y + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), 1);
+		csY->Dispatch(i_cast((size.x + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), i_cast((size.y + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), 1);
 		uavPass2->Clean(0);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::CS);
 	}
@@ -565,8 +607,61 @@ namespace Lobelia::Game {
 	//	Raycaster
 	//
 	//---------------------------------------------------------------------------------------------
+	RayMesh::RayMesh(Graphics::Model* model) {
+		auto mesh = model->GetMesh();
+		//バッファの作成
+		polygonCount = i_cast(mesh->GetCount() / 3);
+		structuredBuffer = std::make_shared<StructuredBuffer>(sizeof(Input), polygonCount);
+		//当たり判定用メッシュの構築
+		Graphics::Model::Vertex* srcBuffer = mesh->GetBuffer();
+		std::vector<Input> buildMesh(polygonCount);
+		for (int i = 0; i < polygonCount; i++) {
+			for (int j = 0; j < 3; j++) {
+				buildMesh[i].pos[j].x = srcBuffer[i * 3 + j].pos.x;
+				buildMesh[i].pos[j].y = srcBuffer[i * 3 + j].pos.y;
+				buildMesh[i].pos[j].z = srcBuffer[i * 3 + j].pos.z;
+			}
+		}
+		structuredBuffer->Update(buildMesh.data());
+	}
+	void RayMesh::Set() { structuredBuffer->Set(0, Graphics::ShaderStageList::CS); }
+	int RayMesh::GetPolygonCount() { return polygonCount; }
+	//---------------------------------------------------------------------------------------------
+	RayResult::RayResult(RayMesh* mesh) {
+		structuredBuffer = std::make_shared<StructuredBuffer>(sizeof(Output), mesh->GetPolygonCount());
+		uav = std::make_unique<UnorderedAccessView>(structuredBuffer.get());
+		readBuffer = std::make_unique<ReadGPUBuffer>(structuredBuffer);
+	}
+	void RayResult::Set() { uav->Set(0); }
+	void RayResult::Clean() { uav->Clean(0); }
+	const RayResult::Output* RayResult::Lock() {
+		readBuffer->ReadCopy();
+		return readBuffer->ReadBegin<Output>();
+	}
+	void RayResult::UnLock() { readBuffer->ReadEnd(); }
+	//---------------------------------------------------------------------------------------------
 	Raycaster::Raycaster() {
 		cs = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/GPGPU/GPGPU.hlsl", "RaycastCS");
+		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(11, Graphics::ShaderStageList::CS);
+	}
+	void Raycaster::Dispatch(const DirectX::XMMATRIX& world, RayMesh* mesh, RayResult* result, const Math::Vector3& begin, const Math::Vector3& end) {
+#ifdef _DEBUG
+		//Rayのデバッグ表示
+		Graphics::DebugRenderer::GetInstance()->SetLine(begin, end, 0xFFFFFFFF);
+#endif
+		//GPUにバッファ送信
+		mesh->Set(); result->Set();
+		//Rayの情報更新
+		info.rayBegin.x = begin.x; info.rayBegin.y = begin.y; info.rayBegin.z = begin.z;
+		info.rayEnd.x = end.x; info.rayEnd.y = end.y; info.rayEnd.z = end.z;
+		//行列周り設定
+		DirectX::XMStoreFloat4x4(&info.world, DirectX::XMMatrixTranspose(world));
+		DirectX::XMVECTOR temp = {};
+		DirectX::XMMATRIX inverse = DirectX::XMMatrixInverse(&temp, world);
+		DirectX::XMStoreFloat4x4(&info.worldInverse, DirectX::XMMatrixTranspose(inverse));
+		cbuffer->Activate(info);
+		//Ray判定開始
+		cs->Dispatch(mesh->GetPolygonCount(), 1, 1);
 	}
 	//---------------------------------------------------------------------------------------------
 	//
@@ -738,6 +833,10 @@ namespace Lobelia::Game {
 		shadow = std::make_unique<ShadowBuffer>(scale, 1, true);
 #endif
 		skybox = std::make_unique<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
+		//レイ関係の初期化
+		raycaster = std::make_unique<Raycaster>();
+		rayMesh = std::make_unique<RayMesh>(model.get());
+		rayResult = std::make_unique<RayResult>(rayMesh.get());
 		//shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, false);
 		//gaussian = std::make_unique<GaussianFilterCS>(scale);
 	}
@@ -747,6 +846,14 @@ namespace Lobelia::Game {
 #endif
 	}
 	void SceneDeferred::AlwaysUpdate() {
+		Math::Vector3 rayBegin(0.0f, 10.0f, 0.0f); Math::Vector3 rayEnd(0.0f, -10.0f, 0.0f);
+		Math::Vector3 dir = rayEnd - rayBegin; dir.Normalize();
+#ifdef GPU_RAYCASTER
+		//Ray発射
+		DirectX::XMMATRIX world;
+		model->GetWorldMatrix(&world);
+		raycaster->Dispatch(world, rayMesh.get(), rayResult.get(), rayBegin, rayEnd);
+#endif
 		if (Input::GetKeyboardKey(DIK_7) == 1) normalMap = !normalMap;
 		if (Input::GetKeyboardKey(DIK_6) == 1) useFog = !useFog;
 		if (Input::GetKeyboardKey(DIK_5) == 1) useLight = !useLight;
@@ -769,6 +876,28 @@ namespace Lobelia::Game {
 		shadow->SetPos(Math::Vector3(200.0f, 130.0f, 200.0f));
 		//shadow->SetPos(pos);
 		camera->Update();
+#ifdef CPU_RAYCASTER
+		Math::Vector3 out, normal;
+		if (model->RayPickWorld(&out, &normal, rayBegin, dir, 20.0f)) {
+#ifdef _DEBUG
+			Math::Vector3 dir = rayEnd - rayBegin; dir.Normalize();
+			Graphics::DebugRenderer::GetInstance()->SetPoint(out, 0xFFFF0000);
+#endif
+		}
+#endif
+#ifdef GPU_RAYCASTER
+		auto result = rayResult->Lock();
+		for (int i = 0; i < rayMesh->GetPolygonCount(); i++) {
+			if (result[i].hit) {
+#ifdef _DEBUG
+				Math::Vector3 dir = rayEnd - rayBegin; dir.Normalize();
+				Graphics::DebugRenderer::GetInstance()->SetPoint(rayBegin + dir * result[i].length, 0xFFFF0000);
+				Graphics::DebugRenderer::GetInstance()->SetLine(rayBegin, rayBegin + result[i].normal, 0xFF00FFFF);
+#endif
+			}
+		}
+		rayResult->UnLock();
+#endif
 	}
 	void SceneDeferred::AlwaysRender() {
 		Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));
