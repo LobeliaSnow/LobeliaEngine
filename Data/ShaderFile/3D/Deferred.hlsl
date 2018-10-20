@@ -419,7 +419,6 @@ float CalcLinearFogFactor(float view_depth) {
 	fog = saturate(fog);
 	return fog;
 }
-
 //実際のシェーディングを行う部分
 float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	float4 pos = txDeferredPos.Sample(samLinear, ps_in.tex);
@@ -460,6 +459,6 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	if (useLinearFog) {
 		fog = CalcLinearFogFactor(vpos.z);
 	}
-	fogValue = (1.0f - fog)*float4(fogColor, 1.0f);
+	fogValue = (1.0f - fog) * float4(fogColor, 1.0f);
 	return color * fog + fogValue;
 }

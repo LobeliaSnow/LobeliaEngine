@@ -34,6 +34,29 @@ namespace Lobelia::Game {
 	}
 	//---------------------------------------------------------------------------------------------
 	//
+	//	Skybox
+	//
+	//---------------------------------------------------------------------------------------------
+	SkyBox::SkyBox(const char* model_path, const char* mt_path) {
+		model = std::make_unique<Graphics::Model>(model_path, mt_path);
+		//DepthStencilState(DEPTH_PRESET preset, bool depth, StencilDesc sdesc, bool stencil);
+		depth = std::make_shared<Graphics::DepthStencilState>(Graphics::DEPTH_PRESET::LESS, false, Graphics::StencilDesc(), false);
+		model->Scalling(30.0f);
+	}
+	void SkyBox::Render(Camera* camera) {
+		auto defaultDepth = Graphics::Model::GetDepthStencilState();
+		DirectX::XMVECTOR temp = {};
+		DirectX::XMMATRIX inv = DirectX::XMMatrixInverse(&temp, camera->GetView()->GetRowViewMatrix());
+		model->GetPixelShader()->SetLinkage(1);
+		model->Translation(Math::Vector3(inv._41, inv._42, inv._43));
+		model->CalcWorldMatrix();
+		Graphics::Model::ChangeDepthStencilState(depth);
+		model->Render();
+		model->GetPixelShader()->SetLinkage(0);
+		Graphics::Model::ChangeDepthStencilState(defaultDepth);
+	}
+	//---------------------------------------------------------------------------------------------
+	//
 	//	Geometry Buffer
 	//
 	//---------------------------------------------------------------------------------------------
@@ -297,6 +320,14 @@ namespace Lobelia::Game {
 		HRESULT hr = Graphics::Device::Get()->CreateUnorderedAccessView(texture->Get().Get(), &desc, uav.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("UAVの作成に失敗");
 	}
+	UnorderedAccessView::UnorderedAccessView(StructuredBuffer* structured_buffer) {
+		D3D11_UNORDERED_ACCESS_VIEW_DESC desc = {};
+		desc.Format = DXGI_FORMAT_UNKNOWN;
+		desc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+		desc.Texture2D.MipSlice = 0;
+		HRESULT hr = Graphics::Device::Get()->CreateUnorderedAccessView(structured_buffer->buffer.Get(), &desc, uav.GetAddressOf());
+		if (FAILED(hr))STRICT_THROW("UAVの作成に失敗");
+	}
 	void UnorderedAccessView::Set(int slot) {
 		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, uav.GetAddressOf(), nullptr);
 	}
@@ -304,6 +335,24 @@ namespace Lobelia::Game {
 		ID3D11UnorderedAccessView* null = nullptr;
 		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, &null, nullptr);
 	}
+	//---------------------------------------------------------------------------------------------
+	StructuredBuffer::StructuredBuffer(int struct_size, int count) {
+		D3D11_BUFFER_DESC desc = {};
+		desc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+		desc.ByteWidth = struct_size * count;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		desc.StructureByteStride = struct_size;
+		//D3D11_SUBRESOURCE_DATA initData = {};
+		//initData.pSysMem = 
+		Graphics::Device::Get()->CreateBuffer(&desc, nullptr, buffer.GetAddressOf());
+		//SRV（シェーダーリソースビュー）作成
+		D3D11_SHADER_RESOURCE_VIEW_DESC srdesc = {};
+		srdesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+		srdesc.Format = DXGI_FORMAT_UNKNOWN;
+		srdesc.BufferEx.NumElements = count;
+		Graphics::Device::Get()->CreateShaderResourceView(buffer.Get(), &srdesc, srv.GetAddressOf());
+	}
+
 	//---------------------------------------------------------------------------------------------
 	//DXGI_FORMAT_R16G16B16A16_FLOATでするとちらついてバグる。理由不明。
 	SSAOCS::SSAOCS(const Math::Vector2& size) :PostEffect(size, true, /*DXGI_FORMAT_R16G16B16A16_FLOAT*/DXGI_FORMAT_R32G32B32A32_FLOAT) {
@@ -513,6 +562,14 @@ namespace Lobelia::Game {
 	}
 	//---------------------------------------------------------------------------------------------
 	//
+	//	Raycaster
+	//
+	//---------------------------------------------------------------------------------------------
+	Raycaster::Raycaster() {
+		cs = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/GPGPU/GPGPU.hlsl", "RaycastCS");
+	}
+	//---------------------------------------------------------------------------------------------
+	//
 	//		Camera
 	//
 	//---------------------------------------------------------------------------------------------
@@ -559,33 +616,80 @@ namespace Lobelia::Game {
 		float circumference = radius * PI;
 		//ちょうどいい感じに動く割合算出
 		circumference /= 600.0f;
+		//マウス
 		float wheel = Input::Mouse::GetInstance()->GetWheel();
 		//注視点までの距離
 		Math::Vector2 mmove = Input::Mouse::GetInstance()->GetMove();
 		rightMove += right * mmove.x * circumference;
 		upMove += up * mmove.y * circumference;
+		//キーボード
+		if (wheel == 0.0f) {
+			if (Input::GetKeyboardKey(DIK_W))wheel += 20.0f;
+			if (Input::GetKeyboardKey(DIK_S))wheel -= 20.0f;
+		}
 		if (wheel)radius -= (wheel*circumference*0.1f);
-		if (Input::GetMouseKey(0)) pos += rightMove + upMove;
-		else if (Input::GetMouseKey(1)) at += rightMove + upMove;
-		else if (Input::GetMouseKey(2)) {
-			pos -= rightMove + upMove;
-			at -= rightMove + upMove;
+		bool movePos = false; bool moveAt = false;
+		if (upMove.LengthSq() == 0) {
+			if (Input::GetKeyboardKey(DIK_Z)) {
+				upMove += up * 10.0f * circumference;
+				movePos = true;
+			}
+			if (Input::GetKeyboardKey(DIK_UP)) {
+				upMove += up * 10.0f * circumference;
+				moveAt = true;
+			}
+			if (Input::GetKeyboardKey(DIK_X)) {
+				upMove -= up * 10.0f * circumference;
+				movePos = true;
+			}
+			if (Input::GetKeyboardKey(DIK_DOWN)) {
+				upMove -= up * 10.0f * circumference;
+				moveAt = true;
+			}
+		}
+		if (rightMove.LengthSq() == 0) {
+			if (Input::GetKeyboardKey(DIK_D)) {
+				rightMove += right * 10.0f * circumference;
+				movePos = true;
+			}
+			if (Input::GetKeyboardKey(DIK_RIGHT)) {
+				rightMove += right * 10.0f * circumference;
+				moveAt = true;
+			}
+			if (Input::GetKeyboardKey(DIK_A)) {
+				rightMove -= right * 10.0f * circumference;
+				movePos = true;
+			}
+			if (Input::GetKeyboardKey(DIK_LEFT)) {
+				rightMove -= right * 10.0f * circumference;
+				moveAt = true;
+			}
+		}
+		if (Input::GetMouseKey(0) || movePos) pos += rightMove + upMove;
+		if (Input::GetMouseKey(1) || moveAt) at += rightMove + upMove;
+		if (Input::GetMouseKey(2)) {
+			pos += rightMove + upMove;
+			at += rightMove + upMove;
 		}
 		if (radius < 2.0f)radius = 2.0f;
 		front = TakeFront();
 		pos = at - front * radius;
-		right = Math::Vector3::Cross(up, front); 
+		right = Math::Vector3::Cross(up, front);
 		up = Math::Vector3::Cross(front, right);
 		//ここ外から追加できるようにしても良いが、外から使う予定もないためこれで
 		//カメラをAOが映える場所へ
 		if (Input::GetKeyboardKey(DIK_P)) {
 			pos = Math::Vector3(57.0f, 66.0f, 106.0f);
 			at = Math::Vector3();
+			up = Math::Vector3(0.0f, 1.0f, 0.0f);
+			radius = (pos - at).Length();
 		}
 		//ライトが映える場所へ
 		if (Input::GetKeyboardKey(DIK_O)) {
 			pos = Math::Vector3(-343.0f, 33.0f, -11.0f);
 			at = Math::Vector3();
+			up = Math::Vector3(0.0f, 1.0f, 0.0f);
+			radius = (pos - at).Length();
 		}
 	}
 	//---------------------------------------------------------------------------------------------
@@ -633,6 +737,7 @@ namespace Lobelia::Game {
 #else
 		shadow = std::make_unique<ShadowBuffer>(scale, 1, true);
 #endif
+		skybox = std::make_unique<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
 		//shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, false);
 		//gaussian = std::make_unique<GaussianFilterCS>(scale);
 	}
@@ -668,11 +773,14 @@ namespace Lobelia::Game {
 	void SceneDeferred::AlwaysRender() {
 		Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));
 		Graphics::Environment::GetInstance()->SetActiveLinearFog(useFog);
+		Graphics::Environment::GetInstance()->SetFogBegin(150.0f);
+		Graphics::Environment::GetInstance()->SetFogEnd(400.0f);
 		Graphics::Environment::GetInstance()->Activate();
 		camera->Activate();
 		Graphics::RenderTarget* backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
 		//shadow->CreateShadowMap(view.get(), backBuffer);
 		shadow->CreateShadowMap(camera->GetView().get(), backBuffer);
+		skybox->Render(camera.get());
 		//view->Activate();
 		shadow->Begin();
 		deferredBuffer->RenderGBuffer();
