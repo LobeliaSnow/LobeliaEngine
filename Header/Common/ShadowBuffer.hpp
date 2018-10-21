@@ -12,11 +12,15 @@ namespace Lobelia::Game {
 	class GaussianFilterPS;
 #endif
 	//後に作り直す
-	//Exponantial Shadow Mapとvariance Shadow Mapどっちがいいのか検討する
+	//カスケードの分ける部分で若干影が消える場合がある
+	//Exponantial Shadow Mapを合わせたい
 	class ShadowBuffer {
 	public:
 		ShadowBuffer(const Math::Vector2& size, int split_count, bool use_variance);
 		void AddModel(std::shared_ptr<Graphics::Model> model);
+		void SetNearPlane(float near_z);
+		void SetFarPlane(float far_z);
+		void SetLamda(float lamda);
 		void SetPos(const Math::Vector3& pos);
 		void SetTarget(const Math::Vector3& at);
 		void CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt);
@@ -81,6 +85,9 @@ namespace Lobelia::Game {
 #endif
 		Info info;
 		Math::Vector2 size;
+		float nearZ;
+		float farZ;
+		float lamda;
 		const int count;
 	};
 

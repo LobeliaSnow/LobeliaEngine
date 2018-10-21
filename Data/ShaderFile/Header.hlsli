@@ -13,9 +13,8 @@ cbuffer View : register(b0)
 
 cbuffer World : register(b1)
 {
-	column_major float4x4 world :packoffset(c0.x);
-	int useAnimation :packoffset(c4.x);
-	int noUseAnimation : packoffset(c4.y);
+	column_major float4x4 world;
+	int useAnimation;
 };
 
 cbuffer Material : register(b2)

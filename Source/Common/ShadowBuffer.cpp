@@ -36,7 +36,13 @@ namespace Lobelia::Game {
 		HostConsole::GetInstance()->IntRegister("deferred", "use shadow", &info.useShadowMap, false);
 		HostConsole::GetInstance()->IntRegister("deferred", "use variance", &info.useVariance, false);
 #endif
+		nearZ = 1.0f;
+		farZ = 1000.0f;
+		lamda = 0.5f;
 	}
+	void ShadowBuffer::SetNearPlane(float near_z) { nearZ = near_z; }
+	void ShadowBuffer::SetFarPlane(float far_z) { farZ = far_z; }
+	void ShadowBuffer::SetLamda(float lamda) { this->lamda = lamda; }
 	void ShadowBuffer::SetPos(const Math::Vector3& pos) { this->pos = pos; }
 	void ShadowBuffer::SetTarget(const Math::Vector3& at) { this->at = at; }
 	//ちょっと大丈夫かは不明、ダメそうなら調整します
@@ -78,9 +84,7 @@ namespace Lobelia::Game {
 #ifdef CASCADE
 		info.pos.x = pos.x; info.pos.y = pos.y; info.pos.z = pos.z; info.pos.w = 1.0f;
 		info.front.x = front.x; info.front.y = front.y; info.front.z = front.z; info.front.w = 0.0f;
-		float nearZ = 1.0f;
-		float farZ = 1000.0f;
-		ComputeSplit(0.5f, nearZ, farZ);
+		ComputeSplit(lamda, nearZ, farZ);
 #endif
 		for (int i = 0; i < count; i++) {
 			views[i]->SetEyePos(pos);
@@ -106,6 +110,7 @@ namespace Lobelia::Game {
 		auto& defaultVS = Graphics::Model::GetVertexShader();
 		auto& defaultPS = Graphics::Model::GetPixelShader();
 		Graphics::Model::ChangeVertexShader(vs);
+		Graphics::Model::ChangeVertexShader(vs);
 		Graphics::Model::ChangePixelShader(ps);
 		for (int i = 0; i < count; i++) {
 			views[i]->Activate();
@@ -114,6 +119,7 @@ namespace Lobelia::Game {
 			for (auto&& weak : models) {
 				if (weak.expired())continue;
 				auto model = weak.lock();
+				model->ChangeAnimVS(vs);
 				model->Render();
 			}
 		}

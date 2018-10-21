@@ -40,6 +40,7 @@ namespace Lobelia::Game {
 			if (weak.model.expired())continue;
 			std::shared_ptr<Graphics::Model> model = weak.model.lock();
 			cbuffer->Activate(weak.info);
+			model->ChangeAnimVS(vs);
 			model->Render();
 		}
 		Graphics::Model::ChangeVertexShader(defaultVS);

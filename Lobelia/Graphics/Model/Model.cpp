@@ -716,9 +716,8 @@ namespace Lobelia::Graphics {
 		ps->Set();
 		Info info = {};
 		info.useAnimation = (activeAnimation > -1);
-		info.noUseAnimation = !info.useAnimation;
-		world = DirectX::XMMatrixTranspose(world);
-		DirectX::XMStoreFloat4x4(&info.world, world);
+		DirectX::XMMATRIX transWorld = DirectX::XMMatrixTranspose(world);
+		DirectX::XMStoreFloat4x4(&info.world, transWorld);
 		mesh->Set(); inputLayout->Set(); constantBuffer->Activate(info);
 		Device::GetContext()->IASetPrimitiveTopology(topology);
 		if (!no_set) {
@@ -819,6 +818,7 @@ namespace Lobelia::Graphics {
 		}
 		return -1;
 	}
+	void Model::ChangeAnimVS(std::shared_ptr<Graphics::VertexShader> vs) { vsAnim = vs; }
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	void Transformer::CalcTranslateMatrix() { translate = DirectX::XMMatrixTranslation(transform.position.x, transform.position.y, transform.position.z); }

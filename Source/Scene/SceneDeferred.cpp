@@ -41,6 +41,7 @@ namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
 	void SceneDeferred::Initialize() {
 		const constexpr Math::Vector2 scale(1280, 720);
+		Raycaster::Initialize();
 		camera = std::make_unique<ViewerCamera>(scale, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3(0.0f, 0.0f, 0.0f));
 		deferredBuffer = std::make_unique<DeferredBuffer>(scale);
 		normalMap = TRUE; useLight = TRUE; useFog = TRUE;
@@ -50,7 +51,9 @@ namespace Lobelia::Game {
 		HostConsole::GetInstance()->IntRegister("deferred", "use fog", &useFog, false);
 #endif
 		//model = std::make_shared<Graphics::Model>("Data/Model/Deferred/stage.dxd", "Data/Model/Deferred/stage.mt");
-		model = std::make_shared<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
+		stage = std::make_shared<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
+		stage->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
+		stage->CalcWorldMatrix();
 #ifdef SIMPLE_SHADER
 		deferredShader = std::make_unique<SimpleDeferred>();
 #endif
@@ -77,13 +80,22 @@ namespace Lobelia::Game {
 #ifdef CASCADE
 		shadow = std::make_unique<ShadowBuffer>(scale*QUALITY, 4, true);
 #else
-		shadow = std::make_unique<ShadowBuffer>(scale, 1, true);
+		shadow = std::make_unique<ShadowBuffer>(scale*QUALITY, 1, true);
 #endif
 		skybox = std::make_unique<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
+		character = std::make_shared<Character>();
+#ifdef GPU_RAYCASTER
 		//レイ関係の初期化
-		rayMesh = std::make_shared<RayMesh>(model.get());
+		rayMesh = std::make_shared<RayMesh>(stage.get());
+		character->SetTerrainData(rayMesh);
+#endif
+		character->SetTerrainData(stage);
 		//shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, false);
 		//gaussian = std::make_unique<GaussianFilterCS>(scale);
+		rad = 0.0f;
+		shadow->SetNearPlane(10.0f);
+		shadow->SetFarPlane(500.0f);
+		shadow->SetLamda(1.0f);
 	}
 	SceneDeferred::~SceneDeferred() {
 #ifdef _DEBUG
@@ -95,7 +107,8 @@ namespace Lobelia::Game {
 		if (Input::GetKeyboardKey(DIK_6) == 1) useFog = !useFog;
 		if (Input::GetKeyboardKey(DIK_5) == 1) useLight = !useLight;
 
-		deferredBuffer->AddModel(model, normalMap);
+		deferredBuffer->AddModel(stage, normalMap);
+		deferredBuffer->AddModel(character, false);
 #ifdef FULL_EFFECT
 		//自分のカメラ位置にも光源を置く
 		FullEffectDeferred::PointLight light;
@@ -109,10 +122,18 @@ namespace Lobelia::Game {
 		else deferredShader->SetUseCount(0);
 		deferredShader->Update();
 #endif
-		shadow->AddModel(model);
-		shadow->SetPos(Math::Vector3(200.0f, 130.0f, 200.0f));
+		shadow->AddModel(stage);
+		shadow->AddModel(character);
+		//回転ライト
+		//rad += Application::GetInstance()->GetProcessTimeSec()*0.1f;
+		//lpos = Math::Vector3(sinf(rad), 0.0f, cos(rad))*300.0f;
+		//lpos.y = 150.0f;
+		//固定ライト
+		lpos = Math::Vector3(200.0f, 130.0f, 200.0f);
+		shadow->SetPos(lpos);
 		//shadow->SetPos(pos);
 		camera->Update();
+		character->Update(Math::Vector3(0.0f, 0.0f, -1.0f));
 	}
 	void SceneDeferred::AlwaysRender() {
 		Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));

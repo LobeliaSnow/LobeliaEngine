@@ -4,7 +4,7 @@
 #include "../Define.h"
 
 #define _DEBUG
-
+//#define EXPONANTIAL_SHADOW_TEST
 //最終的にはリンケージにてある程度は解決できるようにしたい
 
 //ワールド位置
@@ -146,12 +146,11 @@ inline Skin SkinVertex(VS_IN vs_in) {
 //深度バッファ作成
 ShadowOut CreateShadowMapVS(VS_IN vs_in) {
 	ShadowOut output = (ShadowOut)0;
-	//output.pos = mul(vs_in.pos, world);
-	if (noUseAnimation) output.pos = mul(vs_in.pos, world);
-	else {
+	if (useAnimation) {
 		Skin skinned = SkinVertex(vs_in);
 		output.pos = mul(skinned.pos, world);
 	}
+	else output.pos = mul(vs_in.pos, world);
 	output.pos = mul(output.pos, view);
 	output.pos = mul(output.pos, projection);
 	output.depth = output.pos;
@@ -161,19 +160,17 @@ ShadowOut CreateShadowMapVS(VS_IN vs_in) {
 //G-Buffer作成
 GBufferPS_IN CreateGBufferVS(VS_IN vs_in) {
 	GBufferPS_IN output = (GBufferPS_IN)0;
-	output.pos = mul(vs_in.pos, world);
-	output.normal = mul(float4(vs_in.normal.xyz, 0), world);
 	if (useAnimation) {
 		Skin skinned = SkinVertex(vs_in);
 		output.pos = mul(skinned.pos, world);
 		output.normal = mul(float4(skinned.normal.xyz, 0), world);
 	}
 	else {
-		output.worldPos = output.pos;
-		output.pos = mul(output.pos, view);
+		output.pos = mul(vs_in.pos, world);
+		output.normal = mul(float4(vs_in.normal.xyz, 0), world);
 	}
-	//ビュー空間位置
-	//output.viewPos = output.pos.z;
+	output.worldPos = output.pos;
+	output.pos = mul(output.pos, view);
 	output.pos = mul(output.pos, projection);
 	if (useNormalMap) {
 		//偽従法線生成
@@ -261,11 +258,13 @@ float4 CascadeVarianceShadow(GBufferPS_IN ps_in) {
 		return float4(1.0f, 1.0f, 1.0f, 1.0f);
 	}
 	if (lightSpaceLength - 0.01f > lightDepth.x) {
+		//80
+		//if (lightDepth.x >= exp(80 * (lightSpaceLength - 0.01f)))float4(1.0f, 1.0f, 1.0f, 1.0f);
 		//チェビシェフの不等式
 		float variance = lightDepth.y - (lightDepth.x * lightDepth.x);
 		//variance = min(1.0f, max(0.0f, variance + 0.01f));
-		float md = lightSpaceLength - lightDepth.x;
-		float p = variance / (variance + (md*md));
+		float delta = lightSpaceLength - lightDepth.x;
+		float p = variance / (variance + (delta*delta));
 		float shadow = max(p, lightSpaceLength <= lightDepth.x);
 		shadow = saturate(shadow * 0.5f + 0.5f);
 		return float4((float3)shadow, 1.0f);
@@ -315,8 +314,8 @@ float4 CascadeShadow(GBufferPS_IN ps_in) {
 	else return float4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 #else
-	//バリアンスシャドウマップ
-	float4 VarianceShadow(float4 shadowTex, GBufferPS_IN ps_in) {
+//バリアンスシャドウマップ
+float4 VarianceShadow(float4 shadowTex, GBufferPS_IN ps_in) {
 	//現在の描画対象の距離算出
 	float lightSpaceLength = ps_in.lightViewPos.z / ps_in.lightViewPos.w;
 	//カメラ位置からのZ値を見て、遮蔽物の深度値取得(無ければ上と同じものが入る)

@@ -259,7 +259,6 @@ namespace Lobelia::Graphics {
 		ALIGN(16) struct Info {
 			DirectX::XMFLOAT4X4 world;
 			int useAnimation;
-			int noUseAnimation;
 		};
 	public:
 		Model(const char* dxd_path, const char* mt_path);
@@ -314,6 +313,8 @@ namespace Lobelia::Graphics {
 		int RayPickWorld(Math::Vector3* out_pos, Math::Vector3* out_normal, const Math::Vector3& ray_pos, const Math::Vector3& ray_vec, float dist);
 		int RayPickLocal(Math::Vector3* out_pos, Math::Vector3* out_normal, const Math::Vector3& ray_pos, const Math::Vector3& ray_vec, float dist);
 		Mesh<Vertex>* GetMesh() { return mesh.get(); }
+		//即席
+		void ChangeAnimVS(std::shared_ptr<Graphics::VertexShader> vs);
 	private:
 		//非ポインター変数初期化
 		void StateInitialize();

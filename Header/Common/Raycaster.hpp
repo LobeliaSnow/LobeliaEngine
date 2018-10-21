@@ -54,8 +54,9 @@ namespace Lobelia::Game {
 		~Raycaster() = delete;
 		static void Initialize();
 		//第一引数はワールド変換行列
+		//現状は裏から入っても当たってしまう
+		//すぐ結果を取り出そうとすると著しくパフォーマンスを落とす
 		static void Dispatch(const DirectX::XMMATRIX& world, RayMesh* mesh, RayResult* result, const Math::Vector3& begin, const Math::Vector3& end);
-
 	private:
 		//コンスタントバッファ
 		struct Info {

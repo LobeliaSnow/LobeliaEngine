@@ -46,11 +46,14 @@ namespace Lobelia::Game {
 #endif
 		//std::unique_ptr<GaussianFilterCS> gaussian;
 		std::unique_ptr<ShadowBuffer> shadow;
+		Math::Vector3 lpos;
+		float rad;
 		//Math::Vector3 pos;
 		//Math::Vector3 at;
 		//Math::Vector3 up;
 		//描画オブジェクト
-		std::shared_ptr<Graphics::Model> model;
+		std::shared_ptr<Graphics::Model> stage;
+		std::shared_ptr<Character> character;
 		std::unique_ptr<SkyBox> skybox;
 		//レイ判定用オブジェクト
 		std::shared_ptr<RayMesh> rayMesh;
