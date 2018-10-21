@@ -256,6 +256,15 @@
     <ClCompile Include="Lobelia\Network\NetworkObject.cpp" />
     <ClCompile Include="Lobelia\Scene\Scene.cpp" />
     <ClCompile Include="Lobelia\XML\XML.cpp" />
+    <ClCompile Include="Source\Common\Camera.cpp" />
+    <ClCompile Include="Source\Common\Character.cpp" />
+    <ClCompile Include="Source\Common\ComputeBuffer.cpp" />
+    <ClCompile Include="Source\Common\DeferredBuffer.cpp" />
+    <ClCompile Include="Source\Common\DeferredShader.cpp" />
+    <ClCompile Include="Source\Common\PostEffect.cpp" />
+    <ClCompile Include="Source\Common\Raycaster.cpp" />
+    <ClCompile Include="Source\Common\ShadowBuffer.cpp" />
+    <ClCompile Include="Source\Common\SkyBox.cpp" />
     <ClCompile Include="Source\ParaboloidEnvironmentMap.cpp" />
     <ClCompile Include="Source\Scene\SceneCompute.cpp" />
     <ClCompile Include="Source\Scene\SceneDeferred.cpp" />
@@ -266,6 +275,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Data\ShaderFile\Define.h" />
+    <ClInclude Include="Header\Common\Camera.hpp" />
+    <ClInclude Include="Header\Common\Character.hpp" />
+    <ClInclude Include="Header\Common\ComputeBuffer.hpp" />
+    <ClInclude Include="Header\Common\DeferredBuffer.hpp" />
+    <ClInclude Include="Header\Common\DeferredShader.hpp" />
+    <ClInclude Include="Header\Common\PostEffect.hpp" />
+    <ClInclude Include="Header\Common\Raycaster.hpp" />
+    <ClInclude Include="Header\Common\ShadowBuffer.hpp" />
+    <ClInclude Include="Header\Common\SkyBox.hpp" />
     <ClInclude Include="Header\ParaboloidEnvironmentMap.hpp" />
     <ClInclude Include="Header\Scene\SceneCompute.hpp" />
     <ClInclude Include="Header\Scene\SceneDeferred.hpp" />

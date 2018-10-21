@@ -486,7 +486,7 @@ namespace Lobelia::Graphics {
 		//入力レイアウト作成
 		inputLayout = std::make_unique<InputLayout>(vs.get(), reflector.get());
 		//コンスタントバッファ作成
-		constantBuffer = std::make_unique<ConstantBuffer<DirectX::XMMATRIX>>(1, Config::GetRefPreference().systemCBActiveStage);
+		constantBuffer = std::make_unique<ConstantBuffer<Info>>(1, Config::GetRefPreference().systemCBActiveStage);
 		//親は設定されていない
 		parent = nullptr;
 		transform = {};
@@ -714,7 +714,12 @@ namespace Lobelia::Graphics {
 		rasterizer->Set(true);
 		depthStencil->Set(true);
 		ps->Set();
-		mesh->Set(); inputLayout->Set(); constantBuffer->Activate(DirectX::XMMatrixTranspose(world));
+		Info info = {};
+		info.useAnimation = (activeAnimation > -1);
+		info.noUseAnimation = !info.useAnimation;
+		world = DirectX::XMMatrixTranspose(world);
+		DirectX::XMStoreFloat4x4(&info.world, world);
+		mesh->Set(); inputLayout->Set(); constantBuffer->Activate(info);
 		Device::GetContext()->IASetPrimitiveTopology(topology);
 		if (!no_set) {
 			//スキニングするか否か
@@ -1101,7 +1106,7 @@ namespace Lobelia::Graphics {
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 	// ModelInstancedAnimation
 	///////////////////////////////////////////////////////////////////////////////////////////////////
-	ModelInstancedAnimation::ModelInstancedAnimation(const char* dxd_path, const char* mt_path, const int instance_count) :mapBuffer(nullptr),renderCount(0) {
+	ModelInstancedAnimation::ModelInstancedAnimation(const char* dxd_path, const char* mt_path, const int instance_count) :mapBuffer(nullptr), renderCount(0) {
 		if (!blend)blend = std::make_shared<BlendState>(Graphics::BLEND_PRESET::COPY, true, true);
 		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SAMPLER_PRESET::POINT, 16);
 		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RASTERIZER_PRESET::FRONT);
@@ -1194,7 +1199,7 @@ namespace Lobelia::Graphics {
 		texture = std::make_unique<Texture>(Math::Vector2(instance_count, 1), DXGI_FORMAT_R32_UINT, D3D11_BIND_SHADER_RESOURCE, desc, Texture::ACCESS_FLAG::DYNAMIC, Texture::CPU_ACCESS_FLAG::WRITE);
 		buffer = nullptr;
 	}
-	void MultiTextureModel::SetMultiTexture(const char* texture_path, int tex_slot)  {
+	void MultiTextureModel::SetMultiTexture(const char* texture_path, int tex_slot) {
 		Lobelia::Graphics::TextureFileAccessor::Load(texture_path, &subTexture);
 		/*TexInfo texInfo;
 		Lobelia::Graphics::TextureFileAccessor::Load(texture_path, &texInfo.texture);
@@ -1219,9 +1224,9 @@ namespace Lobelia::Graphics {
 		buffer = nullptr;
 	}
 	void MultiTextureModel::Render() {
-	/*	for (auto&& textureInfo : textures) {
-			textureInfo.texture->Set(textureInfo.slot,Lobelia::Graphics::ShaderStageList::PS);
-		}*/
+		/*	for (auto&& textureInfo : textures) {
+				textureInfo.texture->Set(textureInfo.slot,Lobelia::Graphics::ShaderStageList::PS);
+			}*/
 		subTexture->Set(7, ShaderStageList::PS);
 		texture->Set(17, ShaderStageList::VS);
 

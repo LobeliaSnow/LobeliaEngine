@@ -256,6 +256,11 @@ namespace Lobelia::Graphics {
 			//クラスター数
 			std::vector<DirectX::XMMATRIX> initPoseMatrices;
 		};
+		ALIGN(16) struct Info {
+			DirectX::XMFLOAT4X4 world;
+			int useAnimation;
+			int noUseAnimation;
+		};
 	public:
 		Model(const char* dxd_path, const char* mt_path);
 		~Model();
@@ -325,7 +330,7 @@ namespace Lobelia::Graphics {
 		std::unique_ptr<Mesh<Vertex>> mesh;
 		std::map<std::string, std::shared_ptr<Material>> materials;
 		std::vector<Material*> renderIndexMaterial;
-		std::unique_ptr<ConstantBuffer<DirectX::XMMATRIX>> constantBuffer;
+		std::unique_ptr<ConstantBuffer<Info>> constantBuffer;
 		//メッシュ数
 		std::vector<Bone> bones;
 		std::vector<Subset> subsets;
@@ -503,13 +508,13 @@ namespace Lobelia::Graphics {
 	};
 	class MultiTextureModel :public ModelInstancedAnimation {
 	public:
-		struct TexInfo{
+		struct TexInfo {
 			Texture* texture;
 			int slot;
 		};
 	public:
 		MultiTextureModel(const char* dxd_path, const char* mt_path, const int instance_count);
-		void SetMultiTexture(const char* texture_path,int tex_slot = 32);
+		void SetMultiTexture(const char* texture_path, int tex_slot = 32);
 		void Begin();
 		void Set(const InstancedData& data, int animationIndex, float* time, int type);
 		void End();

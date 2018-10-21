@@ -127,65 +127,92 @@ inline float4x4 TangentMatrix(float3 tangent, float3 binormal, float3 normal) {
 	return mat;
 }
 
+//アニメーション用
+inline column_major float4x4 FetchBoneMatrix(uint iBone) { return keyFrames[iBone]; }
+inline Skin SkinVertex(VS_IN vs_in) {
+	Skin output = (Skin)0;
+	float4 pos = vs_in.pos;
+	float3 normal = vs_in.normal.xyz;
+	[unroll]
+	for (int i = 0; i < 4; i++) {
+		uint bone = vs_in.clusterIndex[i];
+		float weight = vs_in.weights[i];
+		column_major float4x4 m = FetchBoneMatrix(bone);
+		output.pos += weight * mul(pos, m);
+		output.normal += weight * mul(normal, (float3x3) m);
+	}
+	return output;
+}
 //深度バッファ作成
 ShadowOut CreateShadowMapVS(VS_IN vs_in) {
 	ShadowOut output = (ShadowOut)0;
-	output.pos = mul(vs_in.pos, world);
+	//output.pos = mul(vs_in.pos, world);
+	if (noUseAnimation) output.pos = mul(vs_in.pos, world);
+	else {
+		Skin skinned = SkinVertex(vs_in);
+		output.pos = mul(skinned.pos, world);
+	}
 	output.pos = mul(output.pos, view);
 	output.pos = mul(output.pos, projection);
 	output.depth = output.pos;
 	output.tex = vs_in.tex;
 	return output;
 }
-
 //G-Buffer作成
 GBufferPS_IN CreateGBufferVS(VS_IN vs_in) {
-	GBufferPS_IN vs_out = (GBufferPS_IN)0;
-	vs_out.pos = mul(vs_in.pos, world);
-	vs_out.worldPos = vs_out.pos;
-	vs_out.pos = mul(vs_out.pos, view);
+	GBufferPS_IN output = (GBufferPS_IN)0;
+	output.pos = mul(vs_in.pos, world);
+	output.normal = mul(float4(vs_in.normal.xyz, 0), world);
+	if (useAnimation) {
+		Skin skinned = SkinVertex(vs_in);
+		output.pos = mul(skinned.pos, world);
+		output.normal = mul(float4(skinned.normal.xyz, 0), world);
+	}
+	else {
+		output.worldPos = output.pos;
+		output.pos = mul(output.pos, view);
+	}
 	//ビュー空間位置
-	//vs_out.viewPos = vs_out.pos.z;
-	vs_out.pos = mul(vs_out.pos, projection);
-	vs_out.normal = mul(float4(vs_in.normal.xyz, 0), world);
+	//output.viewPos = output.pos.z;
+	output.pos = mul(output.pos, projection);
 	if (useNormalMap) {
 		//偽従法線生成
-		vs_out.binormal = float4(cross(normalize(float3(0.001f, 1.0f, 0.001f)), vs_out.normal.xyz), 0.0f);
+		output.binormal = float4(cross(normalize(float3(0.001f, 1.0f, 0.001f)), output.normal.xyz), 0.0f);
 		//偽接線生成
-		vs_out.tangent = float4(cross(vs_out.normal, vs_out.binormal.xyz), 0.0f);
+		output.tangent = float4(cross(output.normal, output.binormal.xyz), 0.0f);
 	}
-	vs_out.viewPos = vs_out.pos;
-	vs_out.tex = vs_in.tex;
+	output.viewPos = output.pos;
+	output.tex = vs_in.tex;
 	//影生成
 	if (useShadowMap) {
 #ifdef CASCADE
 		//ライト空間位置へ変換 0
-		vs_out.worldPos /= vs_out.worldPos.w;
+		output.worldPos /= output.worldPos.w;
 		column_major float4x4 wlp = mul(lightView, lightProj0);
-		vs_out.lightViewPos[0] = mul(vs_out.worldPos, wlp);
-		vs_out.lightTex[0] = mul(vs_out.lightViewPos[0], UVTRANS_MATRIX);
+		output.lightViewPos[0] = mul(output.worldPos, wlp);
+		output.lightTex[0] = mul(output.lightViewPos[0], UVTRANS_MATRIX);
 		//1
 		wlp = mul(lightView, lightProj1);
-		vs_out.lightViewPos[1] = mul(vs_out.worldPos, wlp);
-		vs_out.lightTex[1] = mul(vs_out.lightViewPos[1], UVTRANS_MATRIX);
+		output.lightViewPos[1] = mul(output.worldPos, wlp);
+		output.lightTex[1] = mul(output.lightViewPos[1], UVTRANS_MATRIX);
 		//2
 		wlp = mul(lightView, lightProj2);
-		vs_out.lightViewPos[2] = mul(vs_out.worldPos, wlp);
-		vs_out.lightTex[2] = mul(vs_out.lightViewPos[2], UVTRANS_MATRIX);
+		output.lightViewPos[2] = mul(output.worldPos, wlp);
+		output.lightTex[2] = mul(output.lightViewPos[2], UVTRANS_MATRIX);
 		//3
 		wlp = mul(lightView, lightProj3);
-		vs_out.lightViewPos[3] = mul(vs_out.worldPos, wlp);
-		vs_out.lightTex[3] = mul(vs_out.lightViewPos[3], UVTRANS_MATRIX);
+		output.lightViewPos[3] = mul(output.worldPos, wlp);
+		output.lightTex[3] = mul(output.lightViewPos[3], UVTRANS_MATRIX);
 		//長さ
-		vs_out.lightLength = length(lightPos.xyz - vs_out.worldPos.xyz);
+		output.lightLength = length(lightPos.xyz - output.worldPos.xyz);
 #else
 		//ライト空間位置へ変換
 		column_major float4x4 wlp = mul(lightView, lightProj0);
-		vs_out.lightViewPos = mul(vs_out.worldPos, wlp);
-		vs_out.lightTex = mul(vs_out.lightViewPos, UVTRANS_MATRIX);
+		output.lightViewPos = mul(output.worldPos, wlp);
+		output.lightTex = mul(output.lightViewPos, UVTRANS_MATRIX);
 #endif
 	}
-	return vs_out;
+	return output;
 }
 
 //深度マップを作成
@@ -419,6 +446,7 @@ float CalcLinearFogFactor(float view_depth) {
 	fog = saturate(fog);
 	return fog;
 }
+//この部分の定数バッファを用いたif分岐では、パフォーマンスが落ちないことを確認済み
 //実際のシェーディングを行う部分
 float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	float4 pos = txDeferredPos.Sample(samLinear, ps_in.tex);
