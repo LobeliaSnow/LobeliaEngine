@@ -392,8 +392,8 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	//ここでの反射ベクトルは、ワールド空間のものを要求
 	float4 reflectEnvironment = txCube.Sample(samLinear, reflectRay);
 	//画面比率に合わせて最後の係数変えたほうがいいかもだけどちょっとそんな器用なことは難しい
-	float2 refractPoint = ps_in.screenPos + refractRay.xy * 0.08f;
-	float4 refractColor = txScene.Sample(samLinear, refractPoint);
+	float2 samplingPoint = ps_in.screenPos + refractRay.xy * 0.03f;
+	float4 refractColor = txScene.Sample(samLinear, samplingPoint);
 	return float4(saturate(reflectEnvironment.rgb*alpha + refractColor.rgb * (1.0f - alpha)),1.0f);
 	//float ratio = f + (1.0f - f)*pow(1.0f - dot(-ps_in.environmentEyeVector.xyz, normalVector), 5.0f);
 	//return float4(refractEnvironment.rgb, 1.0f);

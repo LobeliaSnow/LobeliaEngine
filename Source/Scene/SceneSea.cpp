@@ -10,6 +10,9 @@
 //屈折ようやく思いついた。
 //Screen Space Distortionの応用でScreen Space Refractを実装。
 //アルゴリズムはまんまDistortionだけど、歪ませる際に使用するのを屈折ベクトルで代用
+//現状の問題点はuvが画面外に言った時破綻
+
+//後海面の動き何とかすれば終了
 
 namespace Lobelia::Game {
 	CubeEnvironmentMap::CubeEnvironmentMap(const Math::Vector2& size, const Math::Vector3& pos, float radius) :size(size), pos(pos), radius(radius) {
@@ -303,6 +306,7 @@ namespace Lobelia::Game {
 		//環境マップを作成
 		environmentManager->RenderEnvironmentMap();
 		view->Activate();
+		rt->Clear(0x00000000);
 		rt->Activate();
 		//事前に確保したインスタンスインデックス1番でライティングをオフに
 		Graphics::Model::GetPixelShader()->SetLinkage(1);
