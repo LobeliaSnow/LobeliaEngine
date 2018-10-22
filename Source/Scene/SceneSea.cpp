@@ -7,6 +7,10 @@
 #endif
 #include "SceneSea.hpp"
 
+//屈折ようやく思いついた。
+//Screen Space Distortionの応用でScreen Space Refractを実装。
+//アルゴリズムはまんまDistortionだけど、歪ませる際に使用するのを屈折ベクトルで代用
+
 namespace Lobelia::Game {
 	CubeEnvironmentMap::CubeEnvironmentMap(const Math::Vector2& size, const Math::Vector3& pos, float radius) :size(size), pos(pos), radius(radius) {
 		for (int i = 0; i < 6; i++) {
@@ -203,6 +207,9 @@ namespace Lobelia::Game {
 	void SceneSea::Initialize() {
 		//カメラ作成
 		view = std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize());
+		rt = std::make_unique<Graphics::RenderTarget>(Application::GetInstance()->GetWindow()->GetSize(), DXGI_SAMPLE_DESC{ 1,0 });
+		//バックバッファと深度バッファを共通化
+		Application::GetInstance()->GetSwapChain()->GetRenderTarget()->ChangeDepthStencil(rt.get());
 		pos = Math::Vector3(0.0f, 10.0f, -10.0f);
 		at = Math::Vector3(0.0f, 0.0f, 0.0f);
 		up = Math::Vector3(0.0f, 1.0f, 0.0f);
@@ -296,6 +303,7 @@ namespace Lobelia::Game {
 		//環境マップを作成
 		environmentManager->RenderEnvironmentMap();
 		view->Activate();
+		rt->Activate();
 		//事前に確保したインスタンスインデックス1番でライティングをオフに
 		Graphics::Model::GetPixelShader()->SetLinkage(1);
 		skyBox->Render();
@@ -303,6 +311,11 @@ namespace Lobelia::Game {
 		Graphics::Model::GetPixelShader()->SetLinkage(0);
 		//ステージの描画
 		stage->Render();
+		//バックバッファの有効か
+		Application::GetInstance()->GetSwapChain()->GetRenderTarget()->Activate();
+		//背景シーンの描画
+		Graphics::SpriteRenderer::Render(rt.get());
+		rt->GetTexture()->Set(5, Graphics::ShaderStageList::PS);
 		//海として描画するか否か
 		if (sea) {
 			//テッセレーション用
@@ -319,7 +332,7 @@ namespace Lobelia::Game {
 		else model->ChangeRasterizerState(solidState);
 		//環境マップのセット
 		environmentManager->Activate(model->GetTransform().position);
-		caustics->Set(5, Graphics::ShaderStageList::PS);
+		//caustics->Set(5, Graphics::ShaderStageList::PS);
 		//水描画
 		model->Render(topology);
 		//ステートを戻す
@@ -327,5 +340,6 @@ namespace Lobelia::Game {
 #if defined(_DEBUG)&&defined(__PARABOLOID__)
 		environmentManager->DebugRender();
 #endif
+		Graphics::Texture::Clean(5, Graphics::ShaderStageList::PS);
 	}
 }

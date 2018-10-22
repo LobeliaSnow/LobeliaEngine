@@ -106,6 +106,7 @@ namespace Lobelia::Game {
 		std::shared_ptr<CubeEnvironmentMap> cubeMap;
 #endif
 		std::unique_ptr<Graphics::View> view;
+		std::unique_ptr<Graphics::RenderTarget> rt;
 		Math::Vector3 pos;
 		Math::Vector3 at;
 		Math::Vector3 up;
