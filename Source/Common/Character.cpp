@@ -19,6 +19,8 @@ namespace Lobelia::Game {
 	}
 	void Character::GPURaycastFloor1Pass() {
 		if (rayMesh.expired())return;
+		Gravity();
+		CalcMove();
 		auto mesh = rayMesh.lock();
 		Math::Vector3 pos = GetPos() + Math::Vector3(0.0f, 2.0f, 0.0f);
 		DirectX::XMMATRIX world;
@@ -38,7 +40,7 @@ namespace Lobelia::Game {
 					//ŠÑ’Ê‚µ‚È‚¢•ª‚¾‚¯ˆÚ“®‚·‚é‚æ‚¤‚É‚·‚é
 					move.y = -length;
 					jumpPower = 0.0f;
-					break;
+					//break;
 				}
 			}
 		}
@@ -47,8 +49,6 @@ namespace Lobelia::Game {
 #endif
 	void Character::Update(const Math::Vector3& front) {
 		if (Input::GetKeyboardKey(DIK_SPACE) == 1)Jump(60);
-		Gravity();
-		CalcMove();
 #ifdef GPU_RAYCASTER
 		//GPU‚É‚æ‚éRay”­ŽË
 		//RayŒvŽZ’†‚É‚Å‚«‚é‚±‚Æ‚ð­‚µ‚Å‚àÏ‚Ü‚·
@@ -63,9 +63,12 @@ namespace Lobelia::Game {
 		move.Normalize();
 		SetMove(move, 10.0f);
 		AnimationUpdate(Application::GetInstance()->GetProcessTimeMili());
+#ifdef CPU_RAYCASTER
+		Gravity();
+#endif
 		CalcMove();
 #ifdef CPU_RAYCASTER
-		//CollisionTerrainWall(terrain.lock().get(), nullptr);
+		CollisionTerrainWall(terrain.lock().get(), nullptr);
 		CollisionTerrainFloor(terrain.lock().get(), nullptr);
 #endif
 #ifdef GPU_RAYCASTER

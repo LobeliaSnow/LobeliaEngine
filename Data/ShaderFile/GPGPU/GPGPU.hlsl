@@ -99,7 +99,7 @@ float4 Intersect(float4 plane, float3 ray_begin, float3 ray_end, float3 v0, floa
 
 //スレッド数はアプリ側で指定する
 [numthreads(1, 1, 1)]
-void RaycastCS(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupID) {
+void RaycastCS(uint3 id : SV_DispatchThreadID) {
 	float3 v0 = rayInput[id.x].pos[0];
 	float3 v1 = rayInput[id.x].pos[1];
 	float3 v2 = rayInput[id.x].pos[2];

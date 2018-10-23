@@ -163,7 +163,7 @@ GBufferPS_IN CreateGBufferVS(VS_IN vs_in) {
 	if (useAnimation) {
 		Skin skinned = SkinVertex(vs_in);
 		output.pos = mul(skinned.pos, world);
-		output.normal = mul(float4(skinned.normal.xyz, 0), world);
+		output.normal = normalize(mul(float4(skinned.normal.xyz, 0), world));
 	}
 	else {
 		output.pos = mul(vs_in.pos, world);
@@ -314,8 +314,8 @@ float4 CascadeShadow(GBufferPS_IN ps_in) {
 	else return float4(1.0f, 1.0f, 1.0f, 1.0f);
 }
 #else
-//バリアンスシャドウマップ
-float4 VarianceShadow(float4 shadowTex, GBufferPS_IN ps_in) {
+	//バリアンスシャドウマップ
+	float4 VarianceShadow(float4 shadowTex, GBufferPS_IN ps_in) {
 	//現在の描画対象の距離算出
 	float lightSpaceLength = ps_in.lightViewPos.z / ps_in.lightViewPos.w;
 	//カメラ位置からのZ値を見て、遮蔽物の深度値取得(無ければ上と同じものが入る)
