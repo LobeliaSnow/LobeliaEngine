@@ -57,6 +57,8 @@ Texture2DArray txParaboloid: register(t4);
 #else
 TextureCube txCube : register(t4);
 #endif
+//シーン情報
+Texture2D txScene : register(t5);
 //Texture2D txCaustics : register(t5);
 SamplerState samLinear : register(s0);
 
@@ -98,7 +100,10 @@ struct GS_OUT {
 	float4 binormal : NORMAL2;
 	float4 tangentLight : LIGHT3;
 	float2 tex : TEXCOORD0;
+	float2 screenPos : SCREEN_POS;
 };
+//単位行列
+static const column_major float4x4 IDENTITY_MATRIX = float4x4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 
 //------------------------------------------------------------------------------------------------------
 //
@@ -238,7 +243,8 @@ GS_OUT DS(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const Output
 	output.environmentEyeVector = normalize(output.environmentPos - cpos);
 	output.pos = mul(output.pos, view);
 	output.pos = mul(output.pos, projection);
-
+	output.screenPos = (output.pos.xy / output.pos.w + 1.0f) * 0.5f;
+	output.screenPos.y *= -1;
 	return output;
 }
 
@@ -315,6 +321,7 @@ void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
 		//環境マップ用のカメラから位置へのベクトルを接空間へ変換
 		gs_out[i].environmentEyeVector = normalize(mul(gs_in[i].environmentEyeVector, tangentMatrix));
 		gs_out[i].tex = gs_in[i].tex;
+		gs_out[i].screenPos = gs_in[i].screenPos;
 		//ストリームに出力
 		stream.Append(gs_out[i]);
 	}
@@ -352,6 +359,7 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	float rs = (refractiveRatio*d - rt)*(refractiveRatio*d - rt) / ((refractiveRatio*d + rt)*(refractiveRatio*d + rt));
 	float rp = (refractiveRatio*rt - d)*(refractiveRatio*rt - d) / ((refractiveRatio*rt + d)*(refractiveRatio*rt + d));
 	float alpha = (rs + rp) / 2.0f;
+	alpha = saturate(alpha);
 #ifdef __PARABOLOID__//双曲面環境マップ
 	float3 ref = reflect(ps_in.environmentEyeVector.xyz, normalVector.xyz);
 	//接空間からワールド空間へ変換用
@@ -380,14 +388,17 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	const column_major float4x4 tangentMatrix = TangentMatrix(ps_in.tangent, ps_in.binormal, ps_in.normal);
 	//ここではまだ接空間なのでワールド空間に戻す(苦肉の策)
 	reflectRay = mul(reflectRay, tangentMatrix);
-	refractRay = mul(refractRay, tangentMatrix);
+	refractRay = normalize(mul(refractRay, tangentMatrix));
 	//ここでの反射ベクトルは、ワールド空間のものを要求
 	float4 reflectEnvironment = txCube.Sample(samLinear, reflectRay);
-	float ratio = f + (1.0f - f)*pow(1.0f - dot(-ps_in.environmentEyeVector.xyz, normalVector), 5.0f);
-	float4 refractEnvironment = txCube.Sample(samLinear, refractRay);
+	//画面比率に合わせて最後の係数変えたほうがいいかもだけどちょっとそんな器用なことは難しい
+	float2 refractPoint = ps_in.screenPos + refractRay.xy * 0.08f;
+	float4 refractColor = txScene.Sample(samLinear, refractPoint);
+	return float4(saturate(reflectEnvironment.rgb*alpha + refractColor.rgb * (1.0f - alpha)),1.0f);
+	//float ratio = f + (1.0f - f)*pow(1.0f - dot(-ps_in.environmentEyeVector.xyz, normalVector), 5.0f);
 	//return float4(refractEnvironment.rgb, 1.0f);
 	//return float4(refractEnvironment.rgb, ratio);
-	return float4(reflectEnvironment.rgb, alpha);
+	//return float4( + refractColor * (1.0f - alpha),1.0f);
 	/*float4 caustics = txCaustics.Sample(samLinear, ps_in.tex*6.0f)*0.3f;
 	return float4(reflectEnvironment.rgb + caustics.rgb, alpha);*/
 	//return float4(lerp(reflectEnvironment,refractEnvironment, ratio).rgb,1.0f);
