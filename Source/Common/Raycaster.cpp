@@ -49,6 +49,7 @@ namespace Lobelia::Game {
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(11, Graphics::ShaderStageList::CS);
 	}
 	void Raycaster::Dispatch(const DirectX::XMMATRIX& world, RayMesh* mesh, RayResult* result, const Math::Vector3& begin, const Math::Vector3& end) {
+		if ((begin - end).Length() == 0.0f)return;
 #ifdef _DEBUG
 		//Rayのデバッグ表示
 		Graphics::DebugRenderer::GetInstance()->SetLine(begin, end, 0xFFFFFFFF);

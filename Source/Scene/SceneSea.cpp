@@ -303,6 +303,7 @@ namespace Lobelia::Game {
 		//環境マップを作成
 		environmentManager->RenderEnvironmentMap();
 		view->Activate();
+		rt->Clear(0x00000000);
 		rt->Activate();
 		//事前に確保したインスタンスインデックス1番でライティングをオフに
 		Graphics::Model::GetPixelShader()->SetLinkage(1);
