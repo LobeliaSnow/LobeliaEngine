@@ -55,7 +55,7 @@ namespace Lobelia::Game {
 		Math::Vector3 faceNormal;
 		float length = CheckWall(terrain, tempMove, 10.0f, &faceNormal, mat_name);
 		//•Ç‚É‚ß‚èž‚ñ‚Å‚¢‚é‚Æ‚«
-		if (length >= 0.0f&&length < moveLength) {
+		if (length >= 0.0f && length < moveLength) {
 			faceNormal.Normalize();
 			//xz•½–Ê‚Å‚ÌŽË‰e¬•ª‚ðŽæ“¾()
 			float cosTheata = Math::Vector2::Dot(Math::Vector2(tempMove.x, tempMove.z), Math::Vector2(faceNormal.x, faceNormal.z));

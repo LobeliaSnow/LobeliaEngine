@@ -1,5 +1,6 @@
 //そのうちバイトニックソートも頑張って汎用化したいけど思いつかない。。。。
 
+//現状裏面でもあたると思うのでその周り修正
 
 //定数バッファ
 cbuffer Raycaster :register(b11) {
@@ -21,9 +22,9 @@ struct RayOutput {
 };
 
 //入力用バッファ
-StructuredBuffer<RayInput> rayInput :register(t0);
+StructuredBuffer<RayInput> rayInput :register(t1);
 //出力用バッファ
-RWStructuredBuffer<RayOutput> rayOutput :register(u0);
+RWStructuredBuffer<RayOutput> rayOutput :register(u1);
 
 //平面方程式を計算する
 //参考
@@ -99,7 +100,7 @@ float4 Intersect(float4 plane, float3 ray_begin, float3 ray_end, float3 v0, floa
 
 //スレッド数はアプリ側で指定する
 [numthreads(1, 1, 1)]
-void RaycastCS(uint3 id : SV_DispatchThreadID, uint3 gid : SV_GroupID) {
+void RaycastCS(uint3 id : SV_DispatchThreadID) {
 	float3 v0 = rayInput[id.x].pos[0];
 	float3 v1 = rayInput[id.x].pos[1];
 	float3 v2 = rayInput[id.x].pos[2];

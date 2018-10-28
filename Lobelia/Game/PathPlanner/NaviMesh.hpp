@@ -15,7 +15,7 @@ namespace Lobelia::Game {
 			Edge(int index0, int index1) :index0(index0), index1(index1) {}
 			Edge() :Edge(-1, -1) {}
 			bool operator==(const Edge& e) { return (index0 == e.index0&&index1 == e.index1); }
-			bool operator<(const Edge& e) { return ((index0 < e.index0) || (index0 == e.index0&&index1 < e.index1)); }
+			bool operator<(const Edge& e) { return ((index0 < e.index0) || (index0 == e.index0 && index1 < e.index1)); }
 		};
 		struct Node {
 			Math::Vector3 pos;

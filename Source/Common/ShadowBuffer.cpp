@@ -14,30 +14,32 @@ namespace Lobelia::Game {
 		splitPositions.resize(split_count);
 		gaussian.resize(split_count);
 		DXGI_FORMAT format = DXGI_FORMAT_R16G16_FLOAT;
+		if (QUALITY > 0.5f)format = DXGI_FORMAT_R32G32_FLOAT;
 		Math::Vector2 ssize = size;
 		for (int i = 0; i < split_count; i++) {
 			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, format);
-			views[i] = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 4.0f, 50, 400.0f);
+			//ここの視野角カメラの置く位置次第ではもう少し絞って精度上げれるかも。
+			views[i] = std::make_unique<Graphics::View>(Math::Vector2(), size, PI / 4.0f, 1, 1000.0f);
+			//縮小バッファにして処理稼ぐのもいいかも
 #ifdef GAUSSIAN_CS
 			gaussian[i] = std::make_unique<GaussianFilterCS>(size, format);
 #endif
 #ifdef GAUSSIAN_PS
 			gaussian[i] = std::make_unique<GaussianFilterPS>(size, format);
 #endif
-			gaussian[i]->SetDispersion(0.01f);
+			gaussian[i]->SetDispersion(0.001f);
 		}
 		//sampler = std::make_unique<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::COMPARISON_LINEAR, 16);
 		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapVS", Graphics::VertexShader::Model::VS_5_0, false);
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapPS", Graphics::PixelShader::Model::PS_5_0, false);
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(10, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
 		info.useShadowMap = TRUE; info.useVariance = i_cast(use_variance);
-		//縮小バッファにして処理稼ぐのもいいかも
 #ifdef _DEBUG
 		HostConsole::GetInstance()->IntRegister("deferred", "use shadow", &info.useShadowMap, false);
 		HostConsole::GetInstance()->IntRegister("deferred", "use variance", &info.useVariance, false);
 #endif
 		nearZ = 1.0f;
-		farZ = 1000.0f;
+		farZ = 600.0f;
 		lamda = 0.5f;
 	}
 	void ShadowBuffer::SetNearPlane(float near_z) { nearZ = near_z; }

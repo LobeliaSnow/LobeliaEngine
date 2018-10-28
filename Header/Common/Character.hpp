@@ -20,6 +20,7 @@ namespace Lobelia::Game {
 	private:
 		void GPURaycastFloor1Pass();
 		void GPURaycastFloor2Pass();
+		void GPURaycastWall();
 #endif
 	private:
 		std::weak_ptr<Graphics::Model> terrain;

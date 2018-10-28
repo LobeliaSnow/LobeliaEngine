@@ -215,6 +215,7 @@ namespace Lobelia::Game {
 	void GaussianFilterPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, std::shared_ptr<Graphics::RenderTarget> rt) {
 		Dispatch(active_view, active_rt, rt->GetTexture());
 	}
+	std::shared_ptr<Graphics::RenderTarget>& GaussianFilterPS::GetRenderTarget() { return pass2; }
 	//XYブラー結果を描画
 	void GaussianFilterPS::Render() {
 		Graphics::SpriteRenderer::Render(pass2.get());
@@ -226,6 +227,48 @@ namespace Lobelia::Game {
 	}
 	void GaussianFilterPS::DebugRender(const Math::Vector2& pos, const Math::Vector2& size) {
 		Graphics::SpriteRenderer::Render(pass2.get(), pos, size, 0.0f, Math::Vector2(), pass2->GetTexture()->GetSize(), 0xFFFFFFFF);
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+	}
+	DepthOfField::DepthOfField(const Math::Vector2& size, float quality) :PostEffect(size, true, DXGI_FORMAT_R8G8B8A8_UNORM) {
+		quality = max(1.0f, quality);
+		view = std::make_unique<Graphics::View>(Math::Vector2(), size);
+		//縮小バッファを使用
+		step0 = std::make_unique<GaussianFilterPS>(size*quality, DXGI_FORMAT_R8G8B8A8_UNORM);
+		step0->SetDispersion(0.001f);
+		step1 = std::make_unique<GaussianFilterPS>(size*quality, DXGI_FORMAT_R8G8B8A8_UNORM);
+		step1->SetDispersion(0.001f);
+		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianDoFPS", Graphics::PixelShader::Model::PS_5_0, false);
+		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(12, Graphics::ShaderStageList::PS);
+		//初期値
+		SetFocus(150.0f);
+		useDoF = true;
+	}
+	void DepthOfField::SetFocus(float range) { info = { range }; }
+	void DepthOfField::SetEnable(bool enable) { useDoF = enable; }
+	void DepthOfField::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::RenderTarget* color, Graphics::RenderTarget* depth_of_view) {
+		if (Input::GetKeyboardKey(DIK_4) == 1)useDoF = !useDoF;
+		//ボケ画像二枚作製
+		view->Activate();
+		rt->Activate();
+		step0->Dispatch(view.get(), rt.get(), color->GetTexture());
+		step1->Dispatch(view.get(), rt.get(), step0->GetRenderTarget()->GetTexture());
+		if (useDoF) {
+			cbuffer->Activate(info);
+			depth_of_view->GetTexture()->Set(1, Graphics::ShaderStageList::PS);
+			step0->Begin(2); step1->Begin(3);
+			std::shared_ptr<Graphics::PixelShader> defaultPS = Graphics::SpriteRenderer::GetPixelShader();
+			Graphics::SpriteRenderer::ChangePixelShader(ps);
+			Graphics::SpriteRenderer::Render(color);
+			Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
+			step0->End(); step1->End();
+			Graphics::Texture::Clean(1, Graphics::ShaderStageList::PS);
+		}
+		else {
+			if (Input::GetKeyboardKey(DIK_3))Graphics::SpriteRenderer::Render(step1->GetRenderTarget().get());
+			else Graphics::SpriteRenderer::Render(color);
+		}
+		active_view->Activate();
+		active_buffer->Activate();
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
 

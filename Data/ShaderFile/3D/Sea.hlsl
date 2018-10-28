@@ -227,6 +227,8 @@ GS_OUT DS(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const Output
 	float3 pos = patch[0].pos * domain.x + patch[1].pos * domain.y + patch[2].pos * domain.z;
 	output.pos = float4(pos, 1.0f);
 	//法線(実際に求めるのはGS)
+	//ここで法線マップのテクセル入れてもいいかも？
+	//ただ、法線マップのうまみが減ると思う
 	output.normal = normalize(patch[0].normal * domain.x + patch[1].normal * domain.y + patch[2].normal * domain.z);
 	//output.normal.xyz = normalize(normal);
 	//output.normal = normalize(mul(output.normal, world));
@@ -234,7 +236,13 @@ GS_OUT DS(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const Output
 	output.environmentPos = output.pos + output.normal * (sin(time + output.pos.x) / 3.0f);
 	//ここを含めた高さを調節できるようにしたいのと、波の流れる向きを自由にする予定
 	output.pos += output.normal * height;
-	output.pos += output.normal * (sin(time + output.pos.x) / 3.0f);
+	//波の合成
+	float wave = sin(time + output.pos.x);
+	wave += cos(time  * 0.5f - output.pos.x);
+	//wave += sin(time  * 0.3f - output.pos.x);
+	//wave += cos(time  * 0.1f - output.pos.x);
+	wave /= 5.0f;
+	output.pos += output.normal * wave;
 	//output.tex.x = (sin(time + output.tex.x) / 3.14 + 1.0f)*0.5f;
 	//ワールド変換等
 	output.pos = mul(output.pos, world);
@@ -391,16 +399,17 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	refractRay = normalize(mul(refractRay, tangentMatrix));
 	//ここでの反射ベクトルは、ワールド空間のものを要求
 	float4 reflectEnvironment = txCube.Sample(samLinear, reflectRay);
-	//画面比率に合わせて最後の係数変えたほうがいいかもだけどちょっとそんな器用なことは難しい
-	float2 samplingPoint = ps_in.screenPos + refractRay.xy * 0.03f;
-	float4 refractColor = txScene.Sample(samLinear, samplingPoint);
+	//Zによって歪み率を変えてやることで破綻を最小限に抑える
+	//↑により一部視線からの屈折がおかしいので見直すこと
+	float2 refractPoint = ps_in.screenPos + refractRay.xy * 0.0f * max(refractRay.z,0.3f);
+	float4 refractColor = txScene.Sample(samLinear, refractPoint);
 	return float4(saturate(reflectEnvironment.rgb*alpha + refractColor.rgb * (1.0f - alpha)),1.0f);
 	//float ratio = f + (1.0f - f)*pow(1.0f - dot(-ps_in.environmentEyeVector.xyz, normalVector), 5.0f);
 	//return float4(refractEnvironment.rgb, 1.0f);
 	//return float4(refractEnvironment.rgb, ratio);
 	//return float4( + refractColor * (1.0f - alpha),1.0f);
-	/*float4 caustics = txCaustics.Sample(samLinear, ps_in.tex*6.0f)*0.3f;
-	return float4(reflectEnvironment.rgb + caustics.rgb, alpha);*/
+	//float4 caustics = txCaustics.Sample(samLinear, ps_in.tex*6.0f)*0.3f;
+	//return float4(reflectEnvironment.rgb + caustics.rgb, alpha);
 	//return float4(lerp(reflectEnvironment,refractEnvironment, ratio).rgb,1.0f);
 	////ライティング
 	//float3 lambert = saturate(dot(normalVector, ps_in.tangentLight));

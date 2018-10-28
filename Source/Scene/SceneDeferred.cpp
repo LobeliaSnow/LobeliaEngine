@@ -2,11 +2,8 @@
 #include "SceneDeferred.hpp"
 
 //Screen Space Motion Blurやってみたい
-//被写界深度やってみたい
 
 //シェーダーのコンパイルが長すぎる、デバッグ時以外はcsoに逃がしてやりたい感
-//スキンメッシュのキャラを歩かせて、当たり判定(Raypick)をGPGPUでとるのも面白いと思う
-//歩かせるのはActorクラス使えばすぐ
 
 //TODO : SSAOPSの可変解像度対応(ビューを作ってやるだけ？)
 //TODO : シェーダーの整理
@@ -14,13 +11,15 @@
 
 //テストシーン
 //最終的にここでの経験と結果を用いてレンダリングエンジンを作る予定ではいるが、就活終わった後になると思われる。
+//その際には、GBufferの再利用も考えたほうが良いかも。
+//今は何も考えずに湯水のごとくGBufferを使用している。
 
 //現状実装されてるもの一覧(このシーンはディファードシェーディングです)
 //Define.hのスイッチで一部の機能のスイッチが可能
 //ハーフランバート
 //線形フォグ
 //法線マップ
-//複数ポイントライト
+//複数ポイントライト(最適化無し)
 //SSAOPS 遅い
 //SSAOCS PSより早い
 //ガウスフィルタPS
@@ -29,6 +28,8 @@
 //バリアンスシャドウマップ
 //カスケードシャドウマップ
 //カスケードバリアンスシャドウマップ(カスケードシャドウマップと、バリアンスシャドウマップの合わせ技)
+//GPURaycast(当たり判定用 現状実行自体は爆速のはずだが、どこかがボトルネックになり激遅)
+//Gaussian Depth of Field
 
 namespace Lobelia::Game {
 	namespace {
@@ -40,9 +41,9 @@ namespace Lobelia::Game {
 	//
 	//---------------------------------------------------------------------------------------------
 	void SceneDeferred::Initialize() {
-		const constexpr Math::Vector2 scale(1280, 720);
-		Raycaster::Initialize();
+		Math::Vector2 scale = Application::GetInstance()->GetWindow()->GetSize();
 		camera = std::make_unique<ViewerCamera>(scale, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3(0.0f, 0.0f, 0.0f));
+		rt = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 });
 		deferredBuffer = std::make_unique<DeferredBuffer>(scale);
 		normalMap = TRUE; useLight = TRUE; useFog = TRUE;
 #ifdef _DEBUG
@@ -82,7 +83,13 @@ namespace Lobelia::Game {
 #else
 		shadow = std::make_unique<ShadowBuffer>(scale*QUALITY, 1, true);
 #endif
+#ifdef USE_DOF
+		dof = std::make_unique<DepthOfField>(scale, QUALITY);
+		dof->SetFocus(150.0f);
+#endif
 		skybox = std::make_unique<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
+#ifdef USE_CHARACTER
+		Raycaster::Initialize();
 		character = std::make_shared<Character>();
 #ifdef GPU_RAYCASTER
 		//レイ関係の初期化
@@ -90,12 +97,14 @@ namespace Lobelia::Game {
 		character->SetTerrainData(rayMesh);
 #endif
 		character->SetTerrainData(stage);
+#endif
 		//shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, false);
 		//gaussian = std::make_unique<GaussianFilterCS>(scale);
 		rad = 0.0f;
 		shadow->SetNearPlane(10.0f);
 		shadow->SetFarPlane(500.0f);
 		shadow->SetLamda(1.0f);
+
 	}
 	SceneDeferred::~SceneDeferred() {
 #ifdef _DEBUG
@@ -108,7 +117,9 @@ namespace Lobelia::Game {
 		if (Input::GetKeyboardKey(DIK_5) == 1) useLight = !useLight;
 
 		deferredBuffer->AddModel(stage, normalMap);
+#ifdef USE_CHARACTER
 		deferredBuffer->AddModel(character, false);
+#endif
 #ifdef FULL_EFFECT
 		//自分のカメラ位置にも光源を置く
 		FullEffectDeferred::PointLight light;
@@ -123,7 +134,9 @@ namespace Lobelia::Game {
 		deferredShader->Update();
 #endif
 		shadow->AddModel(stage);
+#ifdef USE_CHARACTER
 		shadow->AddModel(character);
+#endif
 		//回転ライト
 		//rad += Application::GetInstance()->GetProcessTimeSec()*0.1f;
 		//lpos = Math::Vector3(sinf(rad), 0.0f, cos(rad))*300.0f;
@@ -133,7 +146,9 @@ namespace Lobelia::Game {
 		shadow->SetPos(lpos);
 		//shadow->SetPos(pos);
 		camera->Update();
+#ifdef USE_CHARACTER
 		character->Update(Math::Vector3(0.0f, 0.0f, -1.0f));
+#endif
 	}
 	void SceneDeferred::AlwaysRender() {
 		Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));
@@ -142,7 +157,8 @@ namespace Lobelia::Game {
 		Graphics::Environment::GetInstance()->SetFogEnd(400.0f);
 		Graphics::Environment::GetInstance()->Activate();
 		camera->Activate();
-		Graphics::RenderTarget* backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
+		rt->Clear(0x00000000);
+		Graphics::RenderTarget* backBuffer = rt.get();
 		//shadow->CreateShadowMap(view.get(), backBuffer);
 		shadow->CreateShadowMap(camera->GetView().get(), backBuffer);
 		skybox->Render(camera.get());
@@ -165,6 +181,16 @@ namespace Lobelia::Game {
 		deferredBuffer->End();
 #ifdef USE_SSAO
 		ssao->End();
+#endif
+		//バックバッファをスワップチェインのものに変更
+		backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
+		backBuffer->Activate();
+#ifdef USE_DOF
+		dof->Dispatch(camera->GetView().get(), backBuffer, rt.get(), deferredBuffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::VIEW_POS).get());
+		dof->Render();
+#else
+		Graphics::SpriteRenderer::Render(rt.get());
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 #endif
 #ifdef _DEBUG
 		if (Application::GetInstance()->debugRender) {

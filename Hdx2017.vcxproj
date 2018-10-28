@@ -213,6 +213,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Lobelia\Game\Fuzzy\Fuzzy.cpp" />
+    <ClCompile Include="Lobelia\Game\PathPlanner\NaviMesh.cpp" />
     <ClCompile Include="Lobelia\Graphics\BufferCreator\BufferCreator.cpp" />
     <ClCompile Include="Lobelia\Graphics\Device\Device.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)/Graphics</ObjectFileName>
@@ -322,6 +323,7 @@
     <ClInclude Include="Lobelia\Game\Collision\Collision.hpp" />
     <ClInclude Include="Lobelia\Game\DesignPattern\DesignPattern.hpp" />
     <ClInclude Include="Lobelia\Game\Fuzzy\Fuzzy.hpp" />
+    <ClInclude Include="Lobelia\Game\PathPlanner\NaviMesh.hpp" />
     <ClInclude Include="Lobelia\Game\PathPlanner\PathPlanner.hpp" />
     <ClInclude Include="Lobelia\Game\Ranking.hpp" />
     <ClInclude Include="Lobelia\Game\SelectModule.hpp" />

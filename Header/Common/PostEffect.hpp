@@ -10,7 +10,7 @@ namespace Lobelia::Game {
 	public:
 		PostEffect(const Math::Vector2& size, bool create_rt, DXGI_FORMAT format = DXGI_FORMAT_R32G32B32A32_FLOAT);
 		virtual ~PostEffect() = default;
-		std::shared_ptr<Graphics::RenderTarget>& GetRenderTarget();
+		virtual std::shared_ptr<Graphics::RenderTarget>& GetRenderTarget();
 		//デフォルトの動作は、rtの描画
 		virtual void Render();
 		//ポストエフェクトをテクスチャとしてセットする
@@ -122,6 +122,7 @@ namespace Lobelia::Game {
 		//第三引数が実際にぼかす対象
 		void Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, Graphics::Texture* texture);
 		void Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, std::shared_ptr<Graphics::RenderTarget> rt);
+		std::shared_ptr<Graphics::RenderTarget>& GetRenderTarget()override;
 		//XYブラー結果を描画
 		void Render()override;
 		void Begin(int slot);
@@ -139,5 +140,30 @@ namespace Lobelia::Game {
 		//分散率
 		float dispersion;
 	};
-
+	//Gaussian DoF
+	class DepthOfField :public PostEffect {
+	public:
+		//1.0まで
+		DepthOfField(const Math::Vector2& size, float quality = 1.0f);
+		~DepthOfField() = default;
+		void SetFocus(float range);
+		void SetEnable(bool enable);
+		void Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::RenderTarget* color, Graphics::RenderTarget* depth_of_view);
+	private:
+		ALIGN(16) struct Info {
+			float focusRange;
+		};
+	private:
+		std::unique_ptr<Graphics::View> view;
+		//弱いボケ
+		std::unique_ptr<GaussianFilterPS> step0;
+		//上の画像をさらにぼかしたボケ
+		std::unique_ptr<GaussianFilterPS> step1;
+		//DoF実装
+		std::shared_ptr<Graphics::PixelShader> ps;
+		//定数バッファ
+		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
+		Info info;
+		bool useDoF;
+	};
 }

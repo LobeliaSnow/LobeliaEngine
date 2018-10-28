@@ -8,7 +8,7 @@
       <quality>0</quality>
     </msaa>
     <!-- アプリ更新FPS -->
-    <fps>60.0</fps>
+    <fps>-60.0</fps>
     <!-- VSyncを使用する -->
     <vsync>0</vsync>
   </application>

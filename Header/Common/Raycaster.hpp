@@ -26,7 +26,7 @@ namespace Lobelia::Game {
 	};
 	//---------------------------------------------------------------------------------------------
 	class RayResult {
-	private:
+	public:
 		//GPUからの出力用バッファ
 		struct Output {
 			int hit;
@@ -38,6 +38,8 @@ namespace Lobelia::Game {
 		~RayResult() = default;
 		void Set();
 		void Clean();
+		//結果の読み込み
+		void Load();
 		const Output* Lock();
 		void UnLock();
 	private:
@@ -56,7 +58,8 @@ namespace Lobelia::Game {
 		//第一引数はワールド変換行列
 		//現状は裏から入っても当たってしまう
 		//すぐ結果を取り出そうとすると著しくパフォーマンスを落とす
-		static void Dispatch(const DirectX::XMMATRIX& world, RayMesh* mesh, RayResult* result, const Math::Vector3& begin, const Math::Vector3& end);
+		//戻り値はRayが正常に飛ばされたかどうか
+		static bool Dispatch(const DirectX::XMMATRIX& world, RayMesh* mesh, RayResult* result, const Math::Vector3& begin, const Math::Vector3& end);
 	private:
 		//コンスタントバッファ
 		struct Info {

@@ -16,14 +16,16 @@
 #define GAUSSIAN_PS
 //#define GAUSSIAN_CS
 #define CASCADE
+#define USE_DOF
 //クオリティ設定、影とSSAOの解像度にかけられる倍率
-//SSAOには倍率1.0f以上はありません
+//SSAO。DoFには倍率1.0f以上はありません
 //高
-#define QUALITY 2.0f
+//#define QUALITY 2.0f
 //中
 //#define QUALITY 1.0f
 //低
-//#define QUALITY 0.5f
+#define QUALITY 0.5f
 
+//#define USE_CHARACTER
 //#define CPU_RAYCASTER
 #define GPU_RAYCASTER

@@ -26,9 +26,16 @@ cbuffer GaussianFilter : register(b9) {
 	float  width : packoffset(c1.w);
 	float  height : packoffset(c2.x);
 };
+cbuffer DoF :register(b12) {
+	float focusRange : packoffset(c0.x);
+}
 // static const float offsetPerPixel = 20.0f;
 //入力用
 Texture2D inputTex :register(t0);
+//被写界深度用
+Texture2D inputDepth :register(t1);
+Texture2D inputBokeh0 :register(t2);
+Texture2D inputBokeh1 :register(t3);
 //CS実装
 //出力用
 RWTexture2D<float4> outputTex :register(u0);
@@ -243,4 +250,47 @@ float4 GaussianFilterPS(GAUSSIAN_VS_OUT ps_in) :SV_Target{
 	ret += (inputTex.Sample(samLinear, ps_in.tex5) + inputTex.Sample(samLinear, ps_in.tex1)) * weight5;
 	ret += (inputTex.Sample(samLinear, ps_in.tex6) + inputTex.Sample(samLinear, ps_in.tex0)) * weight6;
 	return ret;
+}
+
+//Gaussian DoF
+//参考
+//http://dxlib.o.oo7.jp/program/dxprogram_DepthOfField.html
+//http://api.unrealengine.com/JPN/Engine/Rendering/PostProcessEffects/DepthOfField/
+//https://t-pot.com/program/32_dof/dof.html
+//現状細い部分が怪しい動きをする
+float4 GaussianDoFPS(PS_IN_TEX ps_in) :SV_Target{
+	//真ん中をピントの中心とする
+	float centerDepth = inputDepth.Sample(samLinear, float2(0.5f,0.5f)).z;
+	//ピント幅算出
+	float focusBegin = centerDepth - focusRange;
+	float focusEnd = centerDepth + focusRange;
+	//下限を合わせる
+	float depth = max(0.0f, inputDepth.Sample(samLinear, ps_in.tex).z - focusBegin);
+	//中央値算出
+	float center = (focusEnd - focusBegin)*0.5f;
+	//この値は中心が0で離れるほど1に近づく
+	float fade = 0.0f;
+	if (depth <= center)fade = depth / center;
+	else fade = 1.0f - (depth - center) / center;
+	fade = saturate(1.0f - fade);
+	float4 color0; float4 color1; float blendRatio;
+	if (fade < 0.5f) {
+		//ボケなし
+		color0 = inputTex.Sample(samLinear, ps_in.tex);
+		//弱ボケ
+		color1 = inputBokeh0.Sample(samLinear, ps_in.tex);
+		//0.0f~1.0fの比率を算出
+		blendRatio = fade / 0.5f;
+	}
+	else {
+		//弱ボケ
+		color0 = inputBokeh0.Sample(samLinear, ps_in.tex);
+		//強ボケ
+		color1 = inputBokeh1.Sample(samLinear, ps_in.tex);
+		//0.0f~1.0fの比率を算出
+		//-0.5fの理由はこの値が0.5f以上だから
+		blendRatio = (fade - 0.5f) / 0.5f;
+	}
+	float4 color = lerp(color0, color1, blendRatio);
+	return color;
 }

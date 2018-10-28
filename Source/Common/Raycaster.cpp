@@ -4,10 +4,10 @@
 
 namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
-//
-//	Raycaster
-//
-//---------------------------------------------------------------------------------------------
+	//
+	//	Raycaster
+	//
+	//---------------------------------------------------------------------------------------------
 	RayMesh::RayMesh(Graphics::Model* model) {
 		auto mesh = model->GetMesh();
 		//バッファの作成
@@ -25,7 +25,7 @@ namespace Lobelia::Game {
 		}
 		structuredBuffer->Update(buildMesh.data());
 	}
-	void RayMesh::Set() { structuredBuffer->Set(0, Graphics::ShaderStageList::CS); }
+	void RayMesh::Set() { structuredBuffer->Set(1, Graphics::ShaderStageList::CS); }
 	int RayMesh::GetPolygonCount() { return polygonCount; }
 	//---------------------------------------------------------------------------------------------
 	RayResult::RayResult(RayMesh* mesh) {
@@ -33,10 +33,10 @@ namespace Lobelia::Game {
 		uav = std::make_unique<UnorderedAccessView>(structuredBuffer.get());
 		readBuffer = std::make_unique<ReadGPUBuffer>(structuredBuffer);
 	}
-	void RayResult::Set() { uav->Set(0); }
-	void RayResult::Clean() { uav->Clean(0); }
+	void RayResult::Set() { uav->Set(1); }
+	void RayResult::Clean() { uav->Clean(1); }
+	void RayResult::Load() { readBuffer->ReadCopy(); }
 	const RayResult::Output* RayResult::Lock() {
-		readBuffer->ReadCopy();
 		return readBuffer->ReadBegin<Output>();
 	}
 	void RayResult::UnLock() { readBuffer->ReadEnd(); }
@@ -48,7 +48,8 @@ namespace Lobelia::Game {
 		cs = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/GPGPU/GPGPU.hlsl", "RaycastCS");
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(11, Graphics::ShaderStageList::CS);
 	}
-	void Raycaster::Dispatch(const DirectX::XMMATRIX& world, RayMesh* mesh, RayResult* result, const Math::Vector3& begin, const Math::Vector3& end) {
+	bool Raycaster::Dispatch(const DirectX::XMMATRIX& world, RayMesh* mesh, RayResult* result, const Math::Vector3& begin, const Math::Vector3& end) {
+		if ((begin - end).Length() == 0.0f)return false;
 #ifdef _DEBUG
 		//Rayのデバッグ表示
 		Graphics::DebugRenderer::GetInstance()->SetLine(begin, end, 0xFFFFFFFF);
@@ -66,6 +67,8 @@ namespace Lobelia::Game {
 		cbuffer->Activate(info);
 		//Ray判定開始
 		cs->Dispatch(mesh->GetPolygonCount(), 1, 1);
+		result->Load();
+		return true;
 	}
 
 }

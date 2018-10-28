@@ -3,11 +3,15 @@ namespace Lobelia {
 	class HostConsole :public Utility::Singleton<HostConsole> {
 		friend class Utility::Singleton<HostConsole>;
 	private:
-		class InformationConsole* information = nullptr;
-		class LogConsole* logs = nullptr;
-		class CommandConsole* commander = nullptr;
-		class SystemConsole* system = nullptr;
+		std::unique_ptr<class InformationConsole> information;
+		std::unique_ptr<class LogConsole> logs;
+		std::unique_ptr<class CommandConsole> commander;
+		std::unique_ptr<class SystemConsole> system;
 	private:
+		//コンストラクタとデストラクタが非インラインである必要がある
+		//unique_ptrは生成時と破棄の時にクラスの完全型を要求するが、
+		//インラインにして前方宣言で行ってしまうと、完全型が取れない
+		//もう一つの解決策としては、カスタムデリーターで制御すること
 		HostConsole();
 		~HostConsole();
 		bool IsActive();

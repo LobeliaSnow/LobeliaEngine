@@ -31,7 +31,6 @@ namespace Lobelia::Game {
 		case Graphics::ShaderStageList::CS:	Graphics::Device::GetContext()->CSSetShaderResources(slot, 1, srv.GetAddressOf());	break;
 		default:	STRICT_THROW("範囲外の値です");
 		}
-
 	}
 	int StructuredBuffer::GetStructSize() { return STRUCT_SIZE; }
 	int StructuredBuffer::GetCount() { return COUNT; }
@@ -62,8 +61,10 @@ namespace Lobelia::Game {
 		Graphics::Device::GetContext()->CSSetUnorderedAccessViews(slot, 1, &null, nullptr);
 	}
 	//---------------------------------------------------------------------------------------------
+//#define TEST
 	ReadGPUBuffer::ReadGPUBuffer(std::shared_ptr<StructuredBuffer> buffer) :origin(buffer) {
 		if (!buffer)STRICT_THROW("オリジナルのバッファが存在しません");
+#ifndef TEST
 		D3D11_BUFFER_DESC desc = {};
 		buffer->buffer->GetDesc(&desc);
 		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
@@ -71,18 +72,35 @@ namespace Lobelia::Game {
 		desc.BindFlags = 0; desc.MiscFlags = 0;
 		HRESULT hr = Graphics::Device::Get()->CreateBuffer(&desc, nullptr, this->buffer.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("STAGINGバッファ作成に失敗");
+#endif
 	}
 	void ReadGPUBuffer::ReadCopy() {
 		if (origin.expired())STRICT_THROW("オリジナルのバッファが存在しません");
 		std::shared_ptr<StructuredBuffer> src = origin.lock();
+#ifdef TEST
+		D3D11_BUFFER_DESC desc = {};
+		src->buffer->GetDesc(&desc);
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		desc.Usage = D3D11_USAGE_STAGING;
+		desc.BindFlags = 0; desc.MiscFlags = 0;
+		HRESULT hr = Graphics::Device::Get()->CreateBuffer(&desc, nullptr, this->buffer.GetAddressOf());
+		if (FAILED(hr))STRICT_THROW("STAGINGバッファ作成に失敗");
+#endif
 		Graphics::Device::GetContext()->CopyResource(buffer.Get(), src->buffer.Get());
 	}
 	void* ReadGPUBuffer::ReadBegin() {
+		if (!buffer)STRICT_THROW("バッファがコピーされていません");
 		D3D11_MAPPED_SUBRESOURCE resource = {};
+		Timer timer;
+		timer.Begin();
 		HRESULT hr = Graphics::Device::GetContext()->Map(buffer.Get(), 0, D3D11_MAP_READ, 0, &resource);
 		if (FAILED(hr))STRICT_THROW("マップに失敗");
+		timer.End();
+		HostConsole::GetInstance()->Printf("Map : %f m/sec", timer.GetMilisecondResult());
 		return resource.pData;
 	}
-	void ReadGPUBuffer::ReadEnd() { Graphics::Device::GetContext()->Unmap(buffer.Get(), 0); }
+	void ReadGPUBuffer::ReadEnd() {
+		Graphics::Device::GetContext()->Unmap(buffer.Get(), 0);
+	}
 
 }

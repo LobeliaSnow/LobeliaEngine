@@ -458,10 +458,10 @@ namespace Lobelia {
 		style.ChildWindowRounding = 0.0f;
 		style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.4f, 0.4f, 1.0f, 0.7f);
 		auto& option = Config::GetRefPreference().consoleOption;
-		Utility::SafeNew(&information, "Information Console", option.informationPos, option.informationSize);
-		Utility::SafeNew(&logs, "Log Console", option.logPos, option.logSize);
-		Utility::SafeNew(&commander, "Command Console", option.commandPos, option.commandSize);
-		Utility::SafeNew(&system);
+		information = std::make_unique<InformationConsole>("Information Console", option.informationPos, option.informationSize);
+		logs = std::make_unique<LogConsole>("Log Console", option.logPos, option.logSize);
+		commander = std::make_unique<CommandConsole>("Command Console", option.commandPos, option.commandSize);
+		system = std::make_unique<SystemConsole>();
 		commander->CommandRegister("clear log", HostConsole::ExeStyle::BUTTON, [this]() {logs->Clear(); return true; });
 		information->SetupAnalaysis();
 		//ログ保存機能をコマンドに追加
@@ -476,12 +476,6 @@ namespace Lobelia {
 #endif
 	}
 	void HostConsole::Shutdown() {
-#ifdef USE_IMGUI_AND_CONSOLE
-		Utility::SafeDelete(information);
-		Utility::SafeDelete(logs);
-		Utility::SafeDelete(commander);
-		Utility::SafeDelete(system);
-#endif
 	}
 	void HostConsole::StringRegister(const char* key, const char* label, char* data) {
 #ifdef USE_IMGUI_AND_CONSOLE

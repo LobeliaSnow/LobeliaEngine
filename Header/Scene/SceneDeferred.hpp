@@ -28,6 +28,7 @@ namespace Lobelia::Game {
 		void AlwaysRender()override;
 	private:
 		std::unique_ptr<Camera> camera;
+		std::unique_ptr<Graphics::RenderTarget> rt;
 		//std::unique_ptr<Graphics::View> view;
 		std::unique_ptr<DeferredBuffer> deferredBuffer;
 #ifdef SIMPLE_SHADER
@@ -46,6 +47,9 @@ namespace Lobelia::Game {
 #endif
 		//std::unique_ptr<GaussianFilterCS> gaussian;
 		std::unique_ptr<ShadowBuffer> shadow;
+#ifdef USE_DOF
+		std::unique_ptr<DepthOfField> dof;
+#endif
 		Math::Vector3 lpos;
 		float rad;
 		//Math::Vector3 pos;
@@ -53,10 +57,12 @@ namespace Lobelia::Game {
 		//Math::Vector3 up;
 		//描画オブジェクト
 		std::shared_ptr<Graphics::Model> stage;
+#ifdef USE_CHARACTER
 		std::shared_ptr<Character> character;
-		std::unique_ptr<SkyBox> skybox;
 		//レイ判定用オブジェクト
 		std::shared_ptr<RayMesh> rayMesh;
+#endif
+		std::unique_ptr<SkyBox> skybox;
 		//描画制御用パラメーター
 		int normalMap;
 		int useLight;
