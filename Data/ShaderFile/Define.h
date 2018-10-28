@@ -18,13 +18,15 @@
 #define CASCADE
 #define USE_DOF
 //クオリティ設定、影とSSAOの解像度にかけられる倍率
-//SSAO。DoFには倍率1.0f以上はありません
+//SSAOには倍率1.0f以上はありません
 //高
 //#define QUALITY 2.0f
 //中
 //#define QUALITY 1.0f
 //低
 #define QUALITY 0.5f
+#define DOF_QUALITY 1.0f
+//#define DOF_QUALITY QUALITY
 
 //#define USE_CHARACTER
 //#define CPU_RAYCASTER

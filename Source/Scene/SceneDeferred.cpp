@@ -33,7 +33,7 @@
 
 namespace Lobelia::Game {
 	namespace {
-		const constexpr int LIGHT_COUNT = 127;
+		const constexpr int LIGHT_COUNT = 128;
 	}
 	//---------------------------------------------------------------------------------------------
 	//
@@ -67,7 +67,7 @@ namespace Lobelia::Game {
 			light.pos += Math::Vector4(-213.0f, 5.0f, -5.0f, 0.0f);
 			light.color = Utility::Color(rand() % 255, rand() % 255, rand() % 255, 255);
 			light.attenuation = Utility::Frand(0.5f, 10.0f);
-			deferredShader->SetLightBuffer(i + 1, light);
+			deferredShader->SetLightBuffer(i, light);
 		}
 #endif
 #ifdef USE_SSAO
@@ -84,7 +84,7 @@ namespace Lobelia::Game {
 		shadow = std::make_unique<ShadowBuffer>(scale*QUALITY, 1, true);
 #endif
 #ifdef USE_DOF
-		dof = std::make_unique<DepthOfField>(scale, QUALITY);
+		dof = std::make_unique<DepthOfField>(scale, DOF_QUALITY);
 		dof->SetFocus(150.0f);
 #endif
 		skybox = std::make_unique<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
@@ -121,15 +121,7 @@ namespace Lobelia::Game {
 		deferredBuffer->AddModel(character, false);
 #endif
 #ifdef FULL_EFFECT
-		//Ž©•ª‚ÌƒJƒƒ‰ˆÊ’u‚É‚àŒõŒ¹‚ð’u‚­
-		FullEffectDeferred::PointLight light;
-		//light.pos = Math::Vector4(pos.x, pos.y, pos.z, 0.0f);
-		light.pos = Math::Vector4(0.0f, 0.0f, 0.0f, 0.0f);
-		light.color = 0xFFFFFFFF;
-		//light.color = Utility::Color(rand() % 255, rand() % 255, rand() % 255, 255);
-		light.attenuation = 20.0f;
-		deferredShader->SetLightBuffer(0, light);
-		if (useLight)deferredShader->SetUseCount(LIGHT_COUNT + 1);
+		if (useLight)deferredShader->SetUseCount(LIGHT_COUNT);
 		else deferredShader->SetUseCount(0);
 		deferredShader->Update();
 #endif
