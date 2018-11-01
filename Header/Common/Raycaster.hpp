@@ -38,10 +38,11 @@ namespace Lobelia::Game {
 		~RayResult() = default;
 		void Set();
 		void Clean();
-		//Œ‹‰Ê‚Ì“Ç‚İ‚İ
-		void Load();
 		const Output* Lock();
 		void UnLock();
+	private:
+		//Œ‹‰Ê‚Ì“Ç‚İ‚İ
+		void Load();
 	private:
 		std::shared_ptr<StructuredBuffer> structuredBuffer;
 		std::unique_ptr<class UnorderedAccessView> uav;

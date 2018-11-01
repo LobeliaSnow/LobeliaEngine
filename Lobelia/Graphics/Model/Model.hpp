@@ -309,7 +309,7 @@ namespace Lobelia::Graphics {
 		//マテリアル取得
 		Material* GetMaterial(const char* mt_name);
 		//描画関連
-		void Render(D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, bool no_set = false);
+		virtual void Render(D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST, bool no_set = false);
 		int RayPickWorld(Math::Vector3* out_pos, Math::Vector3* out_normal, const Math::Vector3& ray_pos, const Math::Vector3& ray_vec, float dist);
 		int RayPickLocal(Math::Vector3* out_pos, Math::Vector3* out_normal, const Math::Vector3& ray_pos, const Math::Vector3& ray_vec, float dist);
 		Mesh<Vertex>* GetMesh() { return mesh.get(); }

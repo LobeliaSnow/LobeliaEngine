@@ -13,6 +13,7 @@
 //最終的にここでの経験と結果を用いてレンダリングエンジンを作る予定ではいるが、就活終わった後になると思われる。
 //その際には、GBufferの再利用も考えたほうが良いかも。
 //今は何も考えずに湯水のごとくGBufferを使用している。
+//ポストエフェクト実装の際に現在使用しているレンダーターゲットを、外部から受け取る形にすればもう少しマシにはなる
 
 //現状実装されてるもの一覧(このシーンはディファードシェーディングです)
 //Define.hのスイッチで一部の機能のスイッチが可能
@@ -29,7 +30,7 @@
 //カスケードシャドウマップ
 //カスケードバリアンスシャドウマップ(カスケードシャドウマップと、バリアンスシャドウマップの合わせ技)
 //GPURaycast(当たり判定用 現状実行自体は爆速のはずだが、どこかがボトルネックになり激遅)
-//Gaussian Depth of Field
+//Gaussian Depth of Field (被写界深度)
 
 namespace Lobelia::Game {
 	namespace {
@@ -42,7 +43,7 @@ namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
 	void SceneDeferred::Initialize() {
 		Math::Vector2 scale = Application::GetInstance()->GetWindow()->GetSize();
-		camera = std::make_unique<ViewerCamera>(scale, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3(0.0f, 0.0f, 0.0f));
+		camera = std::make_shared<ViewerCamera>(scale, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3(0.0f, 0.0f, 0.0f));
 		rt = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 });
 		deferredBuffer = std::make_unique<DeferredBuffer>(scale);
 		normalMap = TRUE; useLight = TRUE; useFog = TRUE;
@@ -88,6 +89,7 @@ namespace Lobelia::Game {
 		dof->SetFocus(150.0f);
 #endif
 		skybox = std::make_unique<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
+		skybox->SetCamera(camera);
 #ifdef USE_CHARACTER
 		Raycaster::Initialize();
 		character = std::make_shared<Character>();
@@ -139,7 +141,8 @@ namespace Lobelia::Game {
 		//shadow->SetPos(pos);
 		camera->Update();
 #ifdef USE_CHARACTER
-		character->Update(Math::Vector3(0.0f, 0.0f, -1.0f));
+		Math::Vector3 front = camera->TakeFront(); front.y = 0.0f;
+		character->Update(front);
 #endif
 	}
 	void SceneDeferred::AlwaysRender() {
@@ -153,7 +156,7 @@ namespace Lobelia::Game {
 		Graphics::RenderTarget* backBuffer = rt.get();
 		//shadow->CreateShadowMap(view.get(), backBuffer);
 		shadow->CreateShadowMap(camera->GetView().get(), backBuffer);
-		skybox->Render(camera.get());
+		skybox->Render();
 		//view->Activate();
 		shadow->Begin();
 		deferredBuffer->RenderGBuffer();

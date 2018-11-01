@@ -16,18 +16,15 @@ namespace Lobelia::Game {
 	void Character::SetTerrainData(std::shared_ptr<RayMesh> terrain) {
 		this->rayMesh = terrain;
 		result = std::make_unique<RayResult>(terrain.get());
+		resultBack = std::make_unique<RayResult>(terrain.get());
 	}
-	void Character::GPURaycastFloor1Pass() {
+	void Character::GPURaycastFloor() {
 		if (rayMesh.expired())return;
 		auto mesh = rayMesh.lock();
 		Math::Vector3 pos = GetPos() + Math::Vector3(0.0f, 2.0f, 0.0f);
 		DirectX::XMMATRIX world;
 		terrain.lock()->GetWorldMatrix(&world);
 		Raycaster::Dispatch(world, mesh.get(), result.get(), pos, pos - Math::Vector3(0.0f, 5.0f, 0.0f));
-	}
-	void Character::GPURaycastFloor2Pass() {
-		if (rayMesh.expired())return;
-		auto mesh = rayMesh.lock();
 		auto r = result->Lock();
 		int polyCount = mesh->GetPolygonCount();
 		for (int i = 0; i < polyCount; i++) {
@@ -43,6 +40,7 @@ namespace Lobelia::Game {
 			}
 		}
 		result->UnLock();
+		std::swap(result, resultBack);
 	}
 	void Character::GPURaycastWall() {
 		if (rayMesh.expired())return;
@@ -132,9 +130,8 @@ namespace Lobelia::Game {
 		Gravity();
 		CalcMove();
 		//GPU‚É‚æ‚éRay”­ŽË
-		GPURaycastWall();
-		GPURaycastFloor1Pass();
-		GPURaycastFloor2Pass();
+		//GPURaycastWall();
+		GPURaycastFloor();
 #endif
 		Move();
 		SmoothRotateY();

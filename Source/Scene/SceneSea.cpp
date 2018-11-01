@@ -181,9 +181,7 @@ namespace Lobelia::Game {
 		//シェーダーの変更＆セット
 		model->ChangeVertexShader(vs);
 		model->ChangePixelShader(ps);
-		hs->Set();
-		ds->Set();
-		gs->Set();
+		hs->Set(); ds->Set(); gs->Set();
 		//時間経過
 		seaInfo.time += Application::GetInstance()->GetProcessTimeSec();
 		//コンスタントバッファとテクスチャの更新
@@ -193,9 +191,7 @@ namespace Lobelia::Game {
 	}
 	void WaterShader::Clean() {
 		//他で使わないシェーダーをもとに戻す
-		hs->Clean();
-		ds->Clean();
-		gs->Clean();
+		hs->Clean(); ds->Clean(); gs->Clean();
 	}
 
 	SceneSea::SceneSea() {
@@ -209,13 +205,10 @@ namespace Lobelia::Game {
 	}
 	void SceneSea::Initialize() {
 		//カメラ作成
-		view = std::make_unique<Graphics::View>(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize());
+		camera = std::make_unique<ViewerCamera>(Application::GetInstance()->GetWindow()->GetSize(), Math::Vector3(0.0f, 10.0f, -10.0f), Math::Vector3());
 		rt = std::make_unique<Graphics::RenderTarget>(Application::GetInstance()->GetWindow()->GetSize(), DXGI_SAMPLE_DESC{ 1,0 });
 		//バックバッファと深度バッファを共通化
 		Application::GetInstance()->GetSwapChain()->GetRenderTarget()->ChangeDepthStencil(rt.get());
-		pos = Math::Vector3(0.0f, 10.0f, -10.0f);
-		at = Math::Vector3(0.0f, 0.0f, 0.0f);
-		up = Math::Vector3(0.0f, 1.0f, 0.0f);
 		//モデル読み込み、ワールド変換行列作成
 		model = std::make_unique<Graphics::Model>("Data/Model/plane.dxd", "Data/Model/plane.mt");
 		//model = std::make_unique<Graphics::Model>("Data/Model/sphere.dxd", "Data/Model/sphere.mt");
@@ -231,9 +224,11 @@ namespace Lobelia::Game {
 		//stage->Scalling(3.0f);
 		stage->CalcWorldMatrix();
 		skyBox = std::make_unique<Graphics::Model>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
-		skyBox->Translation(Math::Vector3(0.0f, 0.0f, 0.0f));
 		skyBox->Scalling(10.0f);
 		skyBox->CalcWorldMatrix();
+		character = std::make_shared<Character>();
+		character->Scalling(0.015f);
+		character->CalcWorldMatrix();
 		//デフォルトのシェーダーの退避
 		vs = Graphics::Model::GetVertexShader();
 		ps = Graphics::Model::GetPixelShader();
@@ -263,40 +258,35 @@ namespace Lobelia::Game {
 	void SceneSea::AlwaysUpdate() {
 		//カメラ移動
 		//情報算出
-		Math::Vector3 front;
-		Math::Vector3 right;
-		front = pos - at; front.Normalize();
-		right = Math::Vector3::Cross(up, front);
+		Math::Vector3 front = camera->TakeFront();
+		Math::Vector3 right = camera->TakeRight();
 		float elapsedTime = Application::GetInstance()->GetProcessTimeSec();
-		//前後
-		if (Input::GetKeyboardKey(DIK_S)) pos += front * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_W)) pos -= front * 20.0f*elapsedTime;
-		//左右
-		if (Input::GetKeyboardKey(DIK_A)) pos += right * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_D)) pos -= right * 20.0f*elapsedTime;
-		//上下
-		if (Input::GetKeyboardKey(DIK_Z)) pos += up * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_X)) pos -= up * 20.0f*elapsedTime;
-		//カメラ更新
-		view->SetEyePos(pos);
-		view->SetEyeTarget(at);
-		view->SetEyeUpDirection(up);
-		//海動かす
-		//前後
-		if (Input::GetKeyboardKey(DIK_DOWN)) seaPos += front * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_UP)) seaPos -= front * 20.0f*elapsedTime;
-		//左右
-		if (Input::GetKeyboardKey(DIK_LEFT)) seaPos += right * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_RIGHT)) seaPos -= right * 20.0f*elapsedTime;
-		//上下
-		if (Input::GetKeyboardKey(DIK_PGUP)) seaPos += up * 20.0f*elapsedTime;
-		if (Input::GetKeyboardKey(DIK_PGDN)) seaPos -= up * 20.0f*elapsedTime;
-		model->Translation(seaPos);
-		model->CalcWorldMatrix();
-		stage->Translation(seaPos);
-		stage->CalcWorldMatrix();
+		camera->Update();
+		front.y = 0.0f; front.Normalize();
+		right.y = 0.0f; right.Normalize();
 		//モデルのセット
 		environmentManager->AddModelList(skyBox, false);
+		//この先水面下のキャラクター
+		Math::Vector3 characterMove;
+		//前後
+		if (Input::GetKeyboardKey(DIK_W)) characterMove += front * elapsedTime;
+		if (Input::GetKeyboardKey(DIK_S)) characterMove -= front * elapsedTime;
+		//左右
+		if (Input::GetKeyboardKey(DIK_D)) characterMove += right * elapsedTime;
+		if (Input::GetKeyboardKey(DIK_A)) characterMove -= right * elapsedTime;
+		characterMove.Normalize();
+		if (Input::GetKeyboardKey(DIK_SPACE) == 1)character->Jump(10);
+		character->SetMove(characterMove, 5.0f);
+		character->CalcMove();
+		character->Gravity(-60.0f);
+		character->CollisionTerrainFloor(stage.get(), nullptr);
+		character->CollisionTerrainWall(stage.get(), nullptr);
+		character->Move();
+		character->SmoothRotateY();
+		character->RotationYAxis(character->GetRad());
+		character->Translation(character->GetPos());
+		character->CalcWorldMatrix();
+		character->AnimationUpdate(Application::GetInstance()->GetProcessTimeMili());
 		//environmentManager->AddModelList(stage, true);
 	}
 	void SceneSea::AlwaysRender() {
@@ -305,7 +295,7 @@ namespace Lobelia::Game {
 		stage->ChangePixelShader(ps);
 		//環境マップを作成
 		environmentManager->RenderEnvironmentMap();
-		view->Activate();
+		camera->Activate();
 		rt->Clear(0x00000000);
 		rt->Activate();
 		//事前に確保したインスタンスインデックス1番でライティングをオフに
@@ -315,6 +305,7 @@ namespace Lobelia::Game {
 		Graphics::Model::GetPixelShader()->SetLinkage(0);
 		//ステージの描画
 		stage->Render();
+		character->Render();
 		//バックバッファの有効か
 		Application::GetInstance()->GetSwapChain()->GetRenderTarget()->Activate();
 		//背景シーンの描画

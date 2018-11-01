@@ -1,4 +1,7 @@
 #pragma once
+#include "Common/Camera.hpp"
+#include "Common/Character.hpp"
+
 //デモ用なので1つのソースファイルにまとめている
 namespace Lobelia::Game {
 	ALIGN(16) struct CubeInfo {
@@ -105,14 +108,12 @@ namespace Lobelia::Game {
 		std::unique_ptr<CubeEnvironmentMapManager> environmentManager;
 		std::shared_ptr<CubeEnvironmentMap> cubeMap;
 #endif
-		std::unique_ptr<Graphics::View> view;
+		std::unique_ptr<Camera> camera;
 		std::unique_ptr<Graphics::RenderTarget> rt;
-		Math::Vector3 pos;
-		Math::Vector3 at;
-		Math::Vector3 up;
 		std::shared_ptr<Graphics::Model> model;
 		std::shared_ptr<Graphics::Model> stage;
 		std::shared_ptr<Graphics::Model> skyBox;
+		std::shared_ptr<Character> character;
 		std::unique_ptr<WaterShader> waterShader;
 		std::shared_ptr<Graphics::RasterizerState> wireState;
 		std::shared_ptr<Graphics::RasterizerState> solidState;
@@ -123,7 +124,7 @@ namespace Lobelia::Game {
 		int sea;
 		D3D11_PRIMITIVE_TOPOLOGY topology;
 
-		Math::Vector3 seaPos;
+		//Math::Vector3 characterPos;
 		Graphics::Texture* caustics;
 	};
 }

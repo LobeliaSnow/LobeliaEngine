@@ -27,7 +27,7 @@ namespace Lobelia::Game {
 	class ViewerCamera :public Camera {
 	public:
 		ViewerCamera(const Math::Vector2& scale, const Math::Vector3& pos, const Math::Vector3& at);
-		void Update();
+		void Update()override;
 	private:
 		float radius;
 		Math::Vector3 front;

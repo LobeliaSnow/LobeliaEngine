@@ -83,7 +83,7 @@ namespace Lobelia::Game {
 		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 		desc.Usage = D3D11_USAGE_STAGING;
 		desc.BindFlags = 0; desc.MiscFlags = 0;
-		HRESULT hr = Graphics::Device::Get()->CreateBuffer(&desc, nullptr, this->buffer.GetAddressOf());
+		HRESULT hr = Graphics::Device::Get()->CreateBuffer(&desc, nullptr, this->buffer.ReleaseAndGetAddressOf());
 		if (FAILED(hr))STRICT_THROW("STAGINGバッファ作成に失敗");
 #endif
 		Graphics::Device::GetContext()->CopyResource(buffer.Get(), src->buffer.Get());

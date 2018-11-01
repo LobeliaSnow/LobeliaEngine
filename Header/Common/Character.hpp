@@ -5,6 +5,8 @@ namespace Lobelia::Game {
 	//		Character
 	//
 	//---------------------------------------------------------------------------------------------
+	class RayMesh;
+	class RayResult;
 	//‰e‚É“o˜^‚·‚é‚Æ‚«‚É–Ê“|‚¾‚©‚çModelƒNƒ‰ƒX‚ğŒp³
 	//•’i‚Í‚½‚¹‚éB
 	class Character :public Actor, public Graphics::Model {
@@ -18,15 +20,14 @@ namespace Lobelia::Game {
 		void Update(const Math::Vector3& front);
 #ifdef GPU_RAYCASTER
 	private:
-		void GPURaycastFloor1Pass();
-		void GPURaycastFloor2Pass();
+		void GPURaycastFloor();
 		void GPURaycastWall();
 #endif
 	private:
 		std::weak_ptr<Graphics::Model> terrain;
 #ifdef GPU_RAYCASTER
 		std::weak_ptr<RayMesh> rayMesh;
-		std::unique_ptr<RayResult> result;
+		std::shared_ptr<RayResult> result;
 #endif
 	};
 }

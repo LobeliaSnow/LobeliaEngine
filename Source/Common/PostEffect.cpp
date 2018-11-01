@@ -196,6 +196,7 @@ namespace Lobelia::Game {
 			info.weight[i] = info.weight[i] / total * 0.5f;
 		}
 		cbuffer->Activate(info);
+		rt->Clear(0x00000000);
 		rt->Activate();
 		view->Activate();
 		auto& defaultVS = Graphics::SpriteRenderer::GetVertexShader();
@@ -203,6 +204,7 @@ namespace Lobelia::Game {
 		Graphics::SpriteRenderer::ChangeVertexShader(vsX);
 		Graphics::SpriteRenderer::ChangePixelShader(ps);
 		Graphics::SpriteRenderer::Render(texture, Math::Vector2(), rt->GetTexture()->GetSize(), 0.0f, Math::Vector2(), texture->GetSize(), 0xFFFFFFFF);
+		pass2->Clear(0x00000000);
 		pass2->Activate();
 		Graphics::SpriteRenderer::ChangeVertexShader(vsY);
 		Graphics::SpriteRenderer::Render(rt.get(), Math::Vector2(), rt->GetTexture()->GetSize(), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFF);
@@ -249,10 +251,11 @@ namespace Lobelia::Game {
 		if (Input::GetKeyboardKey(DIK_4) == 1)useDoF = !useDoF;
 		//ƒ{ƒP‰æ‘œ“ñ–‡ì»
 		view->Activate();
+		rt->Clear(0x00000000);
 		rt->Activate();
-		step0->Dispatch(view.get(), rt.get(), color->GetTexture());
-		step1->Dispatch(view.get(), rt.get(), step0->GetRenderTarget()->GetTexture());
 		if (useDoF) {
+			step0->Dispatch(view.get(), rt.get(), color->GetTexture());
+			step1->Dispatch(view.get(), rt.get(), step0->GetRenderTarget()->GetTexture());
 			cbuffer->Activate(info);
 			depth_of_view->GetTexture()->Set(1, Graphics::ShaderStageList::PS);
 			step0->Begin(2); step1->Begin(3);
@@ -263,10 +266,7 @@ namespace Lobelia::Game {
 			step0->End(); step1->End();
 			Graphics::Texture::Clean(1, Graphics::ShaderStageList::PS);
 		}
-		else {
-			if (Input::GetKeyboardKey(DIK_3))Graphics::SpriteRenderer::Render(step1->GetRenderTarget().get());
-			else Graphics::SpriteRenderer::Render(color);
-		}
+		else Graphics::SpriteRenderer::Render(color);
 		active_view->Activate();
 		active_buffer->Activate();
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);

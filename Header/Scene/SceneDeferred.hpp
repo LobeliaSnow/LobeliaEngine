@@ -27,7 +27,7 @@ namespace Lobelia::Game {
 		void AlwaysUpdate()override;
 		void AlwaysRender()override;
 	private:
-		std::unique_ptr<Camera> camera;
+		std::shared_ptr<Camera> camera;
 		std::unique_ptr<Graphics::RenderTarget> rt;
 		//std::unique_ptr<Graphics::View> view;
 		std::unique_ptr<DeferredBuffer> deferredBuffer;

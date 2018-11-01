@@ -28,6 +28,6 @@
 #define DOF_QUALITY 1.0f
 //#define DOF_QUALITY QUALITY
 
-//#define USE_CHARACTER
+#define USE_CHARACTER
 //#define CPU_RAYCASTER
 #define GPU_RAYCASTER

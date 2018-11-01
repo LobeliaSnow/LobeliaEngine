@@ -5,6 +5,9 @@
 //------------------------------------------------------------------------------------------------------
 //C++‘¤‚É‚à“¯‚¶’è‹`‚ª‚ ‚é
 #include "../Define.h"
+
+//FFT Ocean
+
 //ƒJƒƒ‰î•ñ 
 cbuffer View : register(b0) {
 	column_major float4x4 view;
@@ -238,7 +241,8 @@ GS_OUT DS(HS_TRI_OUT_DATA input, float3 domain : SV_DomainLocation, const Output
 	output.pos += output.normal * height;
 	//”g‚Ì‡¬
 	float wave = sin(time + output.pos.x);
-	wave += cos(time  * 0.5f - output.pos.x);
+	wave += sin(time + output.pos.z)*0.5f;
+	//wave += cos(time  * 0.5f - output.pos.x);
 	//wave += sin(time  * 0.3f - output.pos.x);
 	//wave += cos(time  * 0.1f - output.pos.x);
 	wave /= 5.0f;
@@ -401,7 +405,9 @@ float4 PS(GS_OUT ps_in) :SV_Target{
 	float4 reflectEnvironment = txCube.Sample(samLinear, reflectRay);
 	//Z‚É‚æ‚Á‚Ä˜c‚Ý—¦‚ð•Ï‚¦‚Ä‚â‚é‚±‚Æ‚Å”j’]‚ðÅ¬ŒÀ‚É—}‚¦‚é
 	//ª‚É‚æ‚èˆê•”Ž‹ü‚©‚ç‚Ì‹üÜ‚ª‚¨‚©‚µ‚¢‚Ì‚ÅŒ©’¼‚·‚±‚Æ
-	float2 refractPoint = ps_in.screenPos + refractRay.xy * 0.0f * max(refractRay.z,0.3f);
+	float2 refractPoint = ps_in.screenPos + refractRay.xy * 0.08f * max(refractRay.z,0.3f);
+	if (refractPoint.x > 1.0f || refractPoint.x < 0.0f)refractPoint.x = ps_in.screenPos.x;
+	if (refractPoint.y > 1.0f || refractPoint.y < 0.0f)refractPoint.y = ps_in.screenPos.y;
 	float4 refractColor = txScene.Sample(samLinear, refractPoint);
 	return float4(saturate(reflectEnvironment.rgb*alpha + refractColor.rgb * (1.0f - alpha)),1.0f);
 	//float ratio = f + (1.0f - f)*pow(1.0f - dot(-ps_in.environmentEyeVector.xyz, normalVector), 5.0f);

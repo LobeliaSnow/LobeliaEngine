@@ -1,6 +1,6 @@
 #pragma once
 #include "Game/Collision/SpatialPartitioning.hpp"
-//#define OCTREE
+#define OCTREE
 
 namespace Lobelia::Game {
 	//TODO : ‘S‚Ä‚Ì‘g‚İ‡‚í‚¹‚ğ“o˜^‚µ‚È‚¢‚Æ‚¢‚¯‚È‚¢

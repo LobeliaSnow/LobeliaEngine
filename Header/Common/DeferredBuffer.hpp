@@ -21,7 +21,7 @@ namespace Lobelia::Game {
 		~DeferredBuffer() = default;
 		void AddModel(std::shared_ptr<Graphics::Model> model, bool use_normal_map);
 		void RenderGBuffer();
-		std::shared_ptr<Graphics::RenderTarget> GetRenderTarget(BUFFER_TYPE type);
+		std::shared_ptr<Graphics::RenderTarget>& GetRenderTarget(BUFFER_TYPE type);
 		//フラグ取ってどの情報を有効にするのか切り替えれるといいと思う
 		void Begin();
 		void End();

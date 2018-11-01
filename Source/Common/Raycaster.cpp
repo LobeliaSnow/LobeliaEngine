@@ -37,6 +37,7 @@ namespace Lobelia::Game {
 	void RayResult::Clean() { uav->Clean(1); }
 	void RayResult::Load() { readBuffer->ReadCopy(); }
 	const RayResult::Output* RayResult::Lock() {
+		Load();
 		return readBuffer->ReadBegin<Output>();
 	}
 	void RayResult::UnLock() { readBuffer->ReadEnd(); }
@@ -45,8 +46,8 @@ namespace Lobelia::Game {
 	std::unique_ptr<Graphics::ConstantBuffer<Raycaster::Info>> Raycaster::cbuffer;
 	Raycaster::Info Raycaster::info;
 	void Raycaster::Initialize() {
-		cs = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/GPGPU/GPGPU.hlsl", "RaycastCS");
-		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(11, Graphics::ShaderStageList::CS);
+		if (!cs) cs = std::make_unique<Graphics::ComputeShader>("Data/ShaderFile/GPGPU/GPGPU.hlsl", "RaycastCS");
+		if (!cbuffer) cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(11, Graphics::ShaderStageList::CS);
 	}
 	bool Raycaster::Dispatch(const DirectX::XMMATRIX& world, RayMesh* mesh, RayResult* result, const Math::Vector3& begin, const Math::Vector3& end) {
 		if ((begin - end).Length() == 0.0f)return false;
@@ -67,7 +68,6 @@ namespace Lobelia::Game {
 		cbuffer->Activate(info);
 		//Ray”»’èŠJŽn
 		cs->Dispatch(mesh->GetPolygonCount(), 1, 1);
-		result->Load();
 		return true;
 	}
 
