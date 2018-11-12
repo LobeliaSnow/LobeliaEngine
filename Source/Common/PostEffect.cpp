@@ -64,7 +64,7 @@ namespace Lobelia::Game {
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::CS);
 	}
 	void SSAOCS::Render() {
-		Graphics::SpriteRenderer::Render(rwTexture.get(), Math::Vector2(5 * 200.0f, 0.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFF);
+		Graphics::SpriteRenderer::Render(rwTexture.get(), Math::Vector2(6 * 100.0f, 0.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFF);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
 	void SSAOCS::Begin(int slot) {
@@ -264,12 +264,144 @@ namespace Lobelia::Game {
 			Graphics::SpriteRenderer::Render(color);
 			Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
 			step0->End(); step1->End();
-			Graphics::Texture::Clean(1, Graphics::ShaderStageList::PS);
 		}
 		else Graphics::SpriteRenderer::Render(color);
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+		Graphics::Texture::Clean(1, Graphics::ShaderStageList::PS);
+		if (active_view)active_view->Activate();
+		if (active_buffer)active_buffer->Activate();
+	}
+	SSMotionBlur::SSMotionBlur(const Math::Vector2& size) :PostEffect(size, true, DXGI_FORMAT_R8G8B8A8_SNORM) {
+		sampler = std::make_shared<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::POINT, 16, true);
+		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "ScreenSpaceMotionBlurPS", Graphics::PixelShader::Model::PS_5_0, false);
+	}
+	void SSMotionBlur::Dispatch(Graphics::Texture* color, Graphics::Texture* depth) {
+		rt->Clear(0x00000000);
+		rt->Activate();
+		depth->Set(1, Graphics::ShaderStageList::PS);
+		std::shared_ptr<Graphics::SamplerState> defaultSampler = Graphics::SpriteRenderer::GetSamplerState();
+		std::shared_ptr<Graphics::PixelShader> defaultPS = Graphics::SpriteRenderer::GetPixelShader();
+		Graphics::SpriteRenderer::ChangeSamplerState(sampler);
+		Graphics::SpriteRenderer::ChangePixelShader(ps);
+		Graphics::SpriteRenderer::Render(color);
+		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
+		Graphics::SpriteRenderer::ChangeSamplerState(defaultSampler);
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+		Graphics::Texture::Clean(1, Graphics::ShaderStageList::PS);
+	}
+	//---------------------------------------------------------------------------------------------
+	HDRPS::ReductionBuffer::ReductionBuffer(const Math::Vector2& scale, DXGI_FORMAT format) :scale(scale) {
+		buffer = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 }, format);
+		viewport = std::make_unique<Graphics::View>(Math::Vector2(), scale);
+	}
+	HDRPS::HDRPS(const Math::Vector2& scale, int blur_count) : PostEffect(scale, true, DXGI_FORMAT_R8G8B8A8_UNORM), stepIndex(0), blurCount(blur_count) {
+		blumeBuffer = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16B16A16_FLOAT);
+		blend = std::make_shared<Graphics::BlendState>(Graphics::BLEND_PRESET::ADD, true, false);
+		createLuminancePS = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "CreateLuminancePS", Graphics::PixelShader::Model::PS_5_0, false);
+		toneMapPS = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "ToneMapPS", Graphics::PixelShader::Model::PS_5_0, false);
+		luminanceBuffer = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16_FLOAT);
+		viewport = std::make_unique<Graphics::View>(Math::Vector2(), scale);
+		int maxScale = max(i_cast(scale.x), i_cast(scale.y));
+		Math::Vector2 tempScale = scale;
+		for (int i = 0; ; maxScale /= 2) {
+			reductionBuffer.push_back(std::make_unique<ReductionBuffer>(tempScale, DXGI_FORMAT_R16_FLOAT));
+			tempScale /= 2.0f;
+			if (tempScale.x < 1.0f)tempScale.x = 1.0f;
+			if (tempScale.y < 1.0f)tempScale.y = 1.0f;
+			if (maxScale == 1)break;
+		}
+		bufferCount = reductionBuffer.size();
+		gaussian.resize(blur_count);
+		tempScale = scale;
+		for (int i = 0; i < blur_count; i++) {
+#ifdef GAUSSIAN_PS
+			gaussian[i] = std::make_unique<GaussianFilterPS>(tempScale, DXGI_FORMAT_R16G16B16A16_FLOAT);
+#else
+			gaussian[i] = std::make_unique<GaussianFilterCS>(tempScale, DXGI_FORMAT_R16G16B16A16_FLOAT);
+#endif
+			tempScale /= 2.0f;
+		}
+	}
+	void HDRPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color, int step) {
+		//ブルーム実行
+		DispatchBlume(active_view, active_buffer, hdr_texture, color);
+		//平均輝度値のステップを進める
+		//現状最初のほうは、平均算出されていない状態なので、その辺りが大丈夫か調査
+		for (int i = 0; i < step; i++) {
+			CreatMeanLuminanceBuffer();
+		}
+		//輝度値バッファ作成
+		CreateLuminanceBuffer(blumeBuffer->GetTexture());
+		//フィルター実行
+		viewport->ViewportActivate();
+		rt->Clear(0x00000000);
+		rt->Activate();
+		std::shared_ptr<Graphics::PixelShader> defaultPS = Graphics::SpriteRenderer::GetPixelShader();
+		Graphics::SpriteRenderer::ChangePixelShader(toneMapPS);
+		//輝度情報セット
+		luminanceBuffer->GetTexture()->Set(1, Graphics::ShaderStageList::PS);
+		//平均輝度値セット
+		reductionBuffer[bufferCount - 1]->buffer->GetTexture()->Set(2, Graphics::ShaderStageList::PS);
+		Graphics::SpriteRenderer::Render(blumeBuffer->GetTexture());
+		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+		Graphics::Texture::Clean(1, Graphics::ShaderStageList::PS);
+		Graphics::Texture::Clean(2, Graphics::ShaderStageList::PS);
+		//元に戻す
 		active_view->Activate();
 		active_buffer->Activate();
+	}
+	void HDRPS::DispatchBlume(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color) {
+		//ブルーム用に、ガウスでぼかす
+		for (int i = 0; i < blurCount; i++) {
+			Graphics::Texture* tex = nullptr;
+			if (i == 0) tex = hdr_texture;
+			else tex = gaussian[i - 1]->GetRenderTarget()->GetTexture();
+			gaussian[i]->Dispatch(active_view, active_buffer, tex);
+		}
+		//ブルーム実行
+		blumeBuffer->Clear(0x00000000);
+		blumeBuffer->Activate();
+		viewport->ViewportActivate();
+		//とりあえず加算合成で重ねる、強度を変えたくなったらシェーダーで実装する
+		Graphics::SpriteRenderer::Render(color);
+		auto& defaultBlend = Graphics::SpriteRenderer::GetBlendState();
+		//Graphics::SpriteRenderer::ChangeBlendState(blend);
+		//for (int i = 0; i < blurCount; i++) {
+		//	Graphics::SpriteRenderer::Render(gaussian[i]->GetRenderTarget()->GetTexture());
+		//}
+		Graphics::SpriteRenderer::ChangeBlendState(defaultBlend);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
-
+	//輝度値をバッファへ格納
+	void HDRPS::CreateLuminanceBuffer(Graphics::Texture* hdr_texture) {
+		viewport->ViewportActivate();
+		luminanceBuffer->Clear(0x00000000);
+		luminanceBuffer->Activate();
+		std::shared_ptr<Graphics::PixelShader> defaultPS = Graphics::SpriteRenderer::GetPixelShader();
+		Graphics::SpriteRenderer::ChangePixelShader(createLuminancePS);
+		Graphics::SpriteRenderer::Render(hdr_texture);
+		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+	}
+	//平均輝度値算出を1段階進める
+	void HDRPS::CreatMeanLuminanceBuffer() {
+		reductionBuffer[stepIndex]->viewport->ViewportActivate();
+		reductionBuffer[stepIndex]->buffer->Clear(0x0000000);
+		reductionBuffer[stepIndex]->buffer->Activate();
+		int previousIndex = stepIndex - 1;
+		if (previousIndex >= 0)Graphics::SpriteRenderer::Render(reductionBuffer[previousIndex]->buffer.get());
+		else Graphics::SpriteRenderer::Render(luminanceBuffer.get());
+		stepIndex++;
+		if (stepIndex >= bufferCount)stepIndex = 0;
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+	}
+	void HDRPS::DebugRender() {
+		for (int i = 0; i < blurCount; i++) {
+			Graphics::SpriteRenderer::Render(gaussian[i]->GetRenderTarget()->GetTexture(), Math::Vector2(100.0f, 0.0f)*(7 + i), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), gaussian[i]->GetRenderTarget()->GetTexture()->GetSize(), 0xFFFFFFFF);
+		}
+		Graphics::SpriteRenderer::Render(luminanceBuffer->GetTexture(), Math::Vector2(100.0f, 0.0f)*(7 + blurCount), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), luminanceBuffer->GetTexture()->GetSize(), 0xFFFFFFFF);
+		Graphics::SpriteRenderer::Render(reductionBuffer[bufferCount - 1]->buffer->GetTexture(), Math::Vector2(100.0f, 0.0f)*(7 + blurCount + 1), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), reductionBuffer[bufferCount - 1]->buffer->GetTexture()->GetSize(), 0xFFFFFFFF);
+		Graphics::SpriteRenderer::Render(blumeBuffer->GetTexture(), Math::Vector2(100.0f, 0.0f)*(7 + blurCount + 1) + Math::Vector2(0.0f, 100.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), blumeBuffer->GetTexture()->GetSize(), 0xFFFFFFFF);
+	}
 }

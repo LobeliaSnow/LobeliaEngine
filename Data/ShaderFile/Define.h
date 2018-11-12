@@ -28,6 +28,15 @@
 #define DOF_QUALITY 1.0f
 //#define DOF_QUALITY QUALITY
 
-#define USE_CHARACTER
-//#define CPU_RAYCASTER
-#define GPU_RAYCASTER
+//#define USE_CHARACTER
+#define CPU_RAYCASTER
+//#define GPU_RAYCASTER
+
+#define USE_MOTION_BLUR
+
+#define USE_HDR
+
+//É}ÉeÉäÉAÉãê›íË
+#define MAT_LAMBERT 0
+#define MAT_PHONG 1
+#define MAT_COLOR 2

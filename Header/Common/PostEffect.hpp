@@ -79,7 +79,8 @@ namespace Lobelia::Game {
 	//何もしない時 6.0ms/約165FPS
 	//ぼかし有効化 7.0ms/約138FPS
 	//大体1.0ms
-	//現状PSのほうが早い。なんでや。
+	////現状PSのほうが早い。なんでや。
+	//1パスで出来る可能性あり、それによる高速化を試す
 	class GaussianFilterCS :public PostEffect {
 		friend class GaussianFilterPS;
 	public:
@@ -113,6 +114,7 @@ namespace Lobelia::Game {
 		//分散率
 		float dispersion;
 	};
+	//---------------------------------------------------------------------------------------------
 	class GaussianFilterPS :public PostEffect {
 	public:
 		GaussianFilterPS(const Math::Vector2& size, DXGI_FORMAT format = DXGI_FORMAT_R32G32B32A32_FLOAT);
@@ -140,6 +142,7 @@ namespace Lobelia::Game {
 		//分散率
 		float dispersion;
 	};
+	//---------------------------------------------------------------------------------------------
 	//Gaussian DoF
 	class DepthOfField :public PostEffect {
 	public:
@@ -166,4 +169,70 @@ namespace Lobelia::Game {
 		Info info;
 		bool useDoF;
 	};
+	//---------------------------------------------------------------------------------------------
+	//GPUGems3
+	//現状ビューがしっかりセットされている前提
+	class SSMotionBlur :public PostEffect {
+	public:
+		SSMotionBlur(const Math::Vector2& size);
+		~SSMotionBlur() = default;
+		void Dispatch(Graphics::Texture* color, Graphics::Texture* depth);
+	private:
+		std::shared_ptr<Graphics::SamplerState> sampler;
+		std::shared_ptr<Graphics::PixelShader> ps;
+	};
+	//---------------------------------------------------------------------------------------------
+	//HDRテクスチャに対して、ブルーム、トーンマップと、露光調整、ガンマ補正を行う(光芒は考え中)
+	//現在、ここでいうHDRテクスチャはすでに輝度抽出されているものとする
+	//必要であれば輝度抽出も実装する
+	class HDRPS :public PostEffect {
+	public:
+		HDRPS(const Math::Vector2& scale, int blur_count = 4);
+		~HDRPS() = default;
+		//平均輝度値の計算を何ステップ進めるか
+		void Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color, int step = 1);
+		void DebugRender();
+	private:
+		void DispatchBlume(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture*color);
+		//輝度値をバッファへ格納
+		void CreateLuminanceBuffer(Graphics::Texture* hdr_texture);
+		void CreatMeanLuminanceBuffer();
+	private:
+		class ReductionBuffer {
+		public:
+			ReductionBuffer(const Math::Vector2& scale, DXGI_FORMAT format);
+			~ReductionBuffer() = default;
+		public:
+			std::unique_ptr<Graphics::RenderTarget> buffer;
+			std::unique_ptr<Graphics::View> viewport;
+			Math::Vector2 scale;
+		};
+	private:
+		//ブルーム用
+		std::unique_ptr<Graphics::RenderTarget> blumeBuffer;
+		std::shared_ptr<Graphics::BlendState> blend;
+#ifdef GAUSSIAN_PS
+		std::vector<std::unique_ptr<GaussianFilterPS>> gaussian;
+#else
+		std::vector<std::unique_ptr<GaussianFilterCS>> gaussian;
+#endif
+		int blurCount;
+		//輝度値用
+		std::shared_ptr<Graphics::PixelShader> createLuminancePS;
+		std::unique_ptr<Graphics::RenderTarget> luminanceBuffer;
+		std::unique_ptr<Graphics::View> viewport;
+		//平均輝度算出用
+		std::vector<std::unique_ptr<ReductionBuffer>> reductionBuffer;
+		int bufferCount;
+		int stepIndex;
+		//フィルタ実行用
+		std::shared_ptr<Graphics::PixelShader> toneMapPS;
+	};
+	//class HDR :public PostEffect {
+	//public:
+	//	HDR(const Math::Vector2& size);
+	//	~HDR() = default;
+	//	void Dispatch();
+	//private:
+	//};
 }

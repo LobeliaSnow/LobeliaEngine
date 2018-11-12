@@ -6,10 +6,14 @@ namespace Lobelia::Graphics {
 			Math::Vector4 center[6];
 			Math::Vector4 normal[6];
 		};
+		//TODO : XMFLOAT4X4Ç…ïœÇ¶ÇÈ
 		struct Constant {
 			DirectX::XMMATRIX view;
+			DirectX::XMMATRIX previousView;
 			DirectX::XMMATRIX projection;
+			DirectX::XMMATRIX previousProjection;
 			DirectX::XMMATRIX billboardMat;
+			DirectX::XMMATRIX inverseViewProjection;
 			Math::Vector4 pos;
 			Frustum frustum;
 		};
@@ -56,6 +60,8 @@ namespace Lobelia::Graphics {
 		void Update();
 		void ViewportActivate();
 		void Activate();
+		//ÉãÅ[ÉvÇÃç≈å„Ç…åƒÇÒÇ≈Ç≠ÇæÇ≥Ç¢
+		void FrameEnd();
 		DirectX::XMMATRIX GetColumnViewMatrix();
 		DirectX::XMMATRIX GetColumnProjectionMatrix();
 		DirectX::XMMATRIX GetRowViewMatrix();

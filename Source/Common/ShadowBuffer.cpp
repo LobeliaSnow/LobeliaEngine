@@ -161,8 +161,8 @@ namespace Lobelia::Game {
 	}
 	void ShadowBuffer::DebugRender() {
 		for (int i = 0; i < count; i++) {
-			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2(i*200.0f, 200.0f), Math::Vector2(200.0f, 200.0f), 0.0f, Math::Vector2(), size, 0xFFFFFFFF);
-			gaussian[i]->DebugRender(Math::Vector2(i*200.0f, 400.0f), Math::Vector2(200.0f, 200.0f));
+			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2(i*100.0f, 100.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), size, 0xFFFFFFFF);
+			gaussian[i]->DebugRender(Math::Vector2(i*100.0f, 200.0f), Math::Vector2(100.0f, 100.0f));
 		}
 	}
 

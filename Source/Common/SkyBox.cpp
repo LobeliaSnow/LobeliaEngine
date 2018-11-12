@@ -11,7 +11,7 @@ namespace Lobelia::Game {
 	SkyBox::SkyBox(const char* model_path, const char* mt_path) :Graphics::Model(model_path, mt_path) {
 		//model = std::make_shared<Graphics::Model>(model_path, mt_path);
 		//DepthStencilState(DEPTH_PRESET preset, bool depth, StencilDesc sdesc, bool stencil);
-		depth = std::make_shared<Graphics::DepthStencilState>(Graphics::DEPTH_PRESET::LESS, false, Graphics::StencilDesc(), false);
+		depth = std::make_shared<Graphics::DepthStencilState>(Graphics::DEPTH_PRESET::LESS, true, Graphics::StencilDesc(), false);
 		Scalling(30.0f);
 	}
 	void SkyBox::SetCamera(std::shared_ptr<Camera> camera) { this->camera = camera; }

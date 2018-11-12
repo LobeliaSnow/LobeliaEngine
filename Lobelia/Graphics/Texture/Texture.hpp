@@ -61,7 +61,7 @@ namespace Lobelia::Graphics {
 		static Extension JudgeExtension(const std::string& file_path);
 		static void LoadFile(const wchar_t* file_path, Extension extension, DirectX::TexMetadata* meta, DirectX::ScratchImage& image);
 	public:
-		static void Load(const char* file_path, Texture** texture, bool force = false);
+		static void Load(const char* file_path, Texture** texture, bool force = false, Utility::Color default_color = 0xFFFFFFFF);
 		static void Save(const char* file_path, Texture* texture);
 		static void CreateNormalMap(Texture* src, Texture** normal, float amplitude);
 	};

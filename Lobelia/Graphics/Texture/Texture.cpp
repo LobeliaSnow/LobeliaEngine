@@ -132,7 +132,7 @@ namespace Lobelia::Graphics {
 		if (FAILED(hr))STRICT_THROW("テクスチャが読み込めませんでした");
 	}
 
-	void TextureFileAccessor::Load(const char* file_path, Texture** texture, bool force) {
+	void TextureFileAccessor::Load(const char* file_path, Texture** texture, bool force, Utility::Color default_color) {
 		auto EmptyTextureCreate = [&]() {
 			DXGI_SAMPLE_DESC msaa = { 1,0 };
 			static constexpr size_t X = 16UL;
@@ -143,10 +143,10 @@ namespace Lobelia::Graphics {
 			Math::Vector4* ptr = reinterpret_cast<Math::Vector4*>(resource.pData);
 			for (int y = 0; y < Y; y++) {
 				for (int x = 0; x < X; x++) {
-					ptr[i_cast(y*X + x)].x = 1.0f;
-					ptr[i_cast(y*X + x)].y = 1.0f;
-					ptr[i_cast(y*X + x)].z = 1.0f;
-					ptr[i_cast(y*X + x)].w = 1.0f;
+					ptr[i_cast(y*X + x)].x = default_color.GetNormalizedR();
+					ptr[i_cast(y*X + x)].y = default_color.GetNormalizedG();
+					ptr[i_cast(y*X + x)].z = default_color.GetNormalizedB();
+					ptr[i_cast(y*X + x)].w = default_color.GetNormalizedA();
 				}
 			}
 			Device::GetContext()->Unmap((*texture)->Get().Get(), 0);

@@ -227,7 +227,7 @@ namespace Lobelia::Game {
 		skyBox->Scalling(10.0f);
 		skyBox->CalcWorldMatrix();
 		character = std::make_shared<Character>();
-		character->Scalling(0.015f);
+		character->Scalling(0.01f);
 		character->CalcWorldMatrix();
 		//デフォルトのシェーダーの退避
 		vs = Graphics::Model::GetVertexShader();

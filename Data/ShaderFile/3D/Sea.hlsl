@@ -11,14 +11,20 @@
 //カメラ情報 
 cbuffer View : register(b0) {
 	column_major float4x4 view;
+	column_major float4x4 previousView;
 	column_major float4x4 projection;
+	column_major float4x4 previousProjection;
 	column_major float4x4 billboardMat;
+	//ビュー+プロジェクション行列の逆行列
+	column_major float4x4 inverseViewProjection;
 	float4 cpos;
-	struct Frustum {
+	struct Frustum
+	{
 		float4 center[6];
 		float4 normal[6];
 	} frustum;
 };
+
 
 //ワールド変換行列
 cbuffer World : register(b1) {

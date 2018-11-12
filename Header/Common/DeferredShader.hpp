@@ -2,14 +2,23 @@
 namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
 	//実際にシェーディングする部分
+	//スぺキュラには自動的にブルームがかかります
+	//エミッション
 	class DeferredShader {
 	public:
 		DeferredShader(const char* file_path, const char* entry_vs, const char* entry_ps);
 		virtual ~DeferredShader() = default;
-		void Render();
+		//自前でブルーム掛ける場合
+		void Render(class DeferredBuffer* buffer);
+		//ブルームが自動でかかる場合
+		void RenderHDR(Graphics::View* active_view, Graphics::RenderTarget* active_rt, class DeferredBuffer* buffer);
+		void DebugRender();
 	private:
 		std::shared_ptr<Graphics::VertexShader> vs;
 		std::shared_ptr<Graphics::PixelShader> ps;
+		std::shared_ptr<Graphics::BlendState> blend;
+		std::unique_ptr<Graphics::RenderTarget> hdrTarget;
+		std::shared_ptr<class HDRPS> hdr;
 	};
 	//---------------------------------------------------------------------------------------------
 	class SimpleDeferred :public DeferredShader {

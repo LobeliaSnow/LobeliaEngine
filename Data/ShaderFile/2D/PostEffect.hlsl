@@ -1,5 +1,6 @@
 #include "../Define.h"
 #include "Header2D.hlsli"
+#include "../Header.hlsli"
 
 //参照
 //https://sites.google.com/site/monshonosuana/directxno-hanashi-1/directx-109
@@ -23,19 +24,22 @@ cbuffer GaussianFilter : register(b9) {
 	float  weight5 : packoffset(c1.y);
 	float  weight6 : packoffset(c1.z);
 	//PS専用
-	float  width : packoffset(c1.w);
-	float  height : packoffset(c2.x);
+	float  screenWidth : packoffset(c1.w);
+	float  screenHeight : packoffset(c2.x);
 };
 cbuffer DoF :register(b12) {
 	float focusRange : packoffset(c0.x);
 }
 // static const float offsetPerPixel = 20.0f;
 //入力用
-Texture2D inputTex :register(t0);
+Texture2D inputTex : register(t0);
 //被写界深度用
 Texture2D inputDepth :register(t1);
 Texture2D inputBokeh0 :register(t2);
 Texture2D inputBokeh1 :register(t3);
+//トーンマップ用
+Texture2D inputLuminance :register(t1);
+Texture2D inputMeanLuminance :register(t2);
 //CS実装
 //出力用
 RWTexture2D<float4> outputTex :register(u0);
@@ -182,7 +186,7 @@ void GaussianFilterCSY(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread
 //}
 
 //PS実装
-SamplerState samLinear : register(s0);
+//SamplerState samLinear : register(s0);
 
 float4 SSAOPS(PS_IN_TEX ps_in) : SV_Target{
 	float own = inputTex.Sample(samLinear,ps_in.tex).z;
@@ -217,25 +221,25 @@ struct GAUSSIAN_VS_OUT {
 GAUSSIAN_VS_OUT GaussianFilterVSX(VS_IN_TEX vs_in) {
 	GAUSSIAN_VS_OUT output = (GAUSSIAN_VS_OUT)0;
 	output.pos = vs_in.pos;
-	output.tex0 = vs_in.tex + float2(-3.0f / width, 0.0f);
-	output.tex1 = vs_in.tex + float2(-2.0f / width, 0.0f);
-	output.tex2 = vs_in.tex + float2(-1.0f / width, 0.0f);
+	output.tex0 = vs_in.tex + float2(-3.0f / screenWidth, 0.0f);
+	output.tex1 = vs_in.tex + float2(-2.0f / screenWidth, 0.0f);
+	output.tex2 = vs_in.tex + float2(-1.0f / screenWidth, 0.0f);
 	output.tex3 = vs_in.tex + float2(0.0f, 0.0f);
-	output.tex4 = vs_in.tex + float2(1.0f / width, 0.0f);
-	output.tex5 = vs_in.tex + float2(2.0f / width, 0.0f);
-	output.tex6 = vs_in.tex + float2(3.0f / width, 0.0f);
+	output.tex4 = vs_in.tex + float2(1.0f / screenWidth, 0.0f);
+	output.tex5 = vs_in.tex + float2(2.0f / screenWidth, 0.0f);
+	output.tex6 = vs_in.tex + float2(3.0f / screenWidth, 0.0f);
 	return output;
 }
 GAUSSIAN_VS_OUT GaussianFilterVSY(VS_IN_TEX vs_in) {
 	GAUSSIAN_VS_OUT output = (GAUSSIAN_VS_OUT)0;
 	output.pos = vs_in.pos;
-	output.tex0 = vs_in.tex + float2(0.0f, -3.0f / height);
-	output.tex1 = vs_in.tex + float2(0.0f, -2.0f / height);
-	output.tex2 = vs_in.tex + float2(0.0f, -1.0f / height);
+	output.tex0 = vs_in.tex + float2(0.0f, -3.0f / screenHeight);
+	output.tex1 = vs_in.tex + float2(0.0f, -2.0f / screenHeight);
+	output.tex2 = vs_in.tex + float2(0.0f, -1.0f / screenHeight);
 	output.tex3 = vs_in.tex + float2(0.0f, 0.0f);
-	output.tex4 = vs_in.tex + float2(0.0f, 1.0f / height);
-	output.tex5 = vs_in.tex + float2(0.0f, 2.0f / height);
-	output.tex6 = vs_in.tex + float2(0.0f, 3.0f / height);
+	output.tex4 = vs_in.tex + float2(0.0f, 1.0f / screenHeight);
+	output.tex5 = vs_in.tex + float2(0.0f, 2.0f / screenHeight);
+	output.tex6 = vs_in.tex + float2(0.0f, 3.0f / screenHeight);
 	return output;
 
 }
@@ -261,36 +265,112 @@ float4 GaussianFilterPS(GAUSSIAN_VS_OUT ps_in) :SV_Target{
 float4 GaussianDoFPS(PS_IN_TEX ps_in) :SV_Target{
 	//真ん中をピントの中心とする
 	float centerDepth = inputDepth.Sample(samLinear, float2(0.5f,0.5f)).z;
-	//ピント幅算出
-	float focusBegin = centerDepth - focusRange;
-	float focusEnd = centerDepth + focusRange;
-	//下限を合わせる
-	float depth = max(0.0f, inputDepth.Sample(samLinear, ps_in.tex).z - focusBegin);
-	//中央値算出
-	float center = (focusEnd - focusBegin)*0.5f;
-	//この値は中心が0で離れるほど1に近づく
-	float fade = 0.0f;
-	if (depth <= center)fade = depth / center;
-	else fade = 1.0f - (depth - center) / center;
-	fade = saturate(1.0f - fade);
-	float4 color0; float4 color1; float blendRatio;
-	if (fade < 0.5f) {
-		//ボケなし
-		color0 = inputTex.Sample(samLinear, ps_in.tex);
-		//弱ボケ
-		color1 = inputBokeh0.Sample(samLinear, ps_in.tex);
-		//0.0f~1.0fの比率を算出
-		blendRatio = fade / 0.5f;
+//ピント幅算出
+float focusBegin = centerDepth - focusRange;
+float focusEnd = centerDepth + focusRange;
+//下限を合わせる
+float depth = max(0.0f, inputDepth.Sample(samLinear, ps_in.tex).z - focusBegin);
+//中央値算出
+float center = (focusEnd - focusBegin)*0.5f;
+//この値は中心が0で離れるほど1に近づく
+float fade = 0.0f;
+if (depth <= center)fade = depth / center;
+else fade = 1.0f - (depth - center) / center;
+fade = saturate(1.0f - fade);
+float4 color0; float4 color1; float blendRatio;
+if (fade < 0.5f) {
+	//ボケなし
+	color0 = inputTex.Sample(samLinear, ps_in.tex);
+	//弱ボケ
+	color1 = inputBokeh0.Sample(samLinear, ps_in.tex);
+	//0.0f~1.0fの比率を算出
+	blendRatio = fade / 0.5f;
+}
+else {
+	//弱ボケ
+	color0 = inputBokeh0.Sample(samLinear, ps_in.tex);
+	//強ボケ
+	color1 = inputBokeh1.Sample(samLinear, ps_in.tex);
+	//0.0f~1.0fの比率を算出
+	//-0.5fの理由はこの値が0.5f以上だから
+	blendRatio = (fade - 0.5f) / 0.5f;
+}
+float4 color = lerp(color0, color1, blendRatio);
+return color;
+}
+//GPU Gems3より
+float4 ScreenSpaceMotionBlurPS(PS_IN_TEX ps_in) :SV_Target{
+	//速度バッファ算出フェーズ
+	//深度値取得
+	float4 viewColor = inputDepth.Sample(samLinear,ps_in.tex);
+	viewColor = mul(viewColor, projection);
+	viewColor /= viewColor.w;
+	//ビューポート位置を算出
+	float4 viewPos = viewColor;
+	//深度バッファからワールド位置を逆算
+	float4 worldPos = mul(viewPos, inverseViewProjection);
+	worldPos /= worldPos.w;
+	//現在のビューポート位置を保存
+	float4 currentViewPos = viewPos;
+	//過去フレームのビューポートフレーム位置を算出
+	float4 previousViewPos = mul(worldPos, previousView);
+	previousViewPos = mul(previousViewPos, previousProjection);
+	previousViewPos /= previousViewPos.w;
+	//速度を算出
+	static const int LOOP_COUNT = 16;
+	float2 velocity = (currentViewPos - previousViewPos) / (float)LOOP_COUNT / 2.0f;
+	//return float4((float3)(currentViewPos - previousViewPos) / 2.0f, 1.0f);
+	//モーションブラー実行
+	//現在のブラーなしの状態のカラーを取得
+	float2 tex = ps_in.tex;
+	float4 color = inputTex.Sample(samLinear, tex);
+	//デバッグ用
+	//if (tex.x > 0.75f)return currentViewPos;
+	//else if(tex.x > 0.5f) return previousViewPos;
+	//else return color;
+	tex += velocity;
+	//ループ回数はとりあえず直値
+	for (int i = 1; i < LOOP_COUNT; i++,tex += velocity) {
+		tex = saturate(tex);
+		float4 temp = inputTex.Sample(samLinear, tex);
+		color += temp;
 	}
-	else {
-		//弱ボケ
-		color0 = inputBokeh0.Sample(samLinear, ps_in.tex);
-		//強ボケ
-		color1 = inputBokeh1.Sample(samLinear, ps_in.tex);
-		//0.0f~1.0fの比率を算出
-		//-0.5fの理由はこの値が0.5f以上だから
-		blendRatio = (fade - 0.5f) / 0.5f;
-	}
-	float4 color = lerp(color0, color1, blendRatio);
+	color /= LOOP_COUNT;
+	return color;
+}
+
+//下町ナポレオン
+//http://hikita12312.hatenablog.com/entry/2017/08/19/003505
+//トーンマッピング用
+//輝度値算出
+float CalcLuminance(float4 color) {
+	return (color.r*0.298912f + color.g*0.586611 + color.b*0.114478);
+}
+float Reinhard(float luminance) { return luminance / (luminance + 1); }
+//key_valueは0.18fが慣例的に使われるらしい
+//1 輝度 2 平均輝度(縮小バッファで縮小していき、1*1pxへ縮小された際の値) 3 middle gray
+float DispatchReinhard(float luminance, float mean_luminance, float key_value) { return Reinhard((key_value / mean_luminance)*luminance); }
+float4 GammaCollection(float4 color, float gamma) { return pow(color, 1.0f / gamma); }
+//輝度値を格納するためのシェーダー
+float4 CreateLuminancePS(PS_IN_TEX ps_in) :SV_Target{
+	//カラーバッファ読み込み
+	float4 color = inputTex.Sample(samLinear, ps_in.tex);
+	//輝度算出
+	float luminance = CalcLuminance(color);
+	//もしかしたらここで露光度をかけたほうがいいかもしれない？
+	return float4((float3)luminance, 1.0f);
+}
+//トーンマッピング、露光調整、リニアワークフロー(ガンマ補正)
+float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
+	float4 color = inputTex.Sample(samLinear,ps_in.tex);
+	float luminance = CalcLuminance(color);
+	float meanLuminance = inputMeanLuminance.Sample(samLinear, ps_in.tex).r;
+	//露光度算出
+	float exposure = DispatchReinhard(luminance, meanLuminance, 0.18f);
+	color *= exposure;
+	//リニアワークフロー
+	const float gamma = 2.2f;
+	color = GammaCollection(color, gamma);
+	color.a = 1.0f;
 	return color;
 }

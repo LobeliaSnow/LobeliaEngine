@@ -1,13 +1,12 @@
 #include "Lobelia.hpp"
 #include "SceneDeferred.hpp"
 
-//Screen Space Motion Blurやってみたい
-
 //シェーダーのコンパイルが長すぎる、デバッグ時以外はcsoに逃がしてやりたい感
 
 //TODO : SSAOPSの可変解像度対応(ビューを作ってやるだけ？)
 //TODO : シェーダーの整理
 //TODO : 警告消す
+//TODO : defineとフラグが荒れてるので、リファクタリング
 
 //テストシーン
 //最終的にここでの経験と結果を用いてレンダリングエンジンを作る予定ではいるが、就活終わった後になると思われる。
@@ -15,8 +14,8 @@
 //今は何も考えずに湯水のごとくGBufferを使用している。
 //ポストエフェクト実装の際に現在使用しているレンダーターゲットを、外部から受け取る形にすればもう少しマシにはなる
 
-//現状実装されてるもの一覧(このシーンはディファードシェーディングです)
 //Define.hのスイッチで一部の機能のスイッチが可能
+//現状実装されてるもの一覧(このシーンはディファードシェーディングです)
 //ハーフランバート
 //線形フォグ
 //法線マップ
@@ -31,6 +30,7 @@
 //カスケードバリアンスシャドウマップ(カスケードシャドウマップと、バリアンスシャドウマップの合わせ技)
 //GPURaycast(当たり判定用 現状実行自体は爆速のはずだが、どこかがボトルネックになり激遅)
 //Gaussian Depth of Field (被写界深度)
+//Screen Space Motion Blur
 
 namespace Lobelia::Game {
 	namespace {
@@ -46,16 +46,19 @@ namespace Lobelia::Game {
 		camera = std::make_shared<ViewerCamera>(scale, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3(0.0f, 0.0f, 0.0f));
 		rt = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 });
 		deferredBuffer = std::make_unique<DeferredBuffer>(scale);
-		normalMap = TRUE; useLight = TRUE; useFog = TRUE;
+		useLight = TRUE; useFog = TRUE; useMotionBlur = TRUE;
 #ifdef _DEBUG
-		HostConsole::GetInstance()->IntRegister("deferred", "normal map", &normalMap, false);
 		HostConsole::GetInstance()->IntRegister("deferred", "use light", &useLight, false);
 		HostConsole::GetInstance()->IntRegister("deferred", "use fog", &useFog, false);
+		HostConsole::GetInstance()->IntRegister("deferred", "use motion blur", &useMotionBlur, false);
 #endif
 		//model = std::make_shared<Graphics::Model>("Data/Model/Deferred/stage.dxd", "Data/Model/Deferred/stage.mt");
 		stage = std::make_shared<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
 		stage->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
 		stage->CalcWorldMatrix();
+		stageCollision = std::make_shared<Graphics::Model>("Data/Model/maps/collision.dxd", "Data/Model/maps/collision.mt");
+		stageCollision->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
+		stageCollision->CalcWorldMatrix();
 #ifdef SIMPLE_SHADER
 		deferredShader = std::make_unique<SimpleDeferred>();
 #endif
@@ -95,10 +98,10 @@ namespace Lobelia::Game {
 		character = std::make_shared<Character>();
 #ifdef GPU_RAYCASTER
 		//レイ関係の初期化
-		rayMesh = std::make_shared<RayMesh>(stage.get());
+		rayMesh = std::make_shared<RayMesh>(stageCollision.get());
 		character->SetTerrainData(rayMesh);
 #endif
-		character->SetTerrainData(stage);
+		character->SetTerrainData(stageCollision);
 #endif
 		//shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, false);
 		//gaussian = std::make_unique<GaussianFilterCS>(scale);
@@ -106,7 +109,9 @@ namespace Lobelia::Game {
 		shadow->SetNearPlane(10.0f);
 		shadow->SetFarPlane(500.0f);
 		shadow->SetLamda(1.0f);
-
+#ifdef USE_MOTION_BLUR
+		motionBlur = std::make_unique<SSMotionBlur>(scale);
+#endif
 	}
 	SceneDeferred::~SceneDeferred() {
 #ifdef _DEBUG
@@ -114,11 +119,11 @@ namespace Lobelia::Game {
 #endif
 	}
 	void SceneDeferred::AlwaysUpdate() {
-		if (Input::GetKeyboardKey(DIK_7) == 1) normalMap = !normalMap;
 		if (Input::GetKeyboardKey(DIK_6) == 1) useFog = !useFog;
 		if (Input::GetKeyboardKey(DIK_5) == 1) useLight = !useLight;
-
-		deferredBuffer->AddModel(stage, normalMap);
+		if (Input::GetKeyboardKey(DIK_3) == 1) useMotionBlur = !useMotionBlur;
+		deferredBuffer->AddModel(stage, DeferredBuffer::MATERIAL_TYPE::PHONG, 1.0f, 1.0f);
+		//deferredBuffer->AddModel(stageCollision, normalMap);
 #ifdef USE_CHARACTER
 		deferredBuffer->AddModel(character, false);
 #endif
@@ -140,10 +145,6 @@ namespace Lobelia::Game {
 		shadow->SetPos(lpos);
 		//shadow->SetPos(pos);
 		camera->Update();
-#ifdef USE_CHARACTER
-		Math::Vector3 front = camera->TakeFront(); front.y = 0.0f;
-		character->Update(front);
-#endif
 	}
 	void SceneDeferred::AlwaysRender() {
 		Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));
@@ -156,7 +157,6 @@ namespace Lobelia::Game {
 		Graphics::RenderTarget* backBuffer = rt.get();
 		//shadow->CreateShadowMap(view.get(), backBuffer);
 		shadow->CreateShadowMap(camera->GetView().get(), backBuffer);
-		skybox->Render();
 		//view->Activate();
 		shadow->Begin();
 		deferredBuffer->RenderGBuffer();
@@ -169,24 +169,54 @@ namespace Lobelia::Game {
 #ifdef SSAO_CS
 		ssao->CreateAO(backBuffer, camera->GetView().get(), deferredBuffer.get());
 #endif
-		ssao->Begin(5);
+		ssao->Begin(10);
 #endif
-		deferredBuffer->Begin();
-		deferredShader->Render();
-		deferredBuffer->End();
+#ifdef USE_CHARACTER
+		Math::Vector3 front = camera->TakeFront(); front.y = 0.0f;
+		character->Update(front);
+#endif
+#ifdef USE_HDR
+		deferredShader->RenderHDR(camera->GetView().get(), backBuffer, deferredBuffer.get());
+#else
+		deferredShader->Render(deferredBuffer.get());
+#endif
 #ifdef USE_SSAO
 		ssao->End();
 #endif
-		//バックバッファをスワップチェインのものに変更
-		backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
-		backBuffer->Activate();
 #ifdef USE_DOF
 		dof->Dispatch(camera->GetView().get(), backBuffer, rt.get(), deferredBuffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::VIEW_POS).get());
-		dof->Render();
 #else
-		Graphics::SpriteRenderer::Render(rt.get());
-		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+		//Graphics::SpriteRenderer::Render(rt.get());
+		//Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 #endif
+		//バックバッファをスワップチェインのものに変更
+		if (!useMotionBlur) {
+			backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
+			backBuffer->Activate();
+			skybox->Render();
+#ifndef USE_DOF
+			Graphics::SpriteRenderer::Render(rt.get());
+			Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+#endif
+		}
+#ifdef USE_DOF
+		dof->Render();
+#endif
+		if (useMotionBlur) {
+#ifdef USE_MOTION_BLUR
+			motionBlur->Dispatch(backBuffer->GetTexture(), deferredBuffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::VIEW_POS)->GetTexture());
+#endif
+			backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
+			backBuffer->Activate();
+			skybox->Render();
+#ifdef USE_MOTION_BLUR
+			motionBlur->Render();
+#else
+			Graphics::SpriteRenderer::Render(rt.get());
+			Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+#endif
+		}
+
 #ifdef _DEBUG
 		if (Application::GetInstance()->debugRender) {
 			deferredBuffer->DebugRender();
@@ -194,7 +224,12 @@ namespace Lobelia::Game {
 #ifdef USE_SSAO
 			ssao->Render();
 #endif
+#ifdef USE_HDR
+			deferredShader->DebugRender();
+#endif
 		}
 #endif
+		//今回のフレーム結果を保存
+		camera->GetView()->FrameEnd();
 	}
 }

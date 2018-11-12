@@ -21,6 +21,7 @@ namespace Lobelia::Graphics {
 		RenderTarget(const ComPtr<ID3D11Texture2D>& texture);
 		~RenderTarget();
 		Texture* GetTexture()const;
+		Texture* GetDepth()const;
 		void Clear(Utility::Color color);
 		void ChangeDepthStencil(RenderTarget* view);
 		void Activate();

@@ -5,10 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="ヘッダー ファイル">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="リソース ファイル">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
@@ -33,9 +29,6 @@
     </Filter>
     <Filter Include="Data\ShaderFile\2D">
       <UniqueIdentifier>{e69a4d85-a117-424c-a82d-47944e3159e3}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="ヘッダー ファイル\Scene">
-      <UniqueIdentifier>{efa9466b-593e-48f8-9a8b-2a19b80673d7}</UniqueIdentifier>
     </Filter>
     <Filter Include="ソース ファイル\Scene">
       <UniqueIdentifier>{33f47da5-f108-449f-b176-ca4d9c864a25}</UniqueIdentifier>
@@ -238,11 +231,18 @@
     <Filter Include="Data\ShaderFile\GPGPU">
       <UniqueIdentifier>{5d4e8e18-bc43-485b-9c8c-636eb78840b6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="ヘッダー ファイル\Common">
-      <UniqueIdentifier>{e78181e9-0961-45f3-9938-285b0095eee9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="ソース ファイル\Common">
       <UniqueIdentifier>{0c0caedf-f43d-42e4-96d6-9bc375ffd797}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Scene">
+      <UniqueIdentifier>{efa9466b-593e-48f8-9a8b-2a19b80673d7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\Common">
+      <UniqueIdentifier>{e78181e9-0961-45f3-9938-285b0095eee9}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

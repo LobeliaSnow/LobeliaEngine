@@ -46,6 +46,9 @@ namespace Lobelia::Graphics {
 		CreateProjection(fov, aspect, nearZ, farZ);
 		CreateView(data);
 		CreateBillboardMat(data);
+		DirectX::XMMATRIX viewProjection = buffer.projection * buffer.view;
+		DirectX::XMVECTOR temp = {};
+		buffer.inverseViewProjection = DirectX::XMMatrixInverse(&temp, viewProjection);
 	}
 	void View::ViewportActivate() { Device::GetContext()->RSSetViewports(1, &viewport); }
 	void View::Activate() {
@@ -54,6 +57,10 @@ namespace Lobelia::Graphics {
 		Device::GetContext()->RSSetViewports(1, &viewport);
 		nowSize = size;
 		nowView = buffer.view; nowProjection = buffer.projection;
+	}
+	void View::FrameEnd() {
+		buffer.previousView = buffer.view;
+		buffer.previousProjection = buffer.projection;
 	}
 	void View::CreateProjection(float fov_rad, float aspect, float near_z, float far_z) {
 		buffer.projection = DirectX::XMMatrixPerspectiveFovLH(fov_rad, aspect, near_z, far_z);

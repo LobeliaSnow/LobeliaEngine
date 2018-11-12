@@ -16,7 +16,6 @@ namespace Lobelia::Game {
 	void Character::SetTerrainData(std::shared_ptr<RayMesh> terrain) {
 		this->rayMesh = terrain;
 		result = std::make_unique<RayResult>(terrain.get());
-		resultBack = std::make_unique<RayResult>(terrain.get());
 	}
 	void Character::GPURaycastFloor() {
 		if (rayMesh.expired())return;
@@ -40,7 +39,6 @@ namespace Lobelia::Game {
 			}
 		}
 		result->UnLock();
-		std::swap(result, resultBack);
 	}
 	void Character::GPURaycastWall() {
 		if (rayMesh.expired())return;
@@ -130,7 +128,7 @@ namespace Lobelia::Game {
 		Gravity();
 		CalcMove();
 		//GPU‚É‚æ‚éRay”­ŽË
-		//GPURaycastWall();
+		GPURaycastWall();
 		GPURaycastFloor();
 #endif
 		Move();

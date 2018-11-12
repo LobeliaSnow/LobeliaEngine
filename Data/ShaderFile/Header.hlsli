@@ -1,8 +1,12 @@
 cbuffer View : register(b0)
 {
 	column_major float4x4 view;
+	column_major float4x4 previousView;
 	column_major float4x4 projection;
+	column_major float4x4 previousProjection;
 	column_major float4x4 billboardMat;
+	//ビュー+プロジェクション行列の逆行列
+	column_major float4x4 inverseViewProjection;
 	float4 cpos;
 	struct Frustum
 	{
@@ -19,10 +23,13 @@ cbuffer World : register(b1)
 
 cbuffer Material : register(b2)
 {
-	float4 diffuse;
-	float4 ambient;
-	float4 specular;
-	float4 texColor;
+	float4 diffuse :packoffset(c0);
+	float4 ambient :packoffset(c1);
+	float4 specular :packoffset(c2);
+	float4 texColor :packoffset(c3);
+	int useNormalMap :packoffset(c4.x);
+	int useSpecularMap :packoffset(c4.y);
+	int useEmission :packoffset(c4.z);
 }
 
 cbuffer Bone : register(b3)
@@ -54,6 +61,7 @@ cbuffer GaussianFilterInfo : register(b5)
 Texture2D txDiffuse : register(t0);
 Texture2D txNormal : register(t1);
 Texture2D txSpecular : register(t2);
+Texture2D txEmission : register(t3);
 
 //10~レンダーターゲットからの入力
 Texture2D rtDiffuse : register(t10);

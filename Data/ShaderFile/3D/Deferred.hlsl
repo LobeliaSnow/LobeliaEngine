@@ -17,8 +17,10 @@ Texture2D txDeferredColor : register(t2);
 Texture2D txDeferredViewPos : register(t3);
 //影つけ
 Texture2D txShadow : register(t4);
+//スぺキュラ
+Texture2D txEmissionColor : register(t5);
 //アンビエントオクルージョン項
-Texture2D txDeferredAO : register(t5);
+Texture2D txDeferredAO : register(t10);
 
 //深度バッファ
 //カスケード用
@@ -46,6 +48,8 @@ struct GBufferPS_IN {
 	float2 tex : TEXCOORD0;
 	//ビュー空間での位置
 	float4 viewPos : TEXCOORD1;
+	//視点までのベクトル
+	float eyeVector : EYE_VECTOR;
 	//影用
 #ifdef CASCADE
 	float lightLength : TEXCOORD2;
@@ -63,6 +67,7 @@ struct MRTOutput {
 	float4 color : SV_Target2;
 	float4 viewPos : SV_Target3;
 	float4 shadow : SV_Target4;
+	float4 emission : SV_Target5;
 };
 
 //ポイントライト用定数バッファ
@@ -80,8 +85,11 @@ cbuffer SSAO :register(b7) {
 	int useAO : packoffset(c0.y);
 };
 cbuffer DeferredOption : register(b8) {
-	int useNormalMap : packoffset(c0.x);
-	int useSpecularMap : packoffset(c0.y);
+	//現状フォン(スぺキュラ)を使用するか否か
+	//0 ランバート 1 フォン
+	int materialType : packoffset(c0.x);
+	float specularFactor : packoffset(c0.y);
+	float emissionFactor : packoffset(c0.z);
 };
 //9番はガウスで使用
 cbuffer ShadowInfo : register(b10) {
@@ -171,14 +179,16 @@ GBufferPS_IN CreateGBufferVS(VS_IN vs_in) {
 	}
 	output.worldPos = output.pos;
 	output.pos = mul(output.pos, view);
+	output.viewPos = output.pos;
+	output.viewPos /= output.viewPos.w;
 	output.pos = mul(output.pos, projection);
+	output.eyeVector = normalize(cpos - output.worldPos);
 	if (useNormalMap) {
 		//偽従法線生成
 		output.binormal = float4(cross(normalize(float3(0.001f, 1.0f, 0.001f)), output.normal.xyz), 0.0f);
 		//偽接線生成
 		output.tangent = float4(cross(output.normal, output.binormal.xyz), 0.0f);
 	}
-	output.viewPos = output.pos;
 	output.tex = vs_in.tex;
 	//影生成
 	if (useShadowMap) {
@@ -377,6 +387,29 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 		output.normal = normalMap * 0.5f + 0.5f;
 	}
 	else output.normal = ps_in.normal * 0.5f + 0.5f;
+	//マテリアルによるシェーダー変更
+	//法線のaの値はライティングするか否かのフラグとして使う
+	switch (materialType) {
+	case MAT_LAMBERT://ランバート
+		output.emission = 0.0f;
+		output.normal.a = 1;
+		break;
+	case MAT_PHONG://フォン
+		float3 reflectVector = normalize(reflect(-ps_in.eyeVector, output.normal));
+		output.emission = pow(saturate(dot(reflectVector, ps_in.eyeVector)), 4)*specularFactor;
+		//スぺキュラマップ
+		if (useSpecularMap) output.emission *= txSpecular.Sample(samLinear, ps_in.tex);
+		output.emission.a = 1.0f;
+		output.normal.a = 1;
+		break;
+	case MAT_COLOR://ライティング無し
+		output.normal.a = 0;
+		break;
+	}
+	//エミッションテクスチャ用
+	//ここを通らないパスが出ると、透過する
+	output.emission += txEmission.Sample(samLinear, ps_in.tex)*emissionFactor;
+	output.emission.a = 1.0f;
 	//影生成
 	if (useShadowMap) {
 #ifdef CASCADE
@@ -404,13 +437,8 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 #endif
 	}
 	//else output.shadow = float4(1.0f, 1.0f, 1.0f, 1.0f);
-#ifdef _DEBUG
-	//デバッグ表示用
-	output.normal.a = 1.0f;
-#endif
-	//現状SSAO用 深度値のみ使用している形だが、あればほかのことにも使えそうなので全て書き出し
 	output.viewPos = ps_in.viewPos;
-	output.viewPos.a = 1.0f;
+	//output.viewPos.a = 1.0f;
 	return output;
 }
 
@@ -452,16 +480,22 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	float4 vpos = txDeferredViewPos.Sample(samLinear, ps_in.tex);
 	//デコード
 	float4 normal = txDeferredNormal.Sample(samLinear, ps_in.tex) * 2.0 - 1.0;
+	//0より大きければライティングありだが、大事(誤差心配)をとって0.1より上
+	bool isLighting = (normal.a > 0.1f);
 	normal.a = 0.0f;
 	float4 color = txDeferredColor.Sample(samLinear, ps_in.tex);
 	//環境光
 	//float3 eyeVector = normalize(cpos - pos);
 	//float lambert = saturate(dot(eyeVector, normal));
 	//ハーフランバート
-	float lambert = saturate(dot(lightDirection,normal));
-	lambert = lambert * 0.5f + 0.5f;
-	lambert = lambert * lambert;
-	color.rgb *= lambert;
+	if (isLighting) {
+		float lambert = saturate(dot(lightDirection, normal));
+		lambert = lambert * 0.5f + 0.5f;
+		lambert = lambert * lambert;
+		color.rgb *= lambert;
+	}
+	//スぺキュラ
+	//color.rgb += txEmissionColor.Sample(samLinear, ps_in.tex);
 	//アンビエントオクルージョン
 	if (useAO) {
 		float ao = txDeferredAO.Sample(samLinear, ps_in.tex).r;

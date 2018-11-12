@@ -21,7 +21,7 @@ namespace Lobelia::Game {
 	}
 	Math::Vector3 Camera::TakeRight() {
 		Math::Vector3 front = TakeFront();
-		Math::Vector3 tempUP(0.001f, 1.0f, 0.001f); tempUP.Normalize();
+		Math::Vector3 tempUP(0.00f, 1.0f, 0.00f); tempUP.Normalize();
 		Math::Vector3 ret = Math::Vector3::Cross(tempUP, front); /*ret.Normalize();*/
 		return ret;
 	}
@@ -32,6 +32,7 @@ namespace Lobelia::Game {
 		return ret;
 	}
 	void Camera::Activate() {
+		view->FrameEnd();
 		view->SetEyePos(pos);
 		view->SetEyeTarget(at);
 		view->SetEyeUpDirection(up);
@@ -58,7 +59,11 @@ namespace Lobelia::Game {
 		upMove += up * mmove.y * circumference;
 		if (wheel)radius -= (wheel*circumference*0.1f);
 		if (Input::GetMouseKey(0)) pos += rightMove + upMove;
-		if (Input::GetMouseKey(1)) at += rightMove + upMove;
+		if (Input::GetMouseKey(1)) {
+			at += rightMove + upMove;
+			front = TakeFront();
+			at = pos + front * radius;
+		}
 		if (Input::GetMouseKey(2)) {
 			pos += rightMove + upMove;
 			at += rightMove + upMove;

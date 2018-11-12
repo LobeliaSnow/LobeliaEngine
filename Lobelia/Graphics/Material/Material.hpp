@@ -5,17 +5,21 @@ namespace Lobelia::Graphics {
 	//スペキュラ等
 	//テクスチャのカラー補正用の定数バッファも持つ予定(Spriteもその際それに移行)
 	class Material :private Origin<Material> {
-		struct Data {
+		__declspec(align(16)) struct Data {
 			Math::Vector4 diffuse = { 1,1,1,1 };//現状は使わない
 			Math::Vector4 ambient = { 1,1,1,1 };//現状は使わない
 			Math::Vector4 specular = { 1,1,1,1 };//現状は使わない
 			Math::Vector4 texColor = { 1,1,1,1 };
+			int useNormalMap;
+			int useSpecularMap;
+			int useEmission;
 		};
 	private:
 		std::string name;
 		Texture* texture;
 		Texture* normal;
 		Texture* specular;
+		Texture* emission;
 		Data data;
 		bool visible;
 		std::unique_ptr<ConstantBuffer<Data>> constantBuffer;

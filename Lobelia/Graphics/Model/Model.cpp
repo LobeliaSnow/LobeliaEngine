@@ -770,6 +770,8 @@ namespace Lobelia::Graphics {
 		return ret;
 	}
 	int Model::RayPickLocal(Math::Vector3* out_pos, Math::Vector3* out_normal, const Math::Vector3& ray_pos, const Math::Vector3& ray_vec, float dist) {
+		int retFace = -1;
+		float colDist = 10000.0f;
 		//三角形の数算出
 		int faceSum = allMeshVertexCountSum / 3;
 		for (int face = 0; face < faceSum; face++) {
@@ -811,12 +813,15 @@ namespace Lobelia::Graphics {
 			}
 			//ポリゴンの内側に点がなかった場合次へ
 			if (!isInside)continue;
-			//当たった！
-			*out_pos = rayPoint;
-			*out_normal = normal;
-			return face;
+			if (nearLength < colDist) {
+				//当たった！
+				*out_pos = rayPoint;
+				*out_normal = normal;
+				retFace = face;
+				colDist = nearLength;
+			}
 		}
-		return -1;
+		return retFace;
 	}
 	void Model::ChangeAnimVS(std::shared_ptr<Graphics::VertexShader> vs) { vsAnim = vs; }
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////

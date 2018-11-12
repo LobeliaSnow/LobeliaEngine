@@ -1,11 +1,13 @@
 #pragma once
 namespace Lobelia::Game {
 	//---------------------------------------------------------------------------------------------
-//
-//	Geometry Buffer
-//
-//---------------------------------------------------------------------------------------------
-//GBuffer周り
+	//
+	//	Geometry Buffer
+	//
+	//---------------------------------------------------------------------------------------------
+	//GBuffer周り
+	//エミッションとスぺキュラは同一の扱い
+	//ただし、エミッションを切った場合でもスぺキュラがあればそれはブルームとして光る
 	class DeferredBuffer {
 	public:
 		enum class BUFFER_TYPE {
@@ -14,12 +16,18 @@ namespace Lobelia::Game {
 			COLOR,
 			VIEW_POS,
 			SHADOW,
+			EMISSION_COLOR,
 			MAX,
+		};
+		enum class MATERIAL_TYPE :int {
+			LAMBERT = MAT_LAMBERT,
+			PHONG = MAT_PHONG,
+			COLOR = MAT_COLOR,
 		};
 	public:
 		DeferredBuffer(const Math::Vector2& size);
 		~DeferredBuffer() = default;
-		void AddModel(std::shared_ptr<Graphics::Model> model, bool use_normal_map);
+		void AddModel(std::shared_ptr<Graphics::Model> model, MATERIAL_TYPE material = MATERIAL_TYPE::LAMBERT, float specular_factor = 1.0f, float emission_factor = 0.0f);
 		void RenderGBuffer();
 		std::shared_ptr<Graphics::RenderTarget>& GetRenderTarget(BUFFER_TYPE type);
 		//フラグ取ってどの情報を有効にするのか切り替えれるといいと思う
@@ -28,8 +36,9 @@ namespace Lobelia::Game {
 		void DebugRender();
 	private:
 		ALIGN(16) struct Info {
-			int useNormalMap;
-			int useSpecularMap;
+			MATERIAL_TYPE materialType;
+			float specularFactor;
+			float emissionFactor;
 		};
 		struct ModelStorage {
 			std::weak_ptr<Graphics::Model> model;

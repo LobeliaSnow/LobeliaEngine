@@ -74,6 +74,7 @@ namespace Lobelia::Graphics {
 		if (FAILED(hr))STRICT_THROW("デプスステンシルビューの作成に失敗");
 	}
 	Texture* RenderTarget::GetTexture()const { return texture.get(); }
+	Texture* RenderTarget::GetDepth()const { return depth.get(); }
 	void RenderTarget::Clear(Utility::Color color) {
 		//順番が正しいかどうか確認すること
 		float clearColor[4] = { color.GetNormalizedR() ,color.GetNormalizedG() ,color.GetNormalizedB(),color.GetNormalizedA() };
