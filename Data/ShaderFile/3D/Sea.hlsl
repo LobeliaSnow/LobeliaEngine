@@ -8,8 +8,8 @@
 
 //FFT Ocean
 
-//カメラ情報 
-cbuffer View : register(b0) {
+cbuffer View : register(b0)
+{
 	column_major float4x4 view;
 	column_major float4x4 previousView;
 	column_major float4x4 projection;
@@ -59,7 +59,7 @@ Texture2D txDiffuse: register(t0);
 //海面生成用テクスチャ 
 Texture2D txDisplacementMap: register(t1);
 //ノーマルマップ
-Texture2D txNormalMap: register(t3);
+Texture2D txNormalMap: register(t10);
 #ifdef __PARABOLOID__
 //双曲面環境マップ
 Texture2DArray txParaboloid: register(t4);

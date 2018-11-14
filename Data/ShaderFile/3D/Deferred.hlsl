@@ -19,15 +19,17 @@ Texture2D txDeferredViewPos : register(t3);
 Texture2D txShadow : register(t4);
 //スぺキュラ
 Texture2D txEmissionColor : register(t5);
+//マテリアルID
+Texture2D txMaterialID : register(t6);
 //アンビエントオクルージョン項
-Texture2D txDeferredAO : register(t10);
+Texture2D txDeferredAO : register(t11);
 
 //深度バッファ
 //カスケード用
-Texture2D txLightSpaceDepthMap0 : register(t6);
-Texture2D txLightSpaceDepthMap1 : register(t7);
-Texture2D txLightSpaceDepthMap2 : register(t8);
-Texture2D txLightSpaceDepthMap3 : register(t9);
+Texture2D txLightSpaceDepthMap0 : register(t7);
+Texture2D txLightSpaceDepthMap1 : register(t8);
+Texture2D txLightSpaceDepthMap2 : register(t9);
+Texture2D txLightSpaceDepthMap3 : register(t10);
 //SamplerComparisonState samComparsionLinear :register(s1);
 
 //深度バッファ用
@@ -68,6 +70,7 @@ struct MRTOutput {
 	float4 viewPos : SV_Target3;
 	float4 shadow : SV_Target4;
 	float4 emission : SV_Target5;
+	float4 materialID : SV_Target6;
 };
 
 //ポイントライト用定数バッファ
@@ -376,6 +379,7 @@ float4 Shadow(float4 shadowTex, GBufferPS_IN ps_in) {
 MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	MRTOutput output = (MRTOutput)0;
 	output.pos = ps_in.worldPos;
+	output.pos.w = 1.0f;
 	output.color = txDiffuse.Sample(samLinear, ps_in.tex);
 	//法線マップ
 	if (useNormalMap) {
@@ -392,7 +396,6 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	switch (materialType) {
 	case MAT_LAMBERT://ランバート
 		output.emission = 0.0f;
-		output.normal.a = 1;
 		break;
 	case MAT_PHONG://フォン
 		float3 reflectVector = normalize(reflect(-ps_in.eyeVector, output.normal));
@@ -400,12 +403,13 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 		//スぺキュラマップ
 		if (useSpecularMap) output.emission *= txSpecular.Sample(samLinear, ps_in.tex);
 		output.emission.a = 1.0f;
-		output.normal.a = 1;
 		break;
 	case MAT_COLOR://ライティング無し
-		output.normal.a = 0;
 		break;
 	}
+	output.normal.a = 1.0f;
+	output.materialID = materialType;
+	output.materialID.a = 1.0f;
 	//エミッションテクスチャ用
 	//ここを通らないパスが出ると、透過する
 	output.emission += txEmission.Sample(samLinear, ps_in.tex)*emissionFactor;
@@ -480,9 +484,9 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	float4 vpos = txDeferredViewPos.Sample(samLinear, ps_in.tex);
 	//デコード
 	float4 normal = txDeferredNormal.Sample(samLinear, ps_in.tex) * 2.0 - 1.0;
-	//0より大きければライティングありだが、大事(誤差心配)をとって0.1より上
-	bool isLighting = (normal.a > 0.1f);
 	normal.a = 0.0f;
+	int materialID = txMaterialID.Sample(samLinear, ps_in.tex).r + 0.1f;
+	bool isLighting = !(materialID == MAT_COLOR);
 	float4 color = txDeferredColor.Sample(samLinear, ps_in.tex);
 	//環境光
 	//float3 eyeVector = normalize(cpos - pos);
@@ -493,17 +497,17 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 		lambert = lambert * 0.5f + 0.5f;
 		lambert = lambert * lambert;
 		color.rgb *= lambert;
+		//スぺキュラ
+		//color.rgb += txEmissionColor.Sample(samLinear, ps_in.tex);
+		//アンビエントオクルージョン
+		if (useAO) {
+			float ao = txDeferredAO.Sample(samLinear, ps_in.tex).r;
+			ao = saturate(ao);
+			color.rgb *= ao;
+		}
+		//影 この段階ではもうバリアンスとかは考慮の必要がない
+		if (useShadowMap) color.rgb *= txShadow.Sample(samLinear, ps_in.tex).r;
 	}
-	//スぺキュラ
-	//color.rgb += txEmissionColor.Sample(samLinear, ps_in.tex);
-	//アンビエントオクルージョン
-	if (useAO) {
-		float ao = txDeferredAO.Sample(samLinear, ps_in.tex).r;
-		ao = saturate(ao);
-		color.rgb *= ao;
-	}
-	//影 この段階ではもうバリアンスとかは考慮の必要がない
-	if (useShadowMap) color.rgb *= txShadow.Sample(samLinear, ps_in.tex).r;
 	//最適化などはまだしていない
 	float4 lightColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
 	[unroll]//attribute
