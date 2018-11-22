@@ -7,6 +7,7 @@
 //TODO : シェーダーの整理
 //TODO : 警告消す
 //TODO : defineとフラグが荒れてるので、リファクタリング
+//TODO : シャドウマップの焼き込みのバッファに、SSSとマテリアルの情報をG,Bに入れる
 
 //テストシーン
 //最終的にここでの経験と結果を用いてレンダリングエンジンを作る予定ではいるが、就活終わった後になると思われる。
@@ -31,10 +32,11 @@
 //GPURaycast(当たり判定用 現状実行自体は爆速のはずだが、どこかがボトルネックになり激遅)
 //Gaussian Depth of Field (被写界深度)
 //Screen Space Motion Blur
+//倍率色収差
 
 namespace Lobelia::Game {
 	namespace {
-		const constexpr int LIGHT_COUNT = 128;
+		const constexpr int LIGHT_COUNT = 256;
 	}
 	//---------------------------------------------------------------------------------------------
 	//
@@ -56,6 +58,10 @@ namespace Lobelia::Game {
 		stage = std::make_shared<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
 		stage->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
 		stage->CalcWorldMatrix();
+		box = std::make_shared<Graphics::Model>("Data/Model/box.dxd", "Data/Model/box.mt");
+		box->Translation(Math::Vector3(0.0f, 5.0f, 0.0f));
+		box->Scalling(3.0f);
+		box->CalcWorldMatrix();
 		stageCollision = std::make_shared<Graphics::Model>("Data/Model/maps/collision.dxd", "Data/Model/maps/collision.mt");
 		stageCollision->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
 		stageCollision->CalcWorldMatrix();
@@ -91,8 +97,9 @@ namespace Lobelia::Game {
 		dof = std::make_unique<DepthOfField>(scale, DOF_QUALITY);
 		dof->SetFocus(150.0f);
 #endif
-		skybox = std::make_unique<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
+		skybox = std::make_shared<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
 		skybox->SetCamera(camera);
+		deferredBuffer->SetSkybox(skybox);
 #ifdef USE_CHARACTER
 		Raycaster::Initialize();
 		character = std::make_shared<Character>();
@@ -122,7 +129,8 @@ namespace Lobelia::Game {
 		if (Input::GetKeyboardKey(DIK_6) == 1) useFog = !useFog;
 		if (Input::GetKeyboardKey(DIK_5) == 1) useLight = !useLight;
 		if (Input::GetKeyboardKey(DIK_3) == 1) useMotionBlur = !useMotionBlur;
-		deferredBuffer->AddModel(stage, DeferredBuffer::MATERIAL_TYPE::PHONG, 1.0f, 1.0f);
+		deferredBuffer->AddModel(stage, DeferredBuffer::MATERIAL_TYPE::LAMBERT, 1.0f, 1.0f);
+		deferredBuffer->AddModel(box, DeferredBuffer::MATERIAL_TYPE::COLOR, 0.0f, 6.0f);
 		//deferredBuffer->AddModel(stageCollision, normalMap);
 #ifdef USE_CHARACTER
 		deferredBuffer->AddModel(character, false);
@@ -153,14 +161,13 @@ namespace Lobelia::Game {
 		Graphics::Environment::GetInstance()->SetFogEnd(400.0f);
 		Graphics::Environment::GetInstance()->Activate();
 		camera->Activate();
-		rt->Clear(0x00000000);
+		rt->Clear(0xFF000000);
 		Graphics::RenderTarget* backBuffer = rt.get();
 		//shadow->CreateShadowMap(view.get(), backBuffer);
 		shadow->CreateShadowMap(camera->GetView().get(), backBuffer);
 		//view->Activate();
 		shadow->Begin();
 		deferredBuffer->RenderGBuffer();
-		shadow->End();
 		backBuffer->Activate();
 #ifdef USE_SSAO
 #ifdef SSAO_PS
@@ -169,17 +176,19 @@ namespace Lobelia::Game {
 #ifdef SSAO_CS
 		ssao->CreateAO(backBuffer, camera->GetView().get(), deferredBuffer.get());
 #endif
-		ssao->Begin(10);
+		ssao->Begin(11);
 #endif
 #ifdef USE_CHARACTER
 		Math::Vector3 front = camera->TakeFront(); front.y = 0.0f;
 		character->Update(front);
 #endif
 #ifdef USE_HDR
+		//そのうちスカイボックスはこの中で持たせるようにするかも
 		deferredShader->RenderHDR(camera->GetView().get(), backBuffer, deferredBuffer.get());
 #else
 		deferredShader->Render(deferredBuffer.get());
 #endif
+		shadow->End();
 #ifdef USE_SSAO
 		ssao->End();
 #endif
@@ -193,7 +202,7 @@ namespace Lobelia::Game {
 		if (!useMotionBlur) {
 			backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
 			backBuffer->Activate();
-			skybox->Render();
+			//skybox->Render();
 #ifndef USE_DOF
 			Graphics::SpriteRenderer::Render(rt.get());
 			Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
@@ -208,7 +217,7 @@ namespace Lobelia::Game {
 #endif
 			backBuffer = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
 			backBuffer->Activate();
-			skybox->Render();
+			//skybox->Render();
 #ifdef USE_MOTION_BLUR
 			motionBlur->Render();
 #else

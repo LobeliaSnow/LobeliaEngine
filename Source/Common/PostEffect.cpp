@@ -64,7 +64,7 @@ namespace Lobelia::Game {
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::CS);
 	}
 	void SSAOCS::Render() {
-		Graphics::SpriteRenderer::Render(rwTexture.get(), Math::Vector2(6 * 100.0f, 0.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFF);
+		Graphics::SpriteRenderer::Render(rwTexture.get(), Math::Vector2(7 * 100.0f, 0.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFF);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
 	void SSAOCS::Begin(int slot) {
@@ -182,7 +182,7 @@ namespace Lobelia::Game {
 	void GaussianFilterPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, Graphics::Texture* texture) {
 		info.width = texture->GetSize().x;
 		info.height = texture->GetSize().y;
-		static constexpr const UINT DIVISION = 7;
+		static constexpr const UINT DIVISION = 8;
 		if (dispersion <= 0.0f)dispersion = 0.01f;
 		float total = 0.0f;
 		// ガウス関数による重みの計算
@@ -236,9 +236,9 @@ namespace Lobelia::Game {
 		view = std::make_unique<Graphics::View>(Math::Vector2(), size);
 		//縮小バッファを使用
 		step0 = std::make_unique<GaussianFilterPS>(size*quality, DXGI_FORMAT_R8G8B8A8_UNORM);
-		step0->SetDispersion(0.001f);
+		step0->SetDispersion(0.1f);
 		step1 = std::make_unique<GaussianFilterPS>(size*quality, DXGI_FORMAT_R8G8B8A8_UNORM);
-		step1->SetDispersion(0.001f);
+		step1->SetDispersion(0.1f);
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianDoFPS", Graphics::PixelShader::Model::PS_5_0, false);
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(12, Graphics::ShaderStageList::PS);
 		//初期値
@@ -295,11 +295,15 @@ namespace Lobelia::Game {
 		viewport = std::make_unique<Graphics::View>(Math::Vector2(), scale);
 	}
 	HDRPS::HDRPS(const Math::Vector2& scale, int blur_count) : PostEffect(scale, true, DXGI_FORMAT_R8G8B8A8_UNORM), stepIndex(0), blurCount(blur_count) {
-		blumeBuffer = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16B16A16_FLOAT);
+		colorBuffer = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R32G32B32A32_FLOAT);
+		blumeBuffer = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R32G32B32A32_FLOAT);
+		blumePS = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "AvgBlumePS", Graphics::PixelShader::Model::PS_5_0, false);
 		blend = std::make_shared<Graphics::BlendState>(Graphics::BLEND_PRESET::ADD, true, false);
+		sampler = std::make_shared<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::LINEAR, 16, true);;
 		createLuminancePS = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "CreateLuminancePS", Graphics::PixelShader::Model::PS_5_0, false);
 		toneMapPS = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "ToneMapPS", Graphics::PixelShader::Model::PS_5_0, false);
-		luminanceBuffer = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16_FLOAT);
+		luminanceBuffer = std::make_unique<Graphics::RenderTarget>(scale * 0.5f, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16_FLOAT);
+		luminanceViewport = std::make_unique<Graphics::View>(Math::Vector2(), scale * 0.5f);
 		viewport = std::make_unique<Graphics::View>(Math::Vector2(), scale);
 		int maxScale = max(i_cast(scale.x), i_cast(scale.y));
 		Math::Vector2 tempScale = scale;
@@ -308,6 +312,7 @@ namespace Lobelia::Game {
 			tempScale /= 2.0f;
 			if (tempScale.x < 1.0f)tempScale.x = 1.0f;
 			if (tempScale.y < 1.0f)tempScale.y = 1.0f;
+			tempScale.x = i_cast(tempScale.x); tempScale.y = i_cast(tempScale.y);
 			if (maxScale == 1)break;
 		}
 		bufferCount = reductionBuffer.size();
@@ -319,19 +324,23 @@ namespace Lobelia::Game {
 #else
 			gaussian[i] = std::make_unique<GaussianFilterCS>(tempScale, DXGI_FORMAT_R16G16B16A16_FLOAT);
 #endif
+			gaussian[i]->SetDispersion(0.001f);
+			tempScale.x = i_cast(tempScale.x); tempScale.y = i_cast(tempScale.y);
 			tempScale /= 2.0f;
 		}
 	}
 	void HDRPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color, int step) {
+		auto defaultSampler = Graphics::SpriteRenderer::GetSamplerState();
+		Graphics::SpriteRenderer::ChangeSamplerState(sampler);
 		//ブルーム実行
 		DispatchBlume(active_view, active_buffer, hdr_texture, color);
+		//輝度値バッファ作成
+		CreateLuminanceBuffer(colorBuffer->GetTexture());
 		//平均輝度値のステップを進める
 		//現状最初のほうは、平均算出されていない状態なので、その辺りが大丈夫か調査
 		for (int i = 0; i < step; i++) {
 			CreatMeanLuminanceBuffer();
 		}
-		//輝度値バッファ作成
-		CreateLuminanceBuffer(blumeBuffer->GetTexture());
 		//フィルター実行
 		viewport->ViewportActivate();
 		rt->Clear(0x00000000);
@@ -342,11 +351,12 @@ namespace Lobelia::Game {
 		luminanceBuffer->GetTexture()->Set(1, Graphics::ShaderStageList::PS);
 		//平均輝度値セット
 		reductionBuffer[bufferCount - 1]->buffer->GetTexture()->Set(2, Graphics::ShaderStageList::PS);
-		Graphics::SpriteRenderer::Render(blumeBuffer->GetTexture());
+		Graphics::SpriteRenderer::Render(colorBuffer->GetTexture());
 		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 		Graphics::Texture::Clean(1, Graphics::ShaderStageList::PS);
 		Graphics::Texture::Clean(2, Graphics::ShaderStageList::PS);
+		Graphics::SpriteRenderer::ChangeSamplerState(defaultSampler);
 		//元に戻す
 		active_view->Activate();
 		active_buffer->Activate();
@@ -359,23 +369,33 @@ namespace Lobelia::Game {
 			else tex = gaussian[i - 1]->GetRenderTarget()->GetTexture();
 			gaussian[i]->Dispatch(active_view, active_buffer, tex);
 		}
-		//ブルーム実行
-		blumeBuffer->Clear(0x00000000);
-		blumeBuffer->Activate();
+		//平均値算出実行
 		viewport->ViewportActivate();
-		//とりあえず加算合成で重ねる、強度を変えたくなったらシェーダーで実装する
+		blumeBuffer->Clear(0xFF000000);
+		blumeBuffer->Activate();
+		for (int i = 0; i < blurCount; i++) {
+			gaussian[i]->Begin(i + 1);
+		}
+		std::shared_ptr<Graphics::PixelShader> defaultPS = Graphics::SpriteRenderer::GetPixelShader();
+		Graphics::SpriteRenderer::ChangePixelShader(blumePS);
+		Graphics::SpriteRenderer::Render(color);
+		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
+		for (int i = 1; i < blurCount; i++) {
+			gaussian[i]->End();
+		}
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+		colorBuffer->Clear(0xFF000000);
+		colorBuffer->Activate();
 		Graphics::SpriteRenderer::Render(color);
 		auto& defaultBlend = Graphics::SpriteRenderer::GetBlendState();
-		//Graphics::SpriteRenderer::ChangeBlendState(blend);
-		//for (int i = 0; i < blurCount; i++) {
-		//	Graphics::SpriteRenderer::Render(gaussian[i]->GetRenderTarget()->GetTexture());
-		//}
+		Graphics::SpriteRenderer::ChangeBlendState(blend);
+		Graphics::SpriteRenderer::Render(blumeBuffer->GetTexture());
 		Graphics::SpriteRenderer::ChangeBlendState(defaultBlend);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
 	//輝度値をバッファへ格納
 	void HDRPS::CreateLuminanceBuffer(Graphics::Texture* hdr_texture) {
-		viewport->ViewportActivate();
+		luminanceViewport->ViewportActivate();
 		luminanceBuffer->Clear(0x00000000);
 		luminanceBuffer->Activate();
 		std::shared_ptr<Graphics::PixelShader> defaultPS = Graphics::SpriteRenderer::GetPixelShader();
@@ -398,10 +418,10 @@ namespace Lobelia::Game {
 	}
 	void HDRPS::DebugRender() {
 		for (int i = 0; i < blurCount; i++) {
-			Graphics::SpriteRenderer::Render(gaussian[i]->GetRenderTarget()->GetTexture(), Math::Vector2(100.0f, 0.0f)*(7 + i), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), gaussian[i]->GetRenderTarget()->GetTexture()->GetSize(), 0xFFFFFFFF);
+			Graphics::SpriteRenderer::Render(gaussian[i]->GetRenderTarget()->GetTexture(), Math::Vector2(100.0f, 0.0f)*i + Math::Vector2(0.0f, 300.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), gaussian[i]->GetRenderTarget()->GetTexture()->GetSize(), 0xFFFFFFFF);
 		}
-		Graphics::SpriteRenderer::Render(luminanceBuffer->GetTexture(), Math::Vector2(100.0f, 0.0f)*(7 + blurCount), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), luminanceBuffer->GetTexture()->GetSize(), 0xFFFFFFFF);
-		Graphics::SpriteRenderer::Render(reductionBuffer[bufferCount - 1]->buffer->GetTexture(), Math::Vector2(100.0f, 0.0f)*(7 + blurCount + 1), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), reductionBuffer[bufferCount - 1]->buffer->GetTexture()->GetSize(), 0xFFFFFFFF);
-		Graphics::SpriteRenderer::Render(blumeBuffer->GetTexture(), Math::Vector2(100.0f, 0.0f)*(7 + blurCount + 1) + Math::Vector2(0.0f, 100.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), blumeBuffer->GetTexture()->GetSize(), 0xFFFFFFFF);
+		Graphics::SpriteRenderer::Render(luminanceBuffer->GetTexture(), Math::Vector2(100.0f, 0.0f)*blurCount + Math::Vector2(0.0f, 300.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), luminanceBuffer->GetTexture()->GetSize(), 0xFFFFFFFF);
+		Graphics::SpriteRenderer::Render(reductionBuffer[bufferCount - 1]->buffer->GetTexture(), Math::Vector2(100.0f, 0.0f)*(blurCount + 1) + Math::Vector2(0.0f, 300.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), reductionBuffer[bufferCount - 1]->buffer->GetTexture()->GetSize(), 0xFFFFFFFF);
+		Graphics::SpriteRenderer::Render(colorBuffer->GetTexture(), Math::Vector2(100.0f, 0.0f)*(blurCount + 2) + Math::Vector2(0.0f, 300.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), colorBuffer->GetTexture()->GetSize(), 0xFFFFFFFF);
 	}
 }

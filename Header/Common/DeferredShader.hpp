@@ -4,6 +4,7 @@ namespace Lobelia::Game {
 	//実際にシェーディングする部分
 	//スぺキュラには自動的にブルームがかかります
 	//エミッション
+	class Camera;
 	class DeferredShader {
 	public:
 		DeferredShader(const char* file_path, const char* entry_vs, const char* entry_ps);

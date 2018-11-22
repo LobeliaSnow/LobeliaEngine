@@ -97,7 +97,7 @@ namespace Lobelia::Game {
 		void DebugRender(const Math::Vector2& pos, const Math::Vector2& size);
 	private:
 		ALIGN(16) struct Info {
-			float weight[7];
+			float weight[8];
 			float width;
 			float height;
 		};
@@ -209,8 +209,12 @@ namespace Lobelia::Game {
 		};
 	private:
 		//ブルーム用
+		std::unique_ptr<Graphics::RenderTarget> colorBuffer;
 		std::unique_ptr<Graphics::RenderTarget> blumeBuffer;
+		std::shared_ptr<Graphics::PixelShader> blumePS;
 		std::shared_ptr<Graphics::BlendState> blend;
+		std::shared_ptr<Graphics::SamplerState> sampler;
+		
 #ifdef GAUSSIAN_PS
 		std::vector<std::unique_ptr<GaussianFilterPS>> gaussian;
 #else
@@ -220,6 +224,7 @@ namespace Lobelia::Game {
 		//輝度値用
 		std::shared_ptr<Graphics::PixelShader> createLuminancePS;
 		std::unique_ptr<Graphics::RenderTarget> luminanceBuffer;
+		std::unique_ptr<Graphics::View> luminanceViewport;
 		std::unique_ptr<Graphics::View> viewport;
 		//平均輝度算出用
 		std::vector<std::unique_ptr<ReductionBuffer>> reductionBuffer;

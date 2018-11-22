@@ -28,7 +28,7 @@ namespace Lobelia::Graphics {
 	//InstanceID SpriteRenderer::id = -1;
 	void SpriteRenderer::Initialize() {
 		if (!blend)blend = std::make_shared<BlendState>(Graphics::BLEND_PRESET::COPY, true, false);
-		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SAMPLER_PRESET::POINT, 16);
+		if (!sampler)sampler = std::make_shared<SamplerState>(Graphics::SAMPLER_PRESET::LINEAR, 16);
 		if (!rasterizer) rasterizer = std::make_shared<RasterizerState>(Graphics::RASTERIZER_PRESET::BACK);
 		if (!depthStencil)depthStencil = std::make_shared<DepthStencilState>(Graphics::DEPTH_PRESET::ALWAYS, false, Graphics::StencilDesc(), false);
 		if (!vs)vs = std::make_shared<VertexShader>("Data/ShaderFile/2D/VS.hlsl", "Main2D", Graphics::VertexShader::Model::VS_5_0, false);

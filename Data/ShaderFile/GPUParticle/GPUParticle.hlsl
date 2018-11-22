@@ -20,38 +20,31 @@ Texture2D txDiffuse13 : register(t15);
 Texture2D txDiffuse14 : register(t16);
 Texture2D txDiffuse15 : register(t17);
 
-SamplerState samPoint:register(s0);
-//{
-//	Filter = MIN_MAG_MIP_POINT;
-//    AddressU = Clamp;
-//    AddressV = Clamp;
-//};
-column_major float4x4 GetIdentityMatrix()
-{
-	static column_major float4x4 identity =
-	{
+SamplerState samPoint :register(s0);
+
+column_major float4x4 GetIdentityMatrix() {
+	static column_major float4x4 identity = {
 		{ 1.0f, 0.0f, 0.0f, 0.0f },
-	{ 0.0f, 1.0f, 0.0f, 0.0f },
-	{ 0.0f, 0.0f, 1.0f, 0.0f },
-	{ 0.0f, 0.0f, 0.0f, 1.0f },
+		{ 0.0f, 1.0f, 0.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f, 0.0f },
+		{ 0.0f, 0.0f, 0.0f, 1.0f },
 	};
 	return identity;
 }
 
-cbuffer GPUParticleInfo : register(b0)
-{
+cbuffer GPUParticleInfo : register(b0) {
 	int appendCount : packoffset(c0.x);
 	float elapsedTime : packoffset(c0.y);
 	int compareInterval : packoffset(c0.z);
 	int divideLevel : packoffset(c0.w);
 	int isBitonicFinal : packoffset(c1.x);
 };
+
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //	AppendParticle
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //描画用バッファにデータを追加
-inline void AppendParticleBuffer(uint data_index)
-{
+inline void AppendParticleBuffer(uint data_index) {
 	uint appendDataIndex = data_index * PARTICLE_DATA_SIZE;
 	uint particleDataIndex = asuint(particleIndex.Load(data_index * 4)) * PARTICLE_DATA_SIZE;
 	//pos
@@ -85,14 +78,11 @@ inline void AppendParticleBuffer(uint data_index)
 	//color
 	particleData.Store3(particleDataIndex + PARTICLE_COLOR_OFFSET, appendData.Load3(appendDataIndex + PARTICLE_COLOR_OFFSET));
 }
-
 //スレッド数 ＝ 追加したいパーティクル総数 / 1スレッドで追加する数 + 1(繰り上げ)
 [numthreads(APPEND_PARTICLE_MAX / THREAD_PER_COUNT, 1, 1)]
-void AppendParticle(uint3 thread_id : SV_DispatchThreadID)
-{
+void AppendParticle(uint3 thread_id : SV_DispatchThreadID) {
 	//1スレッドで複数のパーティクルを処理
-	for (int i = 0; i < THREAD_PER_COUNT; i++)
-	{
+	for (int i = 0; i < THREAD_PER_COUNT; i++) {
 		//スレッド番号×最大処理数＋ループ処理番号
 		uint dataIndex = thread_id.x * THREAD_PER_COUNT + i;
 		//追加数を超えるものは除外
@@ -107,8 +97,7 @@ void AppendParticle(uint3 thread_id : SV_DispatchThreadID)
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //	SortParticle
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-inline void BitonicSort(uint thread_id, uint data_index[2])
-{
+inline void BitonicSort(uint thread_id, uint data_index[2]) {
 	//対象のデータアドレスを取得
 	uint particleAddress[2];
 	particleAddress[0] = asuint(particleIndex.Load(data_index[0]));
@@ -125,8 +114,7 @@ inline void BitonicSort(uint thread_id, uint data_index[2])
 	particleIndex.Store(data_index[0], asuint(particleAddress[0 ^ isTrade]));
 	particleIndex.Store(data_index[1], asuint(particleAddress[1 ^ isTrade]));
 }
-inline void ConfigureIndirectArgs(uint thread_id, uint data_index[2])
-{
+inline void ConfigureIndirectArgs(uint thread_id, uint data_index[2]) {
 	//------------------------------------------------------------------------------------
 	//	配列の中身 [0] 死亡パーティクル->[MAX]生存パーティクル
 	//------------------------------------------------------------------------------------
@@ -161,8 +149,7 @@ inline void ConfigureIndirectArgs(uint thread_id, uint data_index[2])
 	}
 }
 [numthreads(LOCAL_THREAD_COUNT, 1, 1)]
-void SortParticle(uint3 thread_id : SV_DispatchThreadID)
-{
+void SortParticle(uint3 thread_id : SV_DispatchThreadID) {
 	indirectArgs.Store(INDIRECT_ARGS_INDEX_COUNT, asuint(0));
 	//2要素を一つのスレッドで行うため、重複するものはスキップ
 	bool skip = (bool)(thread_id.x / compareInterval % 2);
@@ -182,8 +169,7 @@ void SortParticle(uint3 thread_id : SV_DispatchThreadID)
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //	UpdateParticle
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-void UpdateIndividualParticle(uint data_offset)
-{
+void UpdateIndividualParticle(uint data_offset) {
 	const uint aliveOffset = data_offset + PARTICLE_ELAPSED_TIME_OFFSET;
 	const uint maxAliveOffset = data_offset + PARTICLE_ALIVE_TIME_OFFSET;
 	//現在の経過時間取得
@@ -211,8 +197,7 @@ void UpdateIndividualParticle(uint data_offset)
 	particleData.Store3(moveOffset, asuint(move));
 }
 [numthreads(LOCAL_THREAD_COUNT, 1, 1)]
-void UpdateParticle(uint3 thread_id : SV_DispatchThreadID)
-{
+void UpdateParticle(uint3 thread_id : SV_DispatchThreadID) {
 	for (int i = 0; i < THREAD_PER_COUNT; i++)
 	{
 		uint dataIndex = thread_id.x * THREAD_PER_COUNT + i;
@@ -243,8 +228,7 @@ struct GS_IN {
 	float endRad : ENDRAD;
 	float3 color:COLOR;
 };
-struct GS_OUT
-{
+struct GS_OUT {
 	float4 pos : SV_Position;
 	float2 tex : TEXCOORD0;
 	float4 color : TEXCOORD1;
@@ -255,8 +239,7 @@ struct GS_OUT
 //	VertexShader
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //頂点シェーダーはスルー
-GS_IN GPUParticleVS(GS_IN vs_in)
-{
+GS_IN GPUParticleVS(GS_IN vs_in) {
 	return vs_in;
 }
 
@@ -264,8 +247,7 @@ GS_IN GPUParticleVS(GS_IN vs_in)
 //	GeometryShader
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 [maxvertexcount(4)]
-void GPUParticleGS(point GS_IN gs_in[1], inout TriangleStream<GS_OUT> triangle_stream)
-{
+void GPUParticleGS(point GS_IN gs_in[1], inout TriangleStream<GS_OUT> triangle_stream) {
 	//進行率
 	float nowRate = 1.0f - gs_in[0].elapsedTime / gs_in[0].aliveTime;
 	float scale = lerp(gs_in[0].startScale, gs_in[0].endScale, nowRate);
@@ -317,20 +299,18 @@ void GPUParticleGS(point GS_IN gs_in[1], inout TriangleStream<GS_OUT> triangle_s
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //	PixelShader
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-float4 GPUParticlePS(GS_OUT gs_out) : SV_Target
-{
+float4 GPUParticlePS(GS_OUT gs_out) : SV_Target{
 	float4 color;
-switch (gs_out.texIndex)
-{
-case 0:	color = txDiffuse8.Sample(samPoint, gs_out.tex);  break;
-case 1:	color = txDiffuse9.Sample(samPoint, gs_out.tex);  break;
-case 2:	color = txDiffuse10.Sample(samPoint, gs_out.tex); break;
-case 3:	color = txDiffuse11.Sample(samPoint, gs_out.tex); break;
-case 4:	color = txDiffuse12.Sample(samPoint, gs_out.tex); break;
-case 5:	color = txDiffuse13.Sample(samPoint, gs_out.tex); break;
-case 6:	color = txDiffuse14.Sample(samPoint, gs_out.tex); break;
-case 7:	color = txDiffuse15.Sample(samPoint, gs_out.tex); break;
-default:	color = float4(1.0f,1.0f,1.0f,1.0f);							 break;
-}
-return color * gs_out.color;
+	switch (gs_out.texIndex) {
+	case 0:	color = txDiffuse8.Sample(samPoint, gs_out.tex);  break;
+	case 1:	color = txDiffuse9.Sample(samPoint, gs_out.tex);  break;
+	case 2:	color = txDiffuse10.Sample(samPoint, gs_out.tex); break;
+	case 3:	color = txDiffuse11.Sample(samPoint, gs_out.tex); break;
+	case 4:	color = txDiffuse12.Sample(samPoint, gs_out.tex); break;
+	case 5:	color = txDiffuse13.Sample(samPoint, gs_out.tex); break;
+	case 6:	color = txDiffuse14.Sample(samPoint, gs_out.tex); break;
+	case 7:	color = txDiffuse15.Sample(samPoint, gs_out.tex); break;
+	default:	color = float4(1.0f,1.0f,1.0f,1.0f);							 break;
+	}
+	return color * gs_out.color;
 }

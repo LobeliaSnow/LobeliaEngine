@@ -57,6 +57,7 @@ namespace Lobelia::Game {
 		//Math::Vector3 up;
 		//描画オブジェクト
 		std::shared_ptr<Graphics::Model> stage;
+		std::shared_ptr<Graphics::Model> box;
 		std::shared_ptr<Graphics::Model> stageCollision;
 #ifdef USE_CHARACTER
 		std::shared_ptr<Character> character;
@@ -66,7 +67,7 @@ namespace Lobelia::Game {
 #ifdef USE_MOTION_BLUR
 		std::unique_ptr<SSMotionBlur> motionBlur;
 #endif
-		std::unique_ptr<SkyBox> skybox;
+		std::shared_ptr<SkyBox> skybox;
 		//描画制御用パラメーター
 		int useLight;
 		int useFog;

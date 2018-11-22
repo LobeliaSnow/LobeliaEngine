@@ -187,7 +187,7 @@ namespace Lobelia::Game {
 		//コンスタントバッファとテクスチャの更新
 		constantBufferSeaInfo->Activate(seaInfo);
 		displacement->Set(1, Graphics::ShaderStageList::DS);
-		normal->Set(3, Graphics::ShaderStageList::PS);
+		normal->Set(10, Graphics::ShaderStageList::PS);
 	}
 	void WaterShader::Clean() {
 		//他で使わないシェーダーをもとに戻す

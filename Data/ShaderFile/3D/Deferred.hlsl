@@ -6,6 +6,7 @@
 #define _DEBUG
 //#define EXPONANTIAL_SHADOW_TEST
 //最終的にはリンケージにてある程度は解決できるようにしたい
+//SSSはシャドウマップに紛れ込ませます
 
 //ワールド位置
 Texture2D txDeferredPos : register(t0);
@@ -30,6 +31,13 @@ Texture2D txLightSpaceDepthMap0 : register(t7);
 Texture2D txLightSpaceDepthMap1 : register(t8);
 Texture2D txLightSpaceDepthMap2 : register(t9);
 Texture2D txLightSpaceDepthMap3 : register(t10);
+//バリアンスシャドウの際に、SSS用にぼかされていないシャドウマップが格納される
+Texture2D txLightSpaceDepthMapSSS0 : register(t11);
+Texture2D txLightSpaceDepthMapSSS1 : register(t12);
+Texture2D txLightSpaceDepthMapSSS2 : register(t13);
+Texture2D txLightSpaceDepthMapSSS3 : register(t14);
+
+
 //SamplerComparisonState samComparsionLinear :register(s1);
 
 //深度バッファ用
@@ -87,12 +95,14 @@ cbuffer SSAO :register(b7) {
 	float offsetPerPixel : packoffset(c0.x);
 	int useAO : packoffset(c0.y);
 };
+
 cbuffer DeferredOption : register(b8) {
-	//現状フォン(スぺキュラ)を使用するか否か
-	//0 ランバート 1 フォン
+	//0 ランバート 1 フォン 2 カラー
 	int materialType : packoffset(c0.x);
 	float specularFactor : packoffset(c0.y);
 	float emissionFactor : packoffset(c0.z);
+	//この先SSSについてのパラメーターの予定
+	float sssTransparent : packoffset(c0.w);//どこまでの長さなら透過するか
 };
 //9番はガウスで使用
 cbuffer ShadowInfo : register(b10) {
@@ -198,6 +208,7 @@ GBufferPS_IN CreateGBufferVS(VS_IN vs_in) {
 #ifdef CASCADE
 		//ライト空間位置へ変換 0
 		output.worldPos /= output.worldPos.w;
+		//0
 		column_major float4x4 wlp = mul(lightView, lightProj0);
 		output.lightViewPos[0] = mul(output.worldPos, wlp);
 		output.lightTex[0] = mul(output.lightViewPos[0], UVTRANS_MATRIX);
@@ -238,6 +249,12 @@ float4 CreateShadowMapPS(ShadowOut input) :SV_Target{
 	depth.a = 1.0f;
 	return depth;
 }
+//ブレンドは各自で
+float SSS(float light_in, float light_out) {
+	float thickness = abs(light_out - light_in);
+	float transparent = (1.0f - saturate(thickness / sssTransparent));
+	return transparent;
+}
 #ifdef CASCADE
 //とりあえず今は適当にカスケード対応
 //C++側のソース含め、シェーダーとの兼ね合いで作り直す
@@ -247,28 +264,37 @@ float4 CascadeVarianceShadow(GBufferPS_IN ps_in) {
 	float lightSpaceLength = ps_in.lightLength;
 	float2 lightDepth = (float2)0.0f;
 	float4 shadowTex = (float4)0;
+	float lightOut = 0.0f; float lightIn = 0.0f;
 	if (lightSpaceLength < splitPos0) {
+		lightOut = ps_in.lightViewPos[0].w;
 		shadowTex = ps_in.lightTex[0] / ps_in.lightTex[0].w;
 		lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).rg;
+		lightIn = txLightSpaceDepthMapSSS0.Sample(samLinear, shadowTex.xy).r;
 		lightSpaceLength = ps_in.lightViewPos[0].z / ps_in.lightViewPos[0].w;
 	}
 	else if (lightSpaceLength < splitPos1) {
+		lightOut = ps_in.lightViewPos[1].w;
 		shadowTex = ps_in.lightTex[1] / ps_in.lightTex[1].w;
 		lightDepth = txLightSpaceDepthMap1.Sample(samLinear, shadowTex.xy).rg;
+		lightIn = txLightSpaceDepthMapSSS1.Sample(samLinear, shadowTex.xy).r;
 		lightSpaceLength = ps_in.lightViewPos[1].z / ps_in.lightViewPos[1].w;
 	}
 	else if (lightSpaceLength < splitPos2) {
+		lightOut = ps_in.lightViewPos[2].w;
 		shadowTex = ps_in.lightTex[2] / ps_in.lightTex[2].w;
 		lightDepth = txLightSpaceDepthMap2.Sample(samLinear, shadowTex.xy).rg;
+		lightIn = txLightSpaceDepthMapSSS2.Sample(samLinear, shadowTex.xy).r;
 		lightSpaceLength = ps_in.lightViewPos[2].z / ps_in.lightViewPos[2].w;
 	}
 	else {
+		lightOut = ps_in.lightViewPos[3].w;
 		shadowTex = ps_in.lightTex[3] / ps_in.lightTex[3].w;
 		lightDepth = txLightSpaceDepthMap3.Sample(samLinear, shadowTex.xy).rg;
+		lightIn = txLightSpaceDepthMapSSS3.Sample(samLinear, shadowTex.xy).r;
 		lightSpaceLength = ps_in.lightViewPos[3].z / ps_in.lightViewPos[3].w;
 	}
 	if (shadowTex.x < 0.0f || shadowTex.x > 1.0f || shadowTex.y < 0.0f || shadowTex.y > 1.0f) {
-		return float4(1.0f, 1.0f, 1.0f, 1.0f);
+		return float4(1.0f, SSS(lightIn, lightOut), 1.0f, 1.0f);
 	}
 	if (lightSpaceLength - 0.01f > lightDepth.x) {
 		//80
@@ -282,35 +308,41 @@ float4 CascadeVarianceShadow(GBufferPS_IN ps_in) {
 		shadow = saturate(shadow * 0.5f + 0.5f);
 		return float4((float3)shadow, 1.0f);
 	}
-	return float4(1.0f, 1.0f, 1.0f, 1.0f);
+	return float4(1.0f, SSS(lightIn, lightOut), 1.0f, 1.0f);
 }
 float4 CascadeShadow(GBufferPS_IN ps_in) {
 	//現在の描画対象の距離算出
 	float lightSpaceLength = ps_in.lightLength;
 	float2 lightDepth = (float2)0.0f;
 	float4 shadowTex = (float4)0.0f;
+	float lightOut = 0.0f; float lightIn = 0.0f;
 	if (lightSpaceLength < splitPos0) {
+		lightOut = ps_in.lightViewPos[0].w;
 		shadowTex = ps_in.lightTex[0] / ps_in.lightTex[0].w;
 		lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).rg;
 		lightSpaceLength = ps_in.lightViewPos[0].z / ps_in.lightViewPos[0].w;
 	}
 	else if (lightSpaceLength < splitPos1) {
+		lightOut = ps_in.lightViewPos[1].w;
 		shadowTex = ps_in.lightTex[1] / ps_in.lightTex[1].w;
 		lightDepth = txLightSpaceDepthMap1.Sample(samLinear, shadowTex.xy).rg;
 		lightSpaceLength = ps_in.lightViewPos[1].z / ps_in.lightViewPos[1].w;
 	}
 	else if (lightSpaceLength < splitPos2) {
+		lightOut = ps_in.lightViewPos[2].w;
 		shadowTex = ps_in.lightTex[2] / ps_in.lightTex[2].w;
 		lightDepth = txLightSpaceDepthMap2.Sample(samLinear, shadowTex.xy).rg;
 		lightSpaceLength = ps_in.lightViewPos[2].z / ps_in.lightViewPos[2].w;
 	}
 	else {
-		shadowTex = ps_in.lightTex[3] / ps_in.lightTex[3].w;
+		lightOut = ps_in.lightViewPos[3].w;
+		shadowTex = ps_in.lightViewPos[3] / ps_in.lightTex[3].w;
 		lightDepth = txLightSpaceDepthMap3.Sample(samLinear, shadowTex.xy).rg;
 		lightSpaceLength = ps_in.lightViewPos[3].z / ps_in.lightViewPos[3].w;
 	}
+	lightIn = lightDepth.r;
 	if (shadowTex.x < 0.0f || shadowTex.x > 1.0f || shadowTex.y < 0.0f || shadowTex.y > 1.0f) {
-		return float4(1.0f, 1.0f, 1.0f, 1.0f);
+		return float4(1.0f, SSS(lightIn, lightOut), 1.0f, 1.0f);
 	}
 	//最大深度傾斜を求める
 	float maxDepthSlope = max(abs(ddx(shadowTex.z)), abs(ddy(shadowTex.z)));
@@ -324,15 +356,17 @@ float4 CascadeShadow(GBufferPS_IN ps_in) {
 	float shadowBias = bias + slopedScaleBias * maxDepthSlope;
 	//深度判定
 	if (lightSpaceLength > lightDepth.x + min(shadowBias, depthBiasClamp)) return float4((float3)1.0f / 2.0f, 1.0f);
-	else return float4(1.0f, 1.0f, 1.0f, 1.0f);
+	else return float4(1.0f, SSS(lightIn, lightOut), 1.0f, 1.0f);
 }
 #else
-	//バリアンスシャドウマップ
-	float4 VarianceShadow(float4 shadowTex, GBufferPS_IN ps_in) {
+//バリアンスシャドウマップ
+float4 VarianceShadow(float4 shadowTex, GBufferPS_IN ps_in) {
+	float lightOut = ps_in.lightViewPos.w;
 	//現在の描画対象の距離算出
 	float lightSpaceLength = ps_in.lightViewPos.z / ps_in.lightViewPos.w;
 	//カメラ位置からのZ値を見て、遮蔽物の深度値取得(無ければ上と同じものが入る)
 	float2 lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).rg;
+	float lightIn = txLightSpaceDepthMapSSS0.Sample(samLinear, shadowTex.xy).r;
 	//参考
 	//http://maverickproj.web.fc2.com/d3d11_28.html
 	//https://riyaaaaasan.hatenablog.com/entry/2018/03/15/215910
@@ -348,14 +382,16 @@ float4 CascadeShadow(GBufferPS_IN ps_in) {
 		shadow = saturate(shadow * 0.5f + 0.5f);
 		return float4((float3)shadow, 1.0f);
 	}
-	return float4(1.0f, 1.0f, 1.0f, 1.0f);
+	return float4(1.0f, SSS(lightIn, lightOut), 1.0f, 1.0f);
 }
 //通常のシャドウマップ
 float4 Shadow(float4 shadowTex, GBufferPS_IN ps_in) {
+	float lightOut = ps_in.lightViewPos.w;
 	//現在の描画対象の距離算出
 	float lightSpaceLength = ps_in.lightViewPos.z / ps_in.lightViewPos.w;
 	//カメラ位置からのZ値を見て、遮蔽物の深度値取得(無ければ上と同じものが入る)
 	float2 lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).rg;
+	float lightIn = lightDepth.r;
 	//SampleCmpLevelZero使うべき?
 	//Slope Scale Depth Bias
 	//http://www.project-asura.com/program/d3d11/d3d11_009.html
@@ -371,7 +407,7 @@ float4 Shadow(float4 shadowTex, GBufferPS_IN ps_in) {
 	float shadowBias = bias + slopedScaleBias * maxDepthSlope;
 	//深度判定
 	if (lightSpaceLength > lightDepth.x + min(shadowBias, depthBiasClamp)) return float4((float3)1.0f / 2.0f, 1.0f);
-	else return float4(1.0f, 1.0f, 1.0f, 1.0f);
+	else return float4(1.0f, SSS(lightIn, lightOut), 1.0f, 1.0f);
 }
 #endif
 //GBuffer作成
@@ -380,7 +416,7 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	MRTOutput output = (MRTOutput)0;
 	output.pos = ps_in.worldPos;
 	output.pos.w = 1.0f;
-	output.color = txDiffuse.Sample(samLinear, ps_in.tex);
+	output.color = pow(txDiffuse.Sample(samLinear, ps_in.tex), 2.2f);
 	//法線マップ
 	if (useNormalMap) {
 		float4 normalMap = txNormal.Sample(samLinear, ps_in.tex);
@@ -487,16 +523,65 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	normal.a = 0.0f;
 	int materialID = txMaterialID.Sample(samLinear, ps_in.tex).r + 0.1f;
 	bool isLighting = !(materialID == MAT_COLOR);
-	float4 color = txDeferredColor.Sample(samLinear, ps_in.tex);
+	float4 diffuse = txDeferredColor.Sample(samLinear, ps_in.tex);
+	float4 color = diffuse;
 	//環境光
 	//float3 eyeVector = normalize(cpos - pos);
 	//float lambert = saturate(dot(eyeVector, normal));
+	//サブサーフェイススキャッタリング
+	//if (materialID == MAT_SSS) {
+		//float4 lvpos = mul(pos, lightView);
+		//float4 lvPos[4] = (float4[4])0;
+		//float4 lvptTex[4] = (float4[4])0;
+		//lvPos[0] = mul(lvpos, lightProj0);
+		//lvPos[1] = mul(lvpos, lightProj1);
+		//lvPos[2] = mul(lvpos, lightProj2);
+		//lvPos[3] = mul(lvpos, lightProj3);
+		//for (int i = 0; i < 4; i++) {
+		//	lvPos[i] /= lvPos[i].w;
+		//	lvTex[i] = mul(lvPos[i], UVTRANS_MATRIX);
+		//	lvTex[i] /= lvTex[i].w;
+		//}
+		//float lightLength = length(lightPos.xyz - pos.xyz);
+		//float2 shadowTex = (float2)0;
+		//float lightDepth = (float)0;
+		//float lightSpaceLength = 0.0f;
+		//if (lightSpaceLength < splitPos0) {
+		//	shadowTex = lvTex[0];
+		//	lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).rg;
+		//	lightSpaceLength = lvPos[0].z / lvPos[0].w;
+		//}
+		//else if (lightSpaceLength < splitPos1) {
+		//	shadowTex = lvTex[1];
+		//	lightDepth = txLightSpaceDepthMap1.Sample(samLinear, shadowTex.xy).rg;
+		//	lightSpaceLength = lvPos[1].z / lvPos[1].w;
+		//}
+		//else if (lightSpaceLength < splitPos2) {
+		//	shadowTex = lvTex[2];
+		//	lightDepth = txLightSpaceDepthMap2.Sample(samLinear, shadowTex.xy).rg;
+		//	lightSpaceLength = lvPos[2].z / lvPos[2].w;
+		//}
+		//else{
+		//	shadowTex = lvTex[3];
+		//	lightDepth = txLightSpaceDepthMap3.Sample(samLinear, shadowTex.xy).rg;
+		//	lightSpaceLength = lvPos[3].z / lvPos[3].w;
+		//}
+	//}
 	//ハーフランバート
 	if (isLighting) {
 		float lambert = saturate(dot(lightDirection, normal));
 		lambert = lambert * 0.5f + 0.5f;
 		lambert = lambert * lambert;
 		color.rgb *= lambert;
+		float sss = 1.0f;
+		//影 この段階ではもうバリアンスとかは考慮の必要がない
+		if (useShadowMap) {
+			float2 shadow = txShadow.Sample(samLinear, ps_in.tex).rg;
+			color.rgb *= shadow.r;
+			sss = shadow.g;
+		}
+		//color *= (lambert / 4.0f + sss * 3.0f / 4.0f);
+
 		//スぺキュラ
 		//color.rgb += txEmissionColor.Sample(samLinear, ps_in.tex);
 		//アンビエントオクルージョン
@@ -505,8 +590,7 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 			ao = saturate(ao);
 			color.rgb *= ao;
 		}
-		//影 この段階ではもうバリアンスとかは考慮の必要がない
-		if (useShadowMap) color.rgb *= txShadow.Sample(samLinear, ps_in.tex).r;
+
 	}
 	//最適化などはまだしていない
 	float4 lightColor = float4(0.0f, 0.0f, 0.0f, 0.0f);

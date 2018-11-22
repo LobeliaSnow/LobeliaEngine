@@ -256,14 +256,14 @@ GAUSSIAN_VS_OUT GaussianFilterVSY(VS_IN_TEX vs_in) {
 }
 float4 GaussianFilterPS(GAUSSIAN_VS_OUT ps_in) :SV_Target{
 	float4 ret = (float4)0;
-	ret += (inputTex.Sample(samLinear, ps_in.tex0) + inputTex.Sample(samLinear, ps_in.tex7 + ps_in.offset)) * weight0;
-	ret += (inputTex.Sample(samLinear, ps_in.tex1) + inputTex.Sample(samLinear, ps_in.tex6 + ps_in.offset)) * weight1;
-	ret += (inputTex.Sample(samLinear, ps_in.tex2) + inputTex.Sample(samLinear, ps_in.tex5 + ps_in.offset)) * weight2;
-	ret += (inputTex.Sample(samLinear, ps_in.tex3) + inputTex.Sample(samLinear, ps_in.tex4 + ps_in.offset)) * weight3;
-	ret += (inputTex.Sample(samLinear, ps_in.tex4) + inputTex.Sample(samLinear, ps_in.tex3 + ps_in.offset)) * weight4;
-	ret += (inputTex.Sample(samLinear, ps_in.tex5) + inputTex.Sample(samLinear, ps_in.tex2 + ps_in.offset)) * weight5;
-	ret += (inputTex.Sample(samLinear, ps_in.tex6) + inputTex.Sample(samLinear, ps_in.tex1 + ps_in.offset)) * weight6;
-	ret += (inputTex.Sample(samLinear, ps_in.tex7) + inputTex.Sample(samLinear, ps_in.tex0 + ps_in.offset)) * weight7;
+	ret += (inputTex.Sample(samLinear, saturate(ps_in.tex0)) + inputTex.Sample(samLinear, saturate(ps_in.tex7 + ps_in.offset))) * weight0;
+	ret += (inputTex.Sample(samLinear, saturate(ps_in.tex1)) + inputTex.Sample(samLinear, saturate(ps_in.tex6 + ps_in.offset))) * weight1;
+	ret += (inputTex.Sample(samLinear, saturate(ps_in.tex2)) + inputTex.Sample(samLinear, saturate(ps_in.tex5 + ps_in.offset))) * weight2;
+	ret += (inputTex.Sample(samLinear, saturate(ps_in.tex3)) + inputTex.Sample(samLinear, saturate(ps_in.tex4 + ps_in.offset))) * weight3;
+	ret += (inputTex.Sample(samLinear, saturate(ps_in.tex4)) + inputTex.Sample(samLinear, saturate(ps_in.tex3 + ps_in.offset))) * weight4;
+	ret += (inputTex.Sample(samLinear, saturate(ps_in.tex5)) + inputTex.Sample(samLinear, saturate(ps_in.tex2 + ps_in.offset))) * weight5;
+	ret += (inputTex.Sample(samLinear, saturate(ps_in.tex6)) + inputTex.Sample(samLinear, saturate(ps_in.tex1 + ps_in.offset))) * weight6;
+	ret += (inputTex.Sample(samLinear, saturate(ps_in.tex7)) + inputTex.Sample(samLinear, saturate(ps_in.tex0 + ps_in.offset))) * weight7;
 	return ret;
 }
 //float4 GaussianFilterPSY(GAUSSIAN_VS_OUT ps_in) :SV_Target{
@@ -286,38 +286,38 @@ float4 GaussianFilterPS(GAUSSIAN_VS_OUT ps_in) :SV_Target{
 float4 GaussianDoFPS(PS_IN_TEX ps_in) :SV_Target{
 	//真ん中をピントの中心とする
 	float centerDepth = inputDepth.Sample(samLinear, float2(0.5f,0.5f)).z;
-	//ピント幅算出
-	float focusBegin = centerDepth - focusRange;
-	float focusEnd = centerDepth + focusRange;
-	//下限を合わせる
-	float depth = max(0.0f, inputDepth.Sample(samLinear, ps_in.tex).z - focusBegin);
-	//中央値算出
-	float center = (focusEnd - focusBegin)*0.5f;
-	//この値は中心が0で離れるほど1に近づく
-	float fade = 0.0f;
-	if (depth <= center)fade = depth / center;
-	else fade = 1.0f - (depth - center) / center;
-	fade = saturate(1.0f - fade);
-	float4 color0; float4 color1; float blendRatio;
-	if (fade < 0.5f) {
-		//ボケなし
-		color0 = inputTex.Sample(samLinear, ps_in.tex);
-		//弱ボケ
-		color1 = inputBokeh0.Sample(samLinear, ps_in.tex);
-		//0.0f~1.0fの比率を算出
-		blendRatio = fade / 0.5f;
-	}
-	else {
-		//弱ボケ
-		color0 = inputBokeh0.Sample(samLinear, ps_in.tex);
-		//強ボケ
-		color1 = inputBokeh1.Sample(samLinear, ps_in.tex);
-		//0.0f~1.0fの比率を算出
-		//-0.5fの理由はこの値が0.5f以上だから
-		blendRatio = (fade - 0.5f) / 0.5f;
-	}
-	float4 color = lerp(color0, color1, blendRatio);
-	return color;
+//ピント幅算出
+float focusBegin = centerDepth - focusRange;
+float focusEnd = centerDepth + focusRange;
+//下限を合わせる
+float depth = max(0.0f, inputDepth.Sample(samLinear, ps_in.tex).z - focusBegin);
+//中央値算出
+float center = (focusEnd - focusBegin)*0.5f;
+//この値は中心が0で離れるほど1に近づく
+float fade = 0.0f;
+if (depth <= center) fade = depth / center;
+else fade = 1.0f - (depth - center) / center;
+fade = saturate(1.0f - fade);
+float4 color0; float4 color1; float blendRatio;
+if (fade < 0.5f) {
+	//ボケなし
+	color0 = inputTex.Sample(samLinear, ps_in.tex);
+	//弱ボケ
+	color1 = inputBokeh0.Sample(samLinear, ps_in.tex);
+	//0.0f~1.0fの比率を算出
+	blendRatio = fade / 0.5f;
+}
+else {
+	//弱ボケ
+	color0 = inputBokeh0.Sample(samLinear, ps_in.tex);
+	//強ボケ
+	color1 = inputBokeh1.Sample(samLinear, ps_in.tex);
+	//0.0f~1.0fの比率を算出
+	//-0.5fの理由はこの値が0.5f以上だから
+	blendRatio = (fade - 0.5f) / 0.5f;
+}
+float4 color = lerp(color0, color1, blendRatio);
+return color;
 }
 //GPU Gems3より
 float4 ScreenSpaceMotionBlurPS(PS_IN_TEX ps_in) :SV_Target{
@@ -364,10 +364,8 @@ float4 ScreenSpaceMotionBlurPS(PS_IN_TEX ps_in) :SV_Target{
 //http://hikita12312.hatenablog.com/entry/2017/08/19/003505
 //トーンマッピング用
 //輝度値算出
-float CalcLuminance(float4 color) {
-	return (color.r*0.298912f + color.g*0.586611 + color.b*0.114478);
-}
-float Reinhard(float luminance) { return luminance / (luminance + 1); }
+float CalcLuminance(float4 color) { return (color.r*0.298912f + color.g*0.586611f + color.b*0.114478f); }
+float Reinhard(float luminance) { return luminance / (1 + luminance); }
 //key_valueは0.18fが慣例的に使われるらしい
 //1 輝度 2 平均輝度(縮小バッファで縮小していき、1*1pxへ縮小された際の値) 3 middle gray
 float DispatchReinhard(float luminance, float mean_luminance, float key_value) { return Reinhard((key_value / mean_luminance)*luminance); }
@@ -378,11 +376,13 @@ float4 CreateLuminancePS(PS_IN_TEX ps_in) :SV_Target{
 	float4 color = inputTex.Sample(samLinear, ps_in.tex);
 	//輝度算出
 	float luminance = CalcLuminance(color);
-	//もしかしたらここで露光度をかけたほうがいいかもしれない？
-	return float4((float3)luminance, 1.0f);
+	float epsilon = 0.5f;
+	luminance = log(luminance + epsilon);
+	//luminance = log(max(luminance, 0.000001f));
+	return float4(luminance, 1.0f,1.0f,1.0f);
 }
 //カラーバッファとブルーム用のバッファの合成
-float4 MeanBlumePS(PS_IN_TEX ps_in) :SV_Target{
+float4 AvgBlumePS(PS_IN_TEX ps_in) : SV_Target{
 	//4枚の縮小バッファの平均をとる
 	float4 gauss = inputGaussian0.Sample(samLinear, ps_in.tex);
 	gauss += inputGaussian1.Sample(samLinear, ps_in.tex);
@@ -391,17 +391,51 @@ float4 MeanBlumePS(PS_IN_TEX ps_in) :SV_Target{
 	gauss /= 4.0f;
 	return gauss;
 }
+//https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
+float3 ACESFilm(float3 x) {
+	float a = 2.51f;
+	float b = 0.03f;
+	float c = 2.43f;
+	float d = 0.59f;
+	float e = 0.14f;
+	return saturate((x*(a*x + b)) / (x*(c*x + d) + e));
+}
 //トーンマッピング、露光調整、リニアワークフロー(ガンマ補正)
 float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
-	float4 color = inputTex.Sample(samLinear,ps_in.tex);
-	//float luminance = CalcLuminance(color);
-	//float meanLuminance = inputMeanLuminance.Sample(samLinear, ps_in.tex).r;
-	//露光度算出
-	//float exposure = Reinhard(meanLuminance);
-	//color *= exposure;
-	//リニアワークフロー
-	//const float gamma = 2.2f;
-	//color = GammaCollection(color, gamma);
-	//color.a = 1.0f;
+	//倍率式収差
+	float chromaticAberrationIntensity = 0.01f;
+	//スクリーン座標へ変換
+	float2 screen = ps_in.tex*2.0f - 1.0f;
+	//スクリーン座標で画像を拡大したと仮定して、UV座標を算出
+	float2 redUV = (screen*(1.0f - chromaticAberrationIntensity * 2.0f) + 1.0f) / 2.0f;
+	float2 greenUV = (screen*(1.0f - chromaticAberrationIntensity) + 1.0f) / 2.0f;
+	float2 blueUV = (screen + 1.0f) / 2.0f;
+	//三食別々にサンプリング
+	float red = inputTex.Sample(samLinear,redUV).r;
+	float green = inputTex.Sample(samLinear, greenUV).g;
+	float blue = inputTex.Sample(samLinear,blueUV).b;
+	//合成
+	float4 color = float4(red, green, blue, 1.0f);
+	//HDR->SDRへ
+	float luminance = CalcLuminance(color);
+	float avgLuminance = exp(inputMeanLuminance.Load(uint3(0, 0, 0)).x);
+	//return float4((float3)avgLuminance, 1.0f);
+	//トーンマッピング
+	//http://hikita12312.hatenablog.com/entry/2017/08/27/002859
+	//仮で露光設定、後にCPUから投げる
+	float exposure = 0.0f;
+	if (avgLuminance <= 1.0f)exposure = 1.1f;
+	else exposure = 0.22f;
+	//指数トーンマップ
+	float k = log(1.0f / 255.0f) / avgLuminance;
+	color.rgb *= 1.0f - exp(k*luminance*exposure);
+	//ガンマ補正
+	const float gamma = 2.2f;
+	color = GammaCollection(color, gamma);
+	color.a = 1.0f;
+	//周辺減光 Vignetting
+	//https://github.com/Unity-Technologies/PostProcessing/blob/v2/PostProcessing/Shaders/Builtins/ScreenSpaceReflections.hlsl
+	float intensity = 0.18f;
+
 	return color;
 }

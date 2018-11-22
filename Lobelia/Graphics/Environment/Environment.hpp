@@ -30,6 +30,7 @@ namespace Lobelia::Graphics {
 		void SetFogEnd(float end);
 		void SetFogDensity(float density);
 		void SetActiveLinearFog(bool active);
+		bool IsActiveLinearFog();
 		void Activate();
 	};
 }

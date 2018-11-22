@@ -6,6 +6,7 @@
 //C++側にも同じ定義がある
 #include "../Define.h"
 
+//メモ
 //FFT Ocean
 
 cbuffer View : register(b0)
@@ -355,7 +356,7 @@ void GS(triangle GS_OUT gs_in[3], inout TriangleStream<GS_OUT> stream) {
 float4 PS_CREATE_CUBE(GS_CREATE_CUBE_OUT ps_in) :SV_Target{
 	//色情報
 	float4 diffuse = txDiffuse.Sample(samLinear, ps_in.tex);
-	///全シェーダー共通の結果になるため、最適化が入るはず
+	//全シェーダー共通の結果になるため、1命令として処理される
 	if (!isLighting) return diffuse;
 	//ライティング
 	float3 lambert = saturate(dot(ps_in.normal, lightDirection));

@@ -27,7 +27,7 @@ namespace Lobelia::Game {
 #ifdef GAUSSIAN_PS
 			gaussian[i] = std::make_unique<GaussianFilterPS>(size, format);
 #endif
-			gaussian[i]->SetDispersion(0.001f);
+			gaussian[i]->SetDispersion(0.1f);
 		}
 		//sampler = std::make_unique<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::COMPARISON_LINEAR, 16);
 		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapVS", Graphics::VertexShader::Model::VS_5_0, false);
@@ -142,8 +142,11 @@ namespace Lobelia::Game {
 		DirectX::XMStoreFloat4x4(&info.view, views[0]->GetColumnViewMatrix());
 		for (int i = 0; i < count; i++) {
 			DirectX::XMStoreFloat4x4(&info.proj[i], views[i]->GetColumnProjectionMatrix());
-			if (info.useVariance)gaussian[i]->Begin(6 + i);
-			else rts[i]->GetTexture()->Set(6 + i, Graphics::ShaderStageList::PS);
+			if (info.useVariance) {
+				gaussian[i]->Begin(7 + i);
+				rts[i]->GetTexture()->Set(11 + i, Graphics::ShaderStageList::PS);
+			}
+			else rts[i]->GetTexture()->Set(7 + i, Graphics::ShaderStageList::PS);
 		}
 		cbuffer->Activate(info);
 	}
@@ -151,6 +154,7 @@ namespace Lobelia::Game {
 		if (info.useVariance) {
 			for (int i = 0; i < count; i++) {
 				gaussian[i]->End();
+				Graphics::Texture::Clean(11 + i, Graphics::ShaderStageList::PS);
 			}
 		}
 		else {

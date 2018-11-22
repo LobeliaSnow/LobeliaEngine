@@ -15,8 +15,9 @@ namespace Lobelia::Game {
 			NORMAL,
 			COLOR,
 			VIEW_POS,
-			SHADOW,
+			SHADOW_SSS,
 			EMISSION_COLOR,
+			MATERIAL_ID,
 			MAX,
 		};
 		enum class MATERIAL_TYPE :int {
@@ -28,6 +29,7 @@ namespace Lobelia::Game {
 		DeferredBuffer(const Math::Vector2& size);
 		~DeferredBuffer() = default;
 		void AddModel(std::shared_ptr<Graphics::Model> model, MATERIAL_TYPE material = MATERIAL_TYPE::LAMBERT, float specular_factor = 1.0f, float emission_factor = 0.0f);
+		void SetSkybox(std::shared_ptr<class SkyBox>& skybox);
 		void RenderGBuffer();
 		std::shared_ptr<Graphics::RenderTarget>& GetRenderTarget(BUFFER_TYPE type);
 		//フラグ取ってどの情報を有効にするのか切り替えれるといいと思う
@@ -39,6 +41,7 @@ namespace Lobelia::Game {
 			MATERIAL_TYPE materialType;
 			float specularFactor;
 			float emissionFactor;
+			float transparent;
 		};
 		struct ModelStorage {
 			std::weak_ptr<Graphics::Model> model;
@@ -50,6 +53,7 @@ namespace Lobelia::Game {
 		//情報書き込み用
 		std::shared_ptr<Graphics::VertexShader> vs;
 		std::shared_ptr<Graphics::PixelShader> ps;
+		std::shared_ptr<SkyBox> skybox;
 		std::list<ModelStorage> models;
 		const Math::Vector2 size;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;

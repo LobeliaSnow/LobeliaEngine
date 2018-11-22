@@ -3,6 +3,7 @@
 #include "Common/DeferredBuffer.hpp"
 #include "Common/DeferredShader.hpp"
 #include "Common/PostEffect.hpp"
+#include "Common/SkyBox.hpp"
 
 namespace Lobelia::Game {
 	DeferredShader::DeferredShader(const char* file_path, const char* entry_vs, const char* entry_ps) {
@@ -35,7 +36,7 @@ namespace Lobelia::Game {
 		Render(buffer);
 		active_view->Activate();
 		active_rt->Activate();
-		hdr->Dispatch(active_view, active_rt, buffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::EMISSION_COLOR)->GetTexture(), hdrTarget->GetTexture());
+		hdr->Dispatch(active_view, active_rt, buffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::EMISSION_COLOR)->GetTexture(), hdrTarget->GetTexture(), 1);
 		Graphics::SpriteRenderer::Render(hdr->GetRenderTarget()->GetTexture());
 		//auto& defaultBlend = Graphics::SpriteRenderer::GetBlendState();
 		//Graphics::SpriteRenderer::ChangeBlendState(blend);

@@ -26,5 +26,6 @@ namespace Lobelia::Graphics {
 	void Environment::SetFogEnd(float end) { buffer.fogEnd = end; }
 	void Environment::SetFogDensity(float density) { buffer.density = density; }
 	void Environment::SetActiveLinearFog(bool active) { buffer.useLinearFog = i_cast(active); }
+	bool Environment::IsActiveLinearFog() { return buffer.useLinearFog; }
 	void Environment::Activate() { constantBuffer->Activate(buffer); }
 }

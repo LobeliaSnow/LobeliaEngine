@@ -22,7 +22,7 @@
     <ProjectGuid>{615F9EDD-5E37-4F7A-AA90-24B2309B413B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>LobeliaEngine</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.15063.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
     <ProjectName>LobeliaEngine</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

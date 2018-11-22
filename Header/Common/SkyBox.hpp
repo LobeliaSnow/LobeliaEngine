@@ -15,6 +15,7 @@ namespace Lobelia::Game {
 	private:
 		std::weak_ptr<Camera> camera;
 		std::shared_ptr<Graphics::DepthStencilState> depth;
+		bool useFog;
 	};
 
 }
