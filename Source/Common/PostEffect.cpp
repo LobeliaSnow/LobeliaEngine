@@ -308,7 +308,10 @@ namespace Lobelia::Game {
 		int maxScale = max(i_cast(scale.x), i_cast(scale.y));
 		Math::Vector2 tempScale = scale;
 		for (int i = 0; ; maxScale /= 2) {
-			reductionBuffer.push_back(std::make_unique<ReductionBuffer>(tempScale, DXGI_FORMAT_R16_FLOAT));
+			DXGI_FORMAT format = DXGI_FORMAT_R16_FLOAT;
+			//バッファ取得用にCPUのfloatサイズと合わせる
+			if (maxScale)format = DXGI_FORMAT_R32_FLOAT;
+			reductionBuffer.push_back(std::make_unique<ReductionBuffer>(tempScale, format));
 			tempScale /= 2.0f;
 			if (tempScale.x < 1.0f)tempScale.x = 1.0f;
 			if (tempScale.y < 1.0f)tempScale.y = 1.0f;
@@ -328,6 +331,10 @@ namespace Lobelia::Game {
 			tempScale.x = i_cast(tempScale.x); tempScale.y = i_cast(tempScale.y);
 			tempScale /= 2.0f;
 		}
+		copyTex = std::make_shared<Graphics::Texture>(Math::Vector2(1, 1), DXGI_FORMAT_R32_FLOAT, 0, DXGI_SAMPLE_DESC{ 1,0 }, Graphics::Texture::ACCESS_FLAG::STAGING, Graphics::Texture::CPU_ACCESS_FLAG::READ, 1);
+		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(13, Graphics::ShaderStageList::PS);
+		HostConsole::GetInstance()->FloatRegister("HDR", "exposure", &info.exposure, false);
+		HostConsole::GetInstance()->FloatRegister("HDR", "chromaticAberrationIntensity", &info.chromaticAberrationIntensity, false);
 	}
 	void HDRPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color, int step) {
 		auto defaultSampler = Graphics::SpriteRenderer::GetSamplerState();
@@ -351,6 +358,28 @@ namespace Lobelia::Game {
 		luminanceBuffer->GetTexture()->Set(1, Graphics::ShaderStageList::PS);
 		//平均輝度値セット
 		reductionBuffer[bufferCount - 1]->buffer->GetTexture()->Set(2, Graphics::ShaderStageList::PS);
+		//テクスチャのコピー
+		D3D11_MAPPED_SUBRESOURCE subRes = {};
+		Graphics::Device::GetContext()->CopyResource(copyTex->Get().Get(), reductionBuffer[bufferCount - 1]->buffer->GetTexture()->Get().Get());
+		//平均輝度取得
+		HRESULT hr = Graphics::Device::GetContext()->Map(copyTex->Get().Get(), 0, D3D11_MAP_READ, 0, &subRes);
+		if (FAILED(hr))STRICT_THROW("Mapの失敗");
+		//平均輝度が対数空間にいるので、逆関数で戻す
+		float avgLuminance = exp(*s_cast<float*>(subRes.pData));
+		//露光度の計算 適当に上限設定 これに係数を足して調整できるようにする
+		if (avgLuminance <= 1.0f) {
+			if (info.exposure <= 1.1f) {
+				info.exposure += 0.01f;
+			}
+		}
+		if (avgLuminance >= 0.7f) {
+			if (info.exposure >= 0.22f) {
+				info.exposure -= 0.0125f;
+			}
+		}
+		Graphics::Device::GetContext()->Unmap(copyTex->Get().Get(), 0);
+		//HostConsole::GetInstance()->Printf("%f", avgLuminance);
+		cbuffer->Activate(info);
 		Graphics::SpriteRenderer::Render(colorBuffer->GetTexture());
 		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);

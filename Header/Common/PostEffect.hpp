@@ -207,6 +207,12 @@ namespace Lobelia::Game {
 			std::unique_ptr<Graphics::View> viewport;
 			Math::Vector2 scale;
 		};
+		ALIGN(16) struct Info {
+			//露光度
+			float exposure = 0.0f;
+			//倍率式収差の補正値
+			float chromaticAberrationIntensity = 0.005f;
+		};
 	private:
 		//ブルーム用
 		std::unique_ptr<Graphics::RenderTarget> colorBuffer;
@@ -214,7 +220,7 @@ namespace Lobelia::Game {
 		std::shared_ptr<Graphics::PixelShader> blumePS;
 		std::shared_ptr<Graphics::BlendState> blend;
 		std::shared_ptr<Graphics::SamplerState> sampler;
-		
+
 #ifdef GAUSSIAN_PS
 		std::vector<std::unique_ptr<GaussianFilterPS>> gaussian;
 #else
@@ -232,6 +238,11 @@ namespace Lobelia::Game {
 		int stepIndex;
 		//フィルタ実行用
 		std::shared_ptr<Graphics::PixelShader> toneMapPS;
+		//コピー
+		std::shared_ptr<Graphics::Texture> copyTex;
+		//定数バッファ
+		Info info;
+		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
 	};
 	//class HDR :public PostEffect {
 	//public:

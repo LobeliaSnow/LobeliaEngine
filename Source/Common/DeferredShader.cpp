@@ -36,7 +36,7 @@ namespace Lobelia::Game {
 		Render(buffer);
 		active_view->Activate();
 		active_rt->Activate();
-		hdr->Dispatch(active_view, active_rt, buffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::EMISSION_COLOR)->GetTexture(), hdrTarget->GetTexture(), 1);
+		hdr->Dispatch(active_view, active_rt, buffer->GetRenderTarget(DeferredBuffer::BUFFER_TYPE::EMISSION_COLOR)->GetTexture(), hdrTarget->GetTexture(), 11);
 		Graphics::SpriteRenderer::Render(hdr->GetRenderTarget()->GetTexture());
 		//auto& defaultBlend = Graphics::SpriteRenderer::GetBlendState();
 		//Graphics::SpriteRenderer::ChangeBlendState(blend);

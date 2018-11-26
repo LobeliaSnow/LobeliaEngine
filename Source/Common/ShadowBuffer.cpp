@@ -159,7 +159,7 @@ namespace Lobelia::Game {
 		}
 		else {
 			for (int i = 0; i < count; i++) {
-				Graphics::Texture::Clean(6 + i, Graphics::ShaderStageList::PS);
+				Graphics::Texture::Clean(7 + i, Graphics::ShaderStageList::PS);
 			}
 		}
 	}

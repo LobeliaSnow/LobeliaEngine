@@ -320,27 +320,30 @@ float4 CascadeShadow(GBufferPS_IN ps_in) {
 		lightOut = ps_in.lightViewPos[0].w;
 		shadowTex = ps_in.lightTex[0] / ps_in.lightTex[0].w;
 		lightDepth = txLightSpaceDepthMap0.Sample(samLinear, shadowTex.xy).rg;
+		lightIn = txLightSpaceDepthMapSSS0.Sample(samLinear, shadowTex.xy).r;
 		lightSpaceLength = ps_in.lightViewPos[0].z / ps_in.lightViewPos[0].w;
 	}
 	else if (lightSpaceLength < splitPos1) {
 		lightOut = ps_in.lightViewPos[1].w;
 		shadowTex = ps_in.lightTex[1] / ps_in.lightTex[1].w;
 		lightDepth = txLightSpaceDepthMap1.Sample(samLinear, shadowTex.xy).rg;
+		lightIn = txLightSpaceDepthMapSSS0.Sample(samLinear, shadowTex.xy).r;
 		lightSpaceLength = ps_in.lightViewPos[1].z / ps_in.lightViewPos[1].w;
 	}
 	else if (lightSpaceLength < splitPos2) {
 		lightOut = ps_in.lightViewPos[2].w;
 		shadowTex = ps_in.lightTex[2] / ps_in.lightTex[2].w;
 		lightDepth = txLightSpaceDepthMap2.Sample(samLinear, shadowTex.xy).rg;
+		lightIn = txLightSpaceDepthMapSSS2.Sample(samLinear, shadowTex.xy).r;
 		lightSpaceLength = ps_in.lightViewPos[2].z / ps_in.lightViewPos[2].w;
 	}
 	else {
 		lightOut = ps_in.lightViewPos[3].w;
-		shadowTex = ps_in.lightViewPos[3] / ps_in.lightTex[3].w;
+		shadowTex = ps_in.lightTex[3] / ps_in.lightTex[3].w;
 		lightDepth = txLightSpaceDepthMap3.Sample(samLinear, shadowTex.xy).rg;
+		lightIn = txLightSpaceDepthMapSSS3.Sample(samLinear, shadowTex.xy).r;
 		lightSpaceLength = ps_in.lightViewPos[3].z / ps_in.lightViewPos[3].w;
 	}
-	lightIn = lightDepth.r;
 	if (shadowTex.x < 0.0f || shadowTex.x > 1.0f || shadowTex.y < 0.0f || shadowTex.y > 1.0f) {
 		return float4(1.0f, SSS(lightIn, lightOut), 1.0f, 1.0f);
 	}

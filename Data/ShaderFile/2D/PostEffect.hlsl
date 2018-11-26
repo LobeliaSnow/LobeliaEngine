@@ -31,6 +31,10 @@ cbuffer GaussianFilter : register(b9) {
 cbuffer DoF :register(b12) {
 	float focusRange : packoffset(c0.x);
 }
+cbuffer HDR : register(b13) {
+	float exposure : packoffset(c0.x);
+	float chromaticAberrationIntensity : packoffset(c0.y);
+};
 // static const float offsetPerPixel = 20.0f;
 //入力用
 Texture2D inputTex : register(t0);
@@ -286,38 +290,38 @@ float4 GaussianFilterPS(GAUSSIAN_VS_OUT ps_in) :SV_Target{
 float4 GaussianDoFPS(PS_IN_TEX ps_in) :SV_Target{
 	//真ん中をピントの中心とする
 	float centerDepth = inputDepth.Sample(samLinear, float2(0.5f,0.5f)).z;
-//ピント幅算出
-float focusBegin = centerDepth - focusRange;
-float focusEnd = centerDepth + focusRange;
-//下限を合わせる
-float depth = max(0.0f, inputDepth.Sample(samLinear, ps_in.tex).z - focusBegin);
-//中央値算出
-float center = (focusEnd - focusBegin)*0.5f;
-//この値は中心が0で離れるほど1に近づく
-float fade = 0.0f;
-if (depth <= center) fade = depth / center;
-else fade = 1.0f - (depth - center) / center;
-fade = saturate(1.0f - fade);
-float4 color0; float4 color1; float blendRatio;
-if (fade < 0.5f) {
-	//ボケなし
-	color0 = inputTex.Sample(samLinear, ps_in.tex);
-	//弱ボケ
-	color1 = inputBokeh0.Sample(samLinear, ps_in.tex);
-	//0.0f~1.0fの比率を算出
-	blendRatio = fade / 0.5f;
-}
-else {
-	//弱ボケ
-	color0 = inputBokeh0.Sample(samLinear, ps_in.tex);
-	//強ボケ
-	color1 = inputBokeh1.Sample(samLinear, ps_in.tex);
-	//0.0f~1.0fの比率を算出
-	//-0.5fの理由はこの値が0.5f以上だから
-	blendRatio = (fade - 0.5f) / 0.5f;
-}
-float4 color = lerp(color0, color1, blendRatio);
-return color;
+	//ピント幅算出
+	float focusBegin = centerDepth - focusRange;
+	float focusEnd = centerDepth + focusRange;
+	//下限を合わせる
+	float depth = max(0.0f, inputDepth.Sample(samLinear, ps_in.tex).z - focusBegin);
+	//中央値算出
+	float center = (focusEnd - focusBegin)*0.5f;
+	//この値は中心が0で離れるほど1に近づく
+	float fade = 0.0f;
+	if (depth <= center) fade = depth / center;
+	else fade = 1.0f - (depth - center) / center;
+	fade = saturate(1.0f - fade);
+	float4 color0; float4 color1; float blendRatio;
+	if (fade < 0.5f) {
+		//ボケなし
+		color0 = inputTex.Sample(samLinear, ps_in.tex);
+		//弱ボケ
+		color1 = inputBokeh0.Sample(samLinear, ps_in.tex);
+		//0.0f~1.0fの比率を算出
+		blendRatio = fade / 0.5f;
+	}
+	else {
+		//弱ボケ
+		color0 = inputBokeh0.Sample(samLinear, ps_in.tex);
+		//強ボケ
+		color1 = inputBokeh1.Sample(samLinear, ps_in.tex);
+		//0.0f~1.0fの比率を算出
+		//-0.5fの理由はこの値が0.5f以上だから
+		blendRatio = (fade - 0.5f) / 0.5f;
+	}
+	float4 color = lerp(color0, color1, blendRatio);
+	return color;
 }
 //GPU Gems3より
 float4 ScreenSpaceMotionBlurPS(PS_IN_TEX ps_in) :SV_Target{
@@ -391,6 +395,7 @@ float4 AvgBlumePS(PS_IN_TEX ps_in) : SV_Target{
 	gauss /= 4.0f;
 	return gauss;
 }
+//カラーベース
 //https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 float3 ACESFilm(float3 x) {
 	float a = 2.51f;
@@ -403,7 +408,6 @@ float3 ACESFilm(float3 x) {
 //トーンマッピング、露光調整、リニアワークフロー(ガンマ補正)
 float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
 	//倍率式収差
-	float chromaticAberrationIntensity = 0.01f;
 	//スクリーン座標へ変換
 	float2 screen = ps_in.tex*2.0f - 1.0f;
 	//スクリーン座標で画像を拡大したと仮定して、UV座標を算出
@@ -417,15 +421,12 @@ float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
 	//合成
 	float4 color = float4(red, green, blue, 1.0f);
 	//HDR->SDRへ
+	//輝度マップ取得
 	float luminance = CalcLuminance(color);
 	float avgLuminance = exp(inputMeanLuminance.Load(uint3(0, 0, 0)).x);
 	//return float4((float3)avgLuminance, 1.0f);
 	//トーンマッピング
 	//http://hikita12312.hatenablog.com/entry/2017/08/27/002859
-	//仮で露光設定、後にCPUから投げる
-	float exposure = 0.0f;
-	if (avgLuminance <= 1.0f)exposure = 1.1f;
-	else exposure = 0.22f;
 	//指数トーンマップ
 	float k = log(1.0f / 255.0f) / avgLuminance;
 	color.rgb *= 1.0f - exp(k*luminance*exposure);
@@ -433,9 +434,32 @@ float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
 	const float gamma = 2.2f;
 	color = GammaCollection(color, gamma);
 	color.a = 1.0f;
-	//周辺減光 Vignetting
-	//https://github.com/Unity-Technologies/PostProcessing/blob/v2/PostProcessing/Shaders/Builtins/ScreenSpaceReflections.hlsl
-	float intensity = 0.18f;
 
+	//周辺減光 Vignette
+	//http://hikita12312.hatenablog.com/entry/2018/01/20/170659
+	//パラメーターは現状直値 後に定数バッファ化
+	//口径食の効果
+	const float aspect = 1280.0f / 720.0f;
+	//距離算出
+	const float2 d = abs(ps_in.tex - float2(0.5f, 0.5f)) * float2(2.0f * aspect, 2.0f);
+	//長さの二乗
+	const float r2 = dot(d, d);
+	//減光しない距離の二乗
+	const float radius2 = 4.8f;
+	//暗いところから明るくなる際の滑らかさ、下がれば滑らかではなくなる
+	//理由は上のほうに浮いた曲線グラフになるので
+	const float smooth = 1.0f;
+	//減光量 全体的に減光する
+	const float mechanicalScale = 1.0f;
+	//radius2よりもr2のほうが大きい場合、減光しない
+	float vignetteFactor = pow(min(1.0f, r2 / radius2), smooth) * mechanicalScale;
+	//コサイン四乗則
+	const float cosFactor = 1.0f;
+	const float cosPower = 1.0f;
+	const float naturalScale = 0.1f;
+	float cosTheta = 1.0f / sqrt(r2*cosFactor + 1.0f);
+	vignetteFactor += (1.0f - pow(cosTheta, cosPower))*naturalScale;
+	//合成
+	color.rgb *= 1.0f - saturate(vignetteFactor);
 	return color;
 }

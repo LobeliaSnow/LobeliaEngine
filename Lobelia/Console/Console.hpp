@@ -3,10 +3,12 @@ namespace Lobelia {
 	class HostConsole :public Utility::Singleton<HostConsole> {
 		friend class Utility::Singleton<HostConsole>;
 	private:
+#ifdef USE_IMGUI_AND_CONSOLE
 		std::unique_ptr<class InformationConsole> information;
 		std::unique_ptr<class LogConsole> logs;
 		std::unique_ptr<class CommandConsole> commander;
 		std::unique_ptr<class SystemConsole> system;
+#endif
 	private:
 		//コンストラクタとデストラクタが非インラインである必要がある
 		//unique_ptrは生成時と破棄の時にクラスの完全型を要求するが、
