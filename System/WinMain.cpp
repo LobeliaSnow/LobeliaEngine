@@ -84,9 +84,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, PSTR, int) {
 		//});
 
 		//Lobelia::Application::GetInstance()->Bootup<Application::SceneRanking>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc, Lobelia::RankingData<float>("Data/Score/data.dat", 10, 999.99), Lobelia::Utility::Frand(0.0f, 0.5f));
-#else
-		Lobelia::Config::GetRefPreference().consoleOption.active = false;
-		Lobelia::Config::GetRefPreference().applicationOption.systemVisible = false;
+		//Lobelia::Config::GetRefPreference().consoleOption.active = false;
+		//Lobelia::Config::GetRefPreference().applicationOption.systemVisible = false;
 #endif
 #endif
 		wp = Lobelia::Application::GetInstance()->Run();

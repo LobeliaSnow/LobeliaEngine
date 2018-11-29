@@ -145,13 +145,16 @@ namespace Lobelia::Game {
 			info.weight[i] = info.weight[i] / total * 0.5f;
 		}
 		cbuffer->Activate(info);
+		//1パス目
 		uavPass1->Set(0);
 		csX->Dispatch(i_cast((size.x + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), i_cast((size.y + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), 1);
 		uavPass1->Clean(0);
+		//2パス目
 		uavPass2->Set(0);
 		rwTexturePass1->Set(0, Graphics::ShaderStageList::CS);
 		csY->Dispatch(i_cast((size.x + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), i_cast((size.y + GAUSSIAN_BLOCK - 1) / GAUSSIAN_BLOCK), 1);
 		uavPass2->Clean(0);
+		//ごみ処理
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::CS);
 	}
 	void GaussianFilterCS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_rt, std::shared_ptr<Graphics::RenderTarget> rt) { Dispatch(active_view, active_rt, rt->GetTexture()); }
@@ -197,6 +200,7 @@ namespace Lobelia::Game {
 		}
 		cbuffer->Activate(info);
 		rt->Clear(0x00000000);
+		//1パス目
 		rt->Activate();
 		view->Activate();
 		auto& defaultVS = Graphics::SpriteRenderer::GetVertexShader();
@@ -204,6 +208,7 @@ namespace Lobelia::Game {
 		Graphics::SpriteRenderer::ChangeVertexShader(vsX);
 		Graphics::SpriteRenderer::ChangePixelShader(ps);
 		Graphics::SpriteRenderer::Render(texture, Math::Vector2(), rt->GetTexture()->GetSize(), 0.0f, Math::Vector2(), texture->GetSize(), 0xFFFFFFFF);
+		//2パス目
 		pass2->Clear(0x00000000);
 		pass2->Activate();
 		Graphics::SpriteRenderer::ChangeVertexShader(vsY);
@@ -254,8 +259,10 @@ namespace Lobelia::Game {
 		rt->Clear(0x00000000);
 		rt->Activate();
 		if (useDoF) {
+			//被写界深度用の弱、強ぼかしの作成
 			step0->Dispatch(view.get(), rt.get(), color->GetTexture());
 			step1->Dispatch(view.get(), rt.get(), step0->GetRenderTarget()->GetTexture());
+			//被写界深度実行
 			cbuffer->Activate(info);
 			depth_of_view->GetTexture()->Set(1, Graphics::ShaderStageList::PS);
 			step0->Begin(2); step1->Begin(3);
@@ -274,11 +281,13 @@ namespace Lobelia::Game {
 	SSMotionBlur::SSMotionBlur(const Math::Vector2& size) :PostEffect(size, true, DXGI_FORMAT_R8G8B8A8_SNORM) {
 		sampler = std::make_shared<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::POINT, 16, true);
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "ScreenSpaceMotionBlurPS", Graphics::PixelShader::Model::PS_5_0, false);
+		temporalRTColor = std::make_unique<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R8G8B8A8_SNORM);
 	}
 	void SSMotionBlur::Dispatch(Graphics::Texture* color, Graphics::Texture* depth) {
 		rt->Clear(0x00000000);
 		rt->Activate();
 		depth->Set(1, Graphics::ShaderStageList::PS);
+		temporalRTColor->GetTexture()->Set(2, Graphics::ShaderStageList::PS);
 		std::shared_ptr<Graphics::SamplerState> defaultSampler = Graphics::SpriteRenderer::GetSamplerState();
 		std::shared_ptr<Graphics::PixelShader> defaultPS = Graphics::SpriteRenderer::GetPixelShader();
 		Graphics::SpriteRenderer::ChangeSamplerState(sampler);
@@ -288,6 +297,11 @@ namespace Lobelia::Game {
 		Graphics::SpriteRenderer::ChangeSamplerState(defaultSampler);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 		Graphics::Texture::Clean(1, Graphics::ShaderStageList::PS);
+		Graphics::Texture::Clean(2, Graphics::ShaderStageList::PS);
+		//今回のバッファを過去バッファとして保存
+		temporalRTColor->Clear(0x00000000);
+		temporalRTColor->Activate();
+		Graphics::SpriteRenderer::Render(color);
 	}
 	//---------------------------------------------------------------------------------------------
 	HDRPS::ReductionBuffer::ReductionBuffer(const Math::Vector2& scale, DXGI_FORMAT format) :scale(scale) {
@@ -331,12 +345,14 @@ namespace Lobelia::Game {
 			tempScale.x = i_cast(tempScale.x); tempScale.y = i_cast(tempScale.y);
 			tempScale /= 2.0f;
 		}
+		//レンダーターゲット用テクスチャをCPUから読み込みできるようにするためのコピー用バッファ
 		copyTex = std::make_shared<Graphics::Texture>(Math::Vector2(1, 1), DXGI_FORMAT_R32_FLOAT, 0, DXGI_SAMPLE_DESC{ 1,0 }, Graphics::Texture::ACCESS_FLAG::STAGING, Graphics::Texture::CPU_ACCESS_FLAG::READ, 1);
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(13, Graphics::ShaderStageList::PS);
 		HostConsole::GetInstance()->FloatRegister("HDR", "exposure", &info.exposure, false);
 		HostConsole::GetInstance()->FloatRegister("HDR", "chromaticAberrationIntensity", &info.chromaticAberrationIntensity, false);
 	}
 	void HDRPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color, int step) {
+		if (info.exposure < 0)info.exposure = 0.0f;
 		auto defaultSampler = Graphics::SpriteRenderer::GetSamplerState();
 		Graphics::SpriteRenderer::ChangeSamplerState(sampler);
 		//ブルーム実行
@@ -366,19 +382,25 @@ namespace Lobelia::Game {
 		if (FAILED(hr))STRICT_THROW("Mapの失敗");
 		//平均輝度が対数空間にいるので、逆関数で戻す
 		float avgLuminance = exp(*s_cast<float*>(subRes.pData));
-		//露光度の計算 適当に上限設定 これに係数を足して調整できるようにする
-		if (avgLuminance <= 1.0f) {
-			if (info.exposure <= 1.1f) {
-				info.exposure += 0.01f;
-			}
-		}
-		if (avgLuminance >= 0.7f) {
-			if (info.exposure >= 0.22f) {
-				info.exposure -= 0.0125f;
-			}
-		}
+		//露光度の計算 これに係数を足して調整できるようにする
+		//現在のフレームでの露光度
+		float keyValue = 0.18f;
+		float targetExposure = keyValue / avgLuminance;
+		if (info.exposure < targetExposure) info.exposure += 0.5f*Application::GetInstance()->GetProcessTimeSec();
+		if (info.exposure > targetExposure) info.exposure -= 0.5f*Application::GetInstance()->GetProcessTimeSec();
+		//if (avgLuminance <= 1.0f) {
+		//	if (info.exposure <= 1.1f) {
+		//		info.exposure += 1.0f*Application::GetInstance()->GetProcessTimeSec();
+		//	}
+		//}
+		//if (avgLuminance >= 0.7f) {
+		//	if (info.exposure >= 0.22f) {
+		//		info.exposure -= 1.0f*Application::GetInstance()->GetProcessTimeSec();
+		//	}
+		//}
 		Graphics::Device::GetContext()->Unmap(copyTex->Get().Get(), 0);
 		//HostConsole::GetInstance()->Printf("%f", avgLuminance);
+		//HDR実行
 		cbuffer->Activate(info);
 		Graphics::SpriteRenderer::Render(colorBuffer->GetTexture());
 		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
@@ -398,13 +420,14 @@ namespace Lobelia::Game {
 			else tex = gaussian[i - 1]->GetRenderTarget()->GetTexture();
 			gaussian[i]->Dispatch(active_view, active_buffer, tex);
 		}
-		//平均値算出実行
+		//ガウスで情報を落としていく
 		viewport->ViewportActivate();
 		blumeBuffer->Clear(0xFF000000);
 		blumeBuffer->Activate();
 		for (int i = 0; i < blurCount; i++) {
 			gaussian[i]->Begin(i + 1);
 		}
+		//エミッシブの平均値をとる
 		std::shared_ptr<Graphics::PixelShader> defaultPS = Graphics::SpriteRenderer::GetPixelShader();
 		Graphics::SpriteRenderer::ChangePixelShader(blumePS);
 		Graphics::SpriteRenderer::Render(color);
@@ -413,6 +436,7 @@ namespace Lobelia::Game {
 			gaussian[i]->End();
 		}
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+		//実行
 		colorBuffer->Clear(0xFF000000);
 		colorBuffer->Activate();
 		Graphics::SpriteRenderer::Render(color);

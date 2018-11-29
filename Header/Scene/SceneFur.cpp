@@ -19,7 +19,7 @@ namespace Lobelia::Game {
 	FurShader::~FurShader() {
 
 	}
-	void FurShader::Activate(std::shared_ptr<Graphics::Model> model) {
+	void FurShader::Activate(std::shared_ptr<Graphics::Model>& model) {
 		//シェーダーの変更＆セット
 		model->ChangeVertexShader(vs);
 		model->ChangePixelShader(ps);

@@ -11,7 +11,7 @@ namespace Lobelia::Game {
 	public:
 		FurShader();
 		~FurShader();
-		void Activate(std::shared_ptr<Graphics::Model> model);
+		void Activate(std::shared_ptr<Graphics::Model>& model);
 		void Clean();
 	private:
 		std::shared_ptr<Graphics::VertexShader> vs;

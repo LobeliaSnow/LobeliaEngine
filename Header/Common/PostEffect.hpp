@@ -180,6 +180,7 @@ namespace Lobelia::Game {
 	private:
 		std::shared_ptr<Graphics::SamplerState> sampler;
 		std::shared_ptr<Graphics::PixelShader> ps;
+		std::unique_ptr<Graphics::RenderTarget> temporalRTColor;
 	};
 	//---------------------------------------------------------------------------------------------
 	//HDRテクスチャに対して、ブルーム、トーンマップと、露光調整、ガンマ補正を行う(光芒は考え中)
@@ -209,7 +210,7 @@ namespace Lobelia::Game {
 		};
 		ALIGN(16) struct Info {
 			//露光度
-			float exposure = 0.0f;
+			float exposure = 0.5f;
 			//倍率式収差の補正値
 			float chromaticAberrationIntensity = 0.005f;
 		};

@@ -9,7 +9,7 @@ namespace Lobelia::Game {
 	public:
 		DissolveShader();
 		~DissolveShader();
-		void Activate(std::shared_ptr<Graphics::Model> model);
+		void Activate(std::shared_ptr<Graphics::Model>& model);
 	private:
 		std::shared_ptr<Graphics::PixelShader> ps;
 		std::shared_ptr<Graphics::PixelShader> defaultPS;

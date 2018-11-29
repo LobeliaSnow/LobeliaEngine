@@ -54,6 +54,7 @@ namespace Lobelia::Game {
 		//マウス
 		float wheel = Input::Mouse::GetInstance()->GetWheel();
 		//注視点までの距離
+		radius = (pos - at).Length();
 		Math::Vector2 mmove = Input::Mouse::GetInstance()->GetMove();
 		rightMove += right * mmove.x * circumference;
 		upMove += up * mmove.y * circumference;

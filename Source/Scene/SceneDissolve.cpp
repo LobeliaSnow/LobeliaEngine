@@ -13,7 +13,7 @@ namespace Lobelia::Game {
 	DissolveShader::~DissolveShader() {
 		Graphics::Model::ChangePixelShader(defaultPS);
 	}
-	void DissolveShader::Activate(std::shared_ptr<Graphics::Model> model) {
+	void DissolveShader::Activate(std::shared_ptr<Graphics::Model>& model) {
 		model->ChangePixelShader(ps);
 		rad += Application::GetInstance()->GetProcessTimeSec();
 		dissolveInfo.threshold = (sinf(rad) + 1.0f)*0.5f;

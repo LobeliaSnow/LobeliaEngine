@@ -177,7 +177,7 @@ namespace Lobelia::Game {
 	void WaterShader::LoadNormalMap(const char* file_path) {
 		Graphics::TextureFileAccessor::Load(file_path, &normal);
 	}
-	void WaterShader::Activate(std::shared_ptr<Graphics::Model> model) {
+	void WaterShader::Activate(std::shared_ptr<Graphics::Model>& model) {
 		//シェーダーの変更＆セット
 		model->ChangeVertexShader(vs);
 		model->ChangePixelShader(ps);

@@ -50,8 +50,11 @@ Texture2D inputGaussian3 :register(t4);
 //トーンマップ用
 Texture2D inputLuminance :register(t1);
 Texture2D inputMeanLuminance :register(t2);
-
+//モーションブラー用
+Texture2D inputPreviousColor :register(t2);
+Texture2D inputPreviousDepth :register(t3);
 //CS実装
+//Texture2D<float4> sourceTex : register(t0);
 //出力用
 RWTexture2D<float4> outputTex :register(u0);
 //共有メモリ
@@ -115,6 +118,7 @@ void SSAOCS(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_Gr
 	float ret = 1.0f - (occ / pixel);
 	outputTex[uint2(thread_id.x, thread_id.y)] = (float4)ret;
 }
+
 [numthreads(GAUSSIAN_BLOCK, GAUSSIAN_BLOCK, 1)]
 void GaussianFilterCSX(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_GroupThreadID, uint3 group_id : SV_GroupID) {
 	//キャッシュをためる
@@ -162,6 +166,92 @@ void GaussianFilterCSY(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread
 	diffuse += (cacheDiffuse[group_thread_id.y + index + GAUSSIAN_BLOCK * 0.5f + 2] + cacheDiffuse[group_thread_id.y + index + GAUSSIAN_BLOCK * 0.5f - 2]) * weight5;
 	diffuse += (cacheDiffuse[group_thread_id.y + index + GAUSSIAN_BLOCK * 0.5f + 3] + cacheDiffuse[group_thread_id.y + index + GAUSSIAN_BLOCK * 0.5f - 1]) * weight6;
 	outputTex[thread_id.xy] = diffuse;
+}
+//Unity PostProcessingStackのガウスフィルタをそのまま実装
+//https://github.com/Unity-Technologies/PostProcessing/blob/v2/PostProcessing/Shaders/Builtins/GaussianDownsample.compute#L86
+//https://github.com/Microsoft/DirectX-Graphics-Samples/blob/master/MiniEngine/Core/Shaders/BlurCS.hlsl
+//各色のキャッシュ、情報圧縮のためにuintを使用
+groupshared uint cacheR[128];
+groupshared uint cacheG[128];
+groupshared uint cacheB[128];
+groupshared uint cacheA[128];
+
+void Store1Pixel(uint index, float4 pixel) {
+	cacheR[index] = asuint(pixel.r);
+	cacheG[index] = asuint(pixel.g);
+	cacheB[index] = asuint(pixel.b);
+	cacheA[index] = asuint(pixel.a);
+}
+//情報を圧縮しながらキャッシュする
+void Stroe2Pixels(uint index, float4 pixel0, float4 pixel1) {
+	cacheR[index] = f32tof16(pixel0.r) | f32tof16(pixel1.r) << 16;
+	cacheG[index] = f32tof16(pixel0.g) | f32tof16(pixel1.g) << 16;
+	cacheB[index] = f32tof16(pixel0.b) | f32tof16(pixel1.b) << 16;
+	cacheA[index] = f32tof16(pixel0.a) | f32tof16(pixel1.a) << 16;
+}
+void Load1Pixel(uint index, out float4 pixel) {
+	//出力
+	pixel = asfloat(uint4(cacheR[index], cacheG[index], cacheB[index], cacheA[index]));
+}
+void Load2Pixels(uint index, out float4 pixel0, out float4 pixel1) {
+	uint r = cacheR[index]; uint g = cacheG[index]; uint b = cacheB[index]; uint a = cacheA[index];
+	//情報のデコード
+	pixel0 = float4(f16tof32(r), f16tof32(g), f16tof32(b), f16tof32(a));
+	pixel1 = float4(f16tof32(r >> 16), f16tof32(g >> 16), f16tof32(b >> 16), f16tof32(a >> 16));
+}
+float4 BlurPixels(float4 a, float4 b, float4 c, float4 d, float4 e, float4 f, float4 g, float4 h, float4 i) {
+	//ここのウエイト値はCPU側から設定できるようにしたい
+	return 0.27343750 * (e)+0.21875000 * (d + f) + 0.10937500 * (c + g) + 0.03125000 * (b + h) + 0.00390625 * (a + i);
+}
+//水平方向に二つのピクセルをぼかす
+//共有メモリの読み込みと、ピクセルのアンパックが削減される
+void BlurHorizontal(uint out_index, uint left_most_index) {
+	float4 s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
+	Load2Pixels(out_index + 0, s0, s1);
+	Load2Pixels(out_index + 1, s2, s3);
+	Load2Pixels(out_index + 2, s4, s5);
+	Load2Pixels(out_index + 3, s6, s7);
+	Load2Pixels(out_index + 4, s8, s9);
+	Store1Pixel(out_index, BlurPixels(s0, s1, s2, s3, s4, s5, s6, s7, s8));
+	Store1Pixel(out_index + 1, BlurPixels(s1, s2, s3, s4, s5, s6, s7, s8, s9));
+}
+void BlurVertical(uint2 out_index, uint top_most_index) {
+	float4 s0, s1, s2, s3, s4, s5, s6, s7, s8;
+	Load1Pixel(top_most_index, s0);
+	Load1Pixel(top_most_index + 8, s1);
+	Load1Pixel(top_most_index + 16, s2);
+	Load1Pixel(top_most_index + 24, s3);
+	Load1Pixel(top_most_index + 32, s4);
+	Load1Pixel(top_most_index + 40, s5);
+	Load1Pixel(top_most_index + 48, s6);
+	Load1Pixel(top_most_index + 56, s7);
+	Load1Pixel(top_most_index + 64, s8);
+	float4 blur = BlurPixels(s0, s1, s2, s3, s4, s5, s6, s7, s8);
+	outputTex[out_index] = blur;
+}
+//1passガウスフィルタ
+[numthreads(8, 8, 1)]
+void GaussianFilterCS(uint3 thread_id : SV_DispatchThreadID, uint3 group_thread_id : SV_GroupThreadID, uint3 group_id : SV_GroupID) {
+	//このスレッドで読む左上のピクセル座標を算出
+	int2 indexUL = (group_thread_id << 1) + (group_id << 3) - 4;
+	//ダウンサンプリング
+	float2 offset = float2(indexUL);
+	float pixel0 = inputTex.Sample(samLinear, (offset + 0.5f) * screenWidth);
+	float pixel1 = inputTex.Sample(samLinear, (offset + float2(1.0f, 0.0f) + 0.5f) * screenWidth);
+	float pixel2 = inputTex.Sample(samLinear, (offset + float2(0.0f, 1.0f) + 0.5f) * screenWidth);
+	float pixel3 = inputTex.Sample(samLinear, (offset + float2(1.0f, 1.0f) + 0.5f) * screenWidth);
+	//ダウンサンプリングされた結果を共有メモリにストア
+	uint writeIndex = group_thread_id.x + (group_thread_id.y << 4u);
+	Stroe2Pixels(writeIndex, pixel0, pixel1);
+	Stroe2Pixels(writeIndex + 8u, pixel2, pixel3);
+	//スレッドの同期
+	GroupMemoryBarrierWithGroupSync();
+	//横方向ブラー
+	uint row = group_thread_id.y << 4u;
+	BlurHorizontal(row + (group_thread_id.x << 1u), row + group_thread_id.x + (group_thread_id.x & 4u));
+	//スレッドの同期
+	GroupMemoryBarrierWithGroupSync();
+	BlurVertical(thread_id, (group_thread_id.x << 3u) + group_thread_id.x);
 }
 //ただのモザイク
 //[numthreads(GAUSSIANN_SCALE, GAUSSIANN_SCALE, 1)]
@@ -349,15 +439,21 @@ float4 ScreenSpaceMotionBlurPS(PS_IN_TEX ps_in) :SV_Target{
 	//現在のブラーなしの状態のカラーを取得
 	float2 tex = ps_in.tex;
 	float4 color = inputTex.Sample(samLinear, tex);
-	//デバッグ用
-	//if (tex.x > 0.75f)return currentViewPos;
-	//else if(tex.x > 0.5f) return previousViewPos;
-	//else return color;
 	tex += velocity;
 	//ループ回数はとりあえず直値
 	for (int i = 1; i < LOOP_COUNT; i++,tex += velocity) {
-		tex = saturate(tex);
-		float4 temp = inputTex.Sample(samLinear, tex);
+		float4 temp;
+		//過去フレームに飛んでしまう場合
+		if (tex.x > 1.0f || tex.y > 1.0f || tex.x < 0.0f || tex.y < 0.0f) {
+			//前回フレームでのUVを算出
+			float2 previousUV = (previousViewPos + 1.0f) / 2.0f;
+			previousUV.y = 1.0f - previousUV.y;
+			velocity.y *= -1.0f;//現状Yが黒くなったので、黒くならないようにとりあえず画面内に補正する(仮)
+			previousUV -= velocity * (LOOP_COUNT - i);
+			//前回フレームのバッファから読み込み
+			temp = inputPreviousColor.Sample(samLinear, previousUV);
+		}
+		else temp = inputTex.Sample(samLinear, tex);
 		color += temp;
 	}
 	color /= LOOP_COUNT;
@@ -397,7 +493,7 @@ float4 AvgBlumePS(PS_IN_TEX ps_in) : SV_Target{
 }
 //カラーベース
 //https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
-float3 ACESFilm(float3 x) {
+float3 ACESFilmic(float3 x) {
 	float a = 2.51f;
 	float b = 0.03f;
 	float c = 2.43f;
@@ -427,7 +523,11 @@ float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
 	//return float4((float3)avgLuminance, 1.0f);
 	//トーンマッピング
 	//http://hikita12312.hatenablog.com/entry/2017/08/27/002859
+	//ACES Filmic
+	//カラーベース
+	//color.rgb = ACESFilmic((float3)color.rgb*exposure);
 	//指数トーンマップ
+	//輝度ベース
 	float k = log(1.0f / 255.0f) / avgLuminance;
 	color.rgb *= 1.0f - exp(k*luminance*exposure);
 	//ガンマ補正
@@ -435,31 +535,31 @@ float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
 	color = GammaCollection(color, gamma);
 	color.a = 1.0f;
 
-	//周辺減光 Vignette
-	//http://hikita12312.hatenablog.com/entry/2018/01/20/170659
-	//パラメーターは現状直値 後に定数バッファ化
-	//口径食の効果
-	const float aspect = 1280.0f / 720.0f;
-	//距離算出
-	const float2 d = abs(ps_in.tex - float2(0.5f, 0.5f)) * float2(2.0f * aspect, 2.0f);
-	//長さの二乗
-	const float r2 = dot(d, d);
-	//減光しない距離の二乗
-	const float radius2 = 4.8f;
-	//暗いところから明るくなる際の滑らかさ、下がれば滑らかではなくなる
-	//理由は上のほうに浮いた曲線グラフになるので
-	const float smooth = 1.0f;
-	//減光量 全体的に減光する
-	const float mechanicalScale = 1.0f;
-	//radius2よりもr2のほうが大きい場合、減光しない
-	float vignetteFactor = pow(min(1.0f, r2 / radius2), smooth) * mechanicalScale;
-	//コサイン四乗則
-	const float cosFactor = 1.0f;
-	const float cosPower = 1.0f;
-	const float naturalScale = 0.1f;
-	float cosTheta = 1.0f / sqrt(r2*cosFactor + 1.0f);
-	vignetteFactor += (1.0f - pow(cosTheta, cosPower))*naturalScale;
-	//合成
-	color.rgb *= 1.0f - saturate(vignetteFactor);
+	////周辺減光 Vignette
+	////http://hikita12312.hatenablog.com/entry/2018/01/20/170659
+	////パラメーターは現状直値 後に定数バッファ化
+	////口径食の効果
+	//const float aspect = 1280.0f / 720.0f;
+	////距離算出
+	//const float2 d = abs(ps_in.tex - float2(0.5f, 0.5f)) * float2(2.0f * aspect, 2.0f);
+	////長さの二乗
+	//const float r2 = dot(d, d);
+	////減光しない距離の二乗
+	//const float radius2 = 4.8f;
+	////暗いところから明るくなる際の滑らかさ、下がれば滑らかではなくなる
+	////理由は上のほうに浮いた曲線グラフになるので
+	//const float smooth = 1.0f;
+	////減光量 全体的に減光する
+	//const float mechanicalScale = 1.0f;
+	////radius2よりもr2のほうが大きい場合、減光しない
+	//float vignetteFactor = pow(min(1.0f, r2 / radius2), smooth) * mechanicalScale;
+	////コサイン四乗則
+	//const float cosFactor = 1.0f;
+	//const float cosPower = 1.0f;
+	//const float naturalScale = 0.1f;
+	//float cosTheta = 1.0f / sqrt(r2*cosFactor + 1.0f);
+	//vignetteFactor += (1.0f - pow(cosTheta, cosPower))*naturalScale;
+	////合成
+	//color.rgb *= 1.0f - saturate(vignetteFactor);
 	return color;
 }

@@ -78,7 +78,7 @@ namespace Lobelia::Game {
 		WaterShader();
 		void LoadDisplacementMap(const char* file_path);
 		void LoadNormalMap(const char* file_path);
-		void Activate(std::shared_ptr<Graphics::Model> model);
+		void Activate(std::shared_ptr<Graphics::Model>& model);
 		void Clean();
 	private:
 		std::shared_ptr<Graphics::VertexShader> vs;

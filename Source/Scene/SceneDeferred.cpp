@@ -9,6 +9,9 @@
 //TODO : 警告消す
 //TODO : defineとフラグが荒れてるので、リファクタリング
 //TODO : GaussianFileterのCS版最適化(1pass処理)
+//↑参考URL
+//https://github.com/Unity-Technologies/PostProcessing/blob/v2/PostProcessing/Shaders/Builtins/GaussianDownsample.compute
+//http://sygh.hatenadiary.jp/entry/2014/07/05/194143
 //TODO : SSSの実装
 //TODO : Temporal Reprojectionでモーションブラーの黒縁を修正
 //TODO : マテリアルIDバッファのシャドウバッファとの結合B要素にいれる
@@ -40,7 +43,8 @@
 //指数トーンマップ
 //ガンマ補正
 //周辺減光
-//標準マテリアル
+//標準マテリアル追加
+
 
 namespace Lobelia::Game {
 	namespace {
