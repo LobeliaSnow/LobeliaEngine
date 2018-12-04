@@ -4,17 +4,34 @@
 //シェーダーのコンパイルが長すぎる、デバッグ時以外はcsoに逃がしてやりたい
 //その際、現在は1つのシェーダーファイルに複数のエントリポイントがあるのでまとめてコンパイル&出力をするツールを作成したい
 
+//TODO : 影、シェーダー重さ、フォグの濃さ
+//TODO : MipFog 調べる
 //TODO : SSAOPSの可変解像度対応(ビューを作ってやるだけ？)
 //TODO : シェーダーの整理
 //TODO : 警告消す
-//TODO : defineとフラグが荒れてるので、リファクタリング
-//TODO : GaussianFileterのCS版最適化(1pass処理)
+//TODO : defineとフラグが荒れてるので、リファクタリング(constつけれる部分を付けていく作業)
+//TODO : GaussianFileterのCS版最適化(1pass処理)(2passのほうが早いみたい?)
 //↑参考URL
 //https://github.com/Unity-Technologies/PostProcessing/blob/v2/PostProcessing/Shaders/Builtins/GaussianDownsample.compute
 //http://sygh.hatenadiary.jp/entry/2014/07/05/194143
-//TODO : SSSの実装
 //TODO : Temporal Reprojectionでモーションブラーの黒縁を修正
 //TODO : マテリアルIDバッファのシャドウバッファとの結合B要素にいれる
+//TODO : sRGBフォーマットのテクスチャに切り替え
+//TODO : SSSの実装
+//TODO : 支援ツールの作成
+//TODO : 頂点バッファを複数セットする形式で、スロット1には頂点、スロット2にはUVみたいな感じです
+//TODO : 描画部分とデータ部分を切り離す
+
+//Hexa-Driveアドバイス
+//そろそろエンジン部分を作り始めれば？
+//フォグいらなくない？(または、薄くする)
+//影
+//Screen Space Reflection
+//マテリアルについては、計算モデルを一つ用意して、パラメーターをG-Bufferに書き込むことで制御するのが良い
+//つまり、Phongへの係数が0ならそれはランバートになる。よくあるのはメタルネスや、Emission Intensity
+//Lambert 1/PI倍できるとよい(半球状に光が散乱するシミュレーション)
+//パーティクルも、エミッターを用意してGPU上でそのエミッターから発生させればメモリアクセスが減って高速化ができるよね
+//GUIのチェックボックスでオンオフできるようにしたほうが良い。あまりデバッグキーはよくない。
 
 //テストシーン
 //最終的にここでの経験と結果を用いてレンダリングエンジンを作る予定ではいるが、就活終わった後になると思われる。
@@ -66,13 +83,15 @@ namespace Lobelia::Game {
 		HostConsole::GetInstance()->IntRegister("deferred", "use fog", &useFog, false);
 		HostConsole::GetInstance()->IntRegister("deferred", "use motion blur", &useMotionBlur, false);
 #endif
-		//model = std::make_shared<Graphics::Model>("Data/Model/Deferred/stage.dxd", "Data/Model/Deferred/stage.mt");
+		//stage = std::make_shared<Graphics::Model>("Data/Model/Deferred/stage.dxd", "Data/Model/Deferred/stage.mt");
 		stage = std::make_shared<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
 		stage->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
+		//stage->Scalling(3.0f);
 		stage->CalcWorldMatrix();
 		box = std::make_shared<Graphics::Model>("Data/Model/box.dxd", "Data/Model/box.mt");
 		box->Translation(Math::Vector3(0.0f, 5.0f, 0.0f));
 		box->Scalling(3.0f);
+		//box->Scalling(9.0f);
 		box->CalcWorldMatrix();
 		stageCollision = std::make_shared<Graphics::Model>("Data/Model/maps/collision.dxd", "Data/Model/maps/collision.mt");
 		stageCollision->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
@@ -101,7 +120,7 @@ namespace Lobelia::Game {
 #endif
 #endif
 #ifdef CASCADE
-		shadow = std::make_unique<ShadowBuffer>(scale*QUALITY, 4, true);
+		shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1024, 1024)*QUALITY, 4, true);
 #else
 		shadow = std::make_unique<ShadowBuffer>(scale*QUALITY, 1, true);
 #endif
@@ -125,12 +144,13 @@ namespace Lobelia::Game {
 		//shadow = std::make_unique<ShadowBuffer>(Math::Vector2(1280, 720), 1, false);
 		//gaussian = std::make_unique<GaussianFilterCS>(scale);
 		rad = 0.0f;
-		shadow->SetNearPlane(10.0f);
-		shadow->SetFarPlane(500.0f);
-		shadow->SetLamda(1.0f);
+		shadow->SetNearPlane(1.0f);
+		shadow->SetFarPlane(1000.0f);
+		shadow->SetLamda(0.7f);
 #ifdef USE_MOTION_BLUR
 		motionBlur = std::make_unique<SSMotionBlur>(scale);
 #endif
+		console = std::make_unique<AdaptiveConsole>("TEST");
 	}
 	SceneDeferred::~SceneDeferred() {
 #ifdef _DEBUG
@@ -152,21 +172,25 @@ namespace Lobelia::Game {
 		else deferredShader->SetUseCount(0);
 		deferredShader->Update();
 #endif
+		shadow->AddModel(box);
 		shadow->AddModel(stage);
 #ifdef USE_CHARACTER
 		shadow->AddModel(character);
 #endif
 		//回転ライト
-		//rad += Application::GetInstance()->GetProcessTimeSec()*0.1f;
-		//lpos = Math::Vector3(sinf(rad), 0.0f, cos(rad))*300.0f;
-		//lpos.y = 150.0f;
+		rad += Application::GetInstance()->GetProcessTimeSec()*0.1f;
+		lpos = Math::Vector3(sinf(rad), 0.0f, cos(rad))*100.0f;
+		//lpos.x = lpos.z = 0.0f;
+		lpos.y = 100.0f;
 		//固定ライト
-		lpos = Math::Vector3(200.0f, 130.0f, 200.0f);
+		//lpos = Math::Vector3(200.0f, 130.0f, 200.0f);
 		shadow->SetPos(lpos);
+		shadow->SetTarget(Math::Vector3());
 		//shadow->SetPos(pos);
 		camera->Update();
 	}
 	void SceneDeferred::AlwaysRender() {
+		console->Update();
 		Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));
 		Graphics::Environment::GetInstance()->SetActiveLinearFog(useFog);
 		Graphics::Environment::GetInstance()->SetFogBegin(150.0f);

@@ -453,6 +453,9 @@
     <ClCompile Include="Lobelia\Game\PathPlanner\NaviMesh.cpp">
       <Filter>Lobelia\Game\PathPlanner</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Common\AdaptiveConsole.cpp">
+      <Filter>ソース ファイル\Common</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImGui\Header\imconfig.h">
@@ -730,6 +733,9 @@
     </ClInclude>
     <ClInclude Include="Lobelia\Game\PathPlanner\NaviMesh.hpp">
       <Filter>Lobelia\Game\PathPlanner</Filter>
+    </ClInclude>
+    <ClInclude Include="Header\Common\AdaptiveConsole.hpp">
+      <Filter>ヘッダー ファイル\Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

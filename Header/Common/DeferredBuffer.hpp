@@ -15,7 +15,7 @@ namespace Lobelia::Game {
 			NORMAL,
 			COLOR,
 			VIEW_POS,
-			SHADOW_SSS,
+			SHADOW,
 			EMISSION_COLOR,
 			MATERIAL_ID,
 			MAX,

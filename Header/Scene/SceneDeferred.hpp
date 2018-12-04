@@ -9,6 +9,7 @@
 #include "Common/Raycaster.hpp"
 #include "Common/Camera.hpp"
 #include "Common/Character.hpp"
+#include "Common/AdaptiveConsole.hpp"
 
 //パフォーマンス表記はあくまでも目安、高速に移り変わるのを目視で確認しただけなのと、
 //環境が自分のノートPCのみなので信頼性は低い
@@ -72,5 +73,6 @@ namespace Lobelia::Game {
 		int useLight;
 		int useFog;
 		int useMotionBlur;
+		std::unique_ptr<AdaptiveConsole> console;
 	};
 }

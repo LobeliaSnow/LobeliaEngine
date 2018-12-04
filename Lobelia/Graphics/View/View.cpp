@@ -38,9 +38,16 @@ namespace Lobelia::Graphics {
 	}
 	void View::SetEyeTarget(const Math::Vector3& target) { data.at = DirectX::XMVectorSet(target.x, target.y, target.z, 1.0f); }
 	void View::SetEyeUpDirection(const Math::Vector3& up_direction) { data.up = DirectX::XMVectorSet(up_direction.x, up_direction.y, up_direction.z, 1.0f); }
+	Math::Vector3 View::GetEyePos() { return Math::Vector3(DirectX::XMVectorGetX(data.eye), DirectX::XMVectorGetY(data.eye), DirectX::XMVectorGetZ(data.eye)); }
+	Math::Vector3 View::GetEyeTarget() { return Math::Vector3(DirectX::XMVectorGetX(data.at), DirectX::XMVectorGetY(data.at), DirectX::XMVectorGetZ(data.at)); }
+	Math::Vector3 View::GetEyeUpDirection() { return Math::Vector3(DirectX::XMVectorGetX(data.up), DirectX::XMVectorGetY(data.up), DirectX::XMVectorGetZ(data.up)); }
 	void View::SetFov(float fov_rad) { fov = fov_rad; }
 	void View::SetNear(float near_z) { nearZ = near_z; }
 	void View::SetFar(float far_z) { farZ = far_z; }
+	float View::GetNear() { return nearZ; }
+	float View::GetFar() { return farZ; }
+	float View::GetAspect() { return aspect; }
+	float View::GetFov() { return fov; }
 	void View::ChangeViewport(const Math::Vector2& pos, const Math::Vector2& size) { CreateViewport(pos, size); }
 	void View::Update() {
 		CreateProjection(fov, aspect, nearZ, farZ);

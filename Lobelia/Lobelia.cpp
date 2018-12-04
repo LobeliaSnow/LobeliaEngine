@@ -6,8 +6,14 @@
 
 namespace Lobelia {
 	void Bootup() {
-		srand(s_cast<unsigned>(time(NULL)));
+//#if (_WIN32_WINNT >= 0x0A00 /*_WIN32_WINNT_WIN10*/)
+//		//https://github.com/Microsoft/DirectXTex/wiki/DirectXTex
+//		Microsoft::WRL::Wrappers::RoInitializeWrapper initialize(RO_INIT_MULTITHREADED);
+//		if (FAILED(initialize))STRICT_THROW("COMÇÃèâä˙âªÇ…é∏îsÇµÇ‹ÇµÇΩ");
+//#else
+//#endif
 		if (FAILED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)))STRICT_THROW("COMÇÃèâä˙âªÇ…é∏îsÇµÇ‹ÇµÇΩ");
+		srand(s_cast<unsigned>(time(NULL)));
 		XMLSystem::Initialize();
 		Config::LoadSetting("Data/Config/Config.xml");
 		Input::DirectInput::GetInstance()->Initialize();

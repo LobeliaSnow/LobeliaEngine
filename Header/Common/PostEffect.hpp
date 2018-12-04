@@ -190,6 +190,7 @@ namespace Lobelia::Game {
 	public:
 		HDRPS(const Math::Vector2& scale, int blur_count = 4);
 		~HDRPS() = default;
+		void EnableVignette(bool use_vignette);
 		//平均輝度値の計算を何ステップ進めるか
 		void Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color, int step = 1);
 		void DebugRender();
@@ -213,6 +214,7 @@ namespace Lobelia::Game {
 			float exposure = 0.5f;
 			//倍率式収差の補正値
 			float chromaticAberrationIntensity = 0.005f;
+			int useVignette = TRUE;
 		};
 	private:
 		//ブルーム用

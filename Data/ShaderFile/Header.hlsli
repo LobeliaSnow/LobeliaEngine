@@ -80,3 +80,4 @@ Texture2D txDiffuse7 : register(t27);
 
 SamplerState samLinear : register(s0);
 
+static const float PI = 3.141592653589793f;

@@ -34,6 +34,7 @@ cbuffer DoF :register(b12) {
 cbuffer HDR : register(b13) {
 	float exposure : packoffset(c0.x);
 	float chromaticAberrationIntensity : packoffset(c0.y);
+	int useVignette : packoffset(c0.z);
 };
 // static const float offsetPerPixel = 20.0f;
 //入力用
@@ -443,8 +444,8 @@ float4 ScreenSpaceMotionBlurPS(PS_IN_TEX ps_in) :SV_Target{
 	//ループ回数はとりあえず直値
 	for (int i = 1; i < LOOP_COUNT; i++,tex += velocity) {
 		float4 temp;
-		//過去フレームに飛んでしまう場合
-		if (tex.x > 1.0f || tex.y > 1.0f || tex.x < 0.0f || tex.y < 0.0f) {
+		//フレーム外に飛んでしまう場合
+		if (tex.x >= 1.0f || tex.y >= 1.0f || tex.x <= 0.0f || tex.y <= 0.0f) {
 			//前回フレームでのUVを算出
 			float2 previousUV = (previousViewPos + 1.0f) / 2.0f;
 			previousUV.y = 1.0f - previousUV.y;
@@ -492,6 +493,7 @@ float4 AvgBlumePS(PS_IN_TEX ps_in) : SV_Target{
 	return gauss;
 }
 //カラーベース
+//Uncharted2で用いられたACESの近似グラフ
 //https://knarkowicz.wordpress.com/2016/01/06/aces-filmic-tone-mapping-curve/
 float3 ACESFilmic(float3 x) {
 	float a = 2.51f;
@@ -503,24 +505,28 @@ float3 ACESFilmic(float3 x) {
 }
 //トーンマッピング、露光調整、リニアワークフロー(ガンマ補正)
 float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
-	//倍率式収差
-	//スクリーン座標へ変換
-	float2 screen = ps_in.tex*2.0f - 1.0f;
-	//スクリーン座標で画像を拡大したと仮定して、UV座標を算出
-	float2 redUV = (screen*(1.0f - chromaticAberrationIntensity * 2.0f) + 1.0f) / 2.0f;
-	float2 greenUV = (screen*(1.0f - chromaticAberrationIntensity) + 1.0f) / 2.0f;
-	float2 blueUV = (screen + 1.0f) / 2.0f;
-	//三食別々にサンプリング
-	float red = inputTex.Sample(samLinear,redUV).r;
-	float green = inputTex.Sample(samLinear, greenUV).g;
-	float blue = inputTex.Sample(samLinear,blueUV).b;
-	//合成
-	float4 color = float4(red, green, blue, 1.0f);
+	float4 color;
+	if (chromaticAberrationIntensity != 0.0f) {
+		//倍率式収差
+		//スクリーン座標へ変換
+		float2 screen = ps_in.tex*2.0f - 1.0f;
+		//スクリーン座標で画像を拡大したと仮定して、UV座標を算出
+		float2 redUV = (screen*(1.0f - chromaticAberrationIntensity * 2.0f) + 1.0f) / 2.0f;
+		float2 greenUV = (screen*(1.0f - chromaticAberrationIntensity) + 1.0f) / 2.0f;
+		float2 blueUV = (screen + 1.0f) / 2.0f;
+		//三食別々にサンプリング
+		float red = inputTex.Sample(samLinear,redUV).r;
+		float green = inputTex.Sample(samLinear, greenUV).g;
+		float blue = inputTex.Sample(samLinear,blueUV).b;
+		//合成
+		color = float4(red, green, blue, 1.0f);
+	}
+	else color = inputTex.Sample(samLinear, ps_in.tex);
 	//HDR->SDRへ
 	//輝度マップ取得
 	float luminance = CalcLuminance(color);
+	//対数空間から戻す
 	float avgLuminance = exp(inputMeanLuminance.Load(uint3(0, 0, 0)).x);
-	//return float4((float3)avgLuminance, 1.0f);
 	//トーンマッピング
 	//http://hikita12312.hatenablog.com/entry/2017/08/27/002859
 	//ACES Filmic
@@ -534,32 +540,33 @@ float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
 	const float gamma = 2.2f;
 	color = GammaCollection(color, gamma);
 	color.a = 1.0f;
-
-	////周辺減光 Vignette
-	////http://hikita12312.hatenablog.com/entry/2018/01/20/170659
-	////パラメーターは現状直値 後に定数バッファ化
-	////口径食の効果
-	//const float aspect = 1280.0f / 720.0f;
-	////距離算出
-	//const float2 d = abs(ps_in.tex - float2(0.5f, 0.5f)) * float2(2.0f * aspect, 2.0f);
-	////長さの二乗
-	//const float r2 = dot(d, d);
-	////減光しない距離の二乗
-	//const float radius2 = 4.8f;
-	////暗いところから明るくなる際の滑らかさ、下がれば滑らかではなくなる
-	////理由は上のほうに浮いた曲線グラフになるので
-	//const float smooth = 1.0f;
-	////減光量 全体的に減光する
-	//const float mechanicalScale = 1.0f;
-	////radius2よりもr2のほうが大きい場合、減光しない
-	//float vignetteFactor = pow(min(1.0f, r2 / radius2), smooth) * mechanicalScale;
-	////コサイン四乗則
-	//const float cosFactor = 1.0f;
-	//const float cosPower = 1.0f;
-	//const float naturalScale = 0.1f;
-	//float cosTheta = 1.0f / sqrt(r2*cosFactor + 1.0f);
-	//vignetteFactor += (1.0f - pow(cosTheta, cosPower))*naturalScale;
-	////合成
-	//color.rgb *= 1.0f - saturate(vignetteFactor);
+	//周辺減光 Vignette
+	//http://hikita12312.hatenablog.com/entry/2018/01/20/170659
+	if (useVignette) {
+		//パラメーターは現状直値 後に定数バッファ化
+		//口径食の効果
+		const float aspect = 1280.0f / 720.0f;
+		//距離算出
+		const float2 d = abs(ps_in.tex - float2(0.5f, 0.5f)) * float2(2.0f * aspect, 2.0f);
+		//同じベクトル同士の内積は、長さの二乗が求まる
+		const float r2 = dot(d, d);
+		//減光しない距離の二乗
+		const float radius2 = 4.8f;
+		//暗いところから明るくなる際の滑らかさ、下がれば滑らかではなくなる
+		//理由は上のほうに浮いた曲線グラフになるので
+		const float smooth = 1.0f;
+		//減光量 全体的に減光する
+		const float mechanicalScale = 1.0f;
+		//radius2よりもr2のほうが大きい場合、減光しない
+		float vignetteFactor = pow(min(1.0f, r2 / radius2), smooth) * mechanicalScale;
+		//コサイン四乗則
+		const float cosFactor = 1.0f;
+		const float cosPower = 1.0f;
+		const float naturalScale = 0.1f;
+		float cosTheta = 1.0f / sqrt(r2*cosFactor + 1.0f);
+		vignetteFactor += (1.0f - pow(cosTheta, cosPower))*naturalScale;
+		//合成
+		color.rgb *= 1.0f - saturate(vignetteFactor);
+	}
 	return color;
 }

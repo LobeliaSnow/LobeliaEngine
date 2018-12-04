@@ -50,9 +50,16 @@ namespace Lobelia::Graphics {
 		void SetEyePos(const Math::Vector3& pos);
 		void SetEyeTarget(const Math::Vector3& target);
 		void SetEyeUpDirection(const Math::Vector3& up_direction);
+		Math::Vector3 GetEyePos();
+		Math::Vector3 GetEyeTarget();
+		Math::Vector3 GetEyeUpDirection();
 		void SetFov(float fov_rad);
 		void SetNear(float near_z);
 		void SetFar(float far_z);
+		float GetNear();
+		float GetFar();
+		float GetAspect();
+		float GetFov();
 		void ChangeViewport(const Math::Vector2& pos, const Math::Vector2& size);
 		void CreateFrustum();
 		bool IsFrustumRange(const Math::Vector3& pos, float rad);

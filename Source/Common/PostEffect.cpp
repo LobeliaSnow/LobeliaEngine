@@ -350,8 +350,11 @@ namespace Lobelia::Game {
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(13, Graphics::ShaderStageList::PS);
 		HostConsole::GetInstance()->FloatRegister("HDR", "exposure", &info.exposure, false);
 		HostConsole::GetInstance()->FloatRegister("HDR", "chromaticAberrationIntensity", &info.chromaticAberrationIntensity, false);
+		HostConsole::GetInstance()->IntRegister("HDR", "useVignette", &info.useVignette, false);
 	}
+	void HDRPS::EnableVignette(bool use_vignette) { info.useVignette = use_vignette; }
 	void HDRPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color, int step) {
+		if (Input::GetKeyboardKey(DIK_2) == 1)info.useVignette = !info.useVignette;
 		if (info.exposure < 0)info.exposure = 0.0f;
 		auto defaultSampler = Graphics::SpriteRenderer::GetSamplerState();
 		Graphics::SpriteRenderer::ChangeSamplerState(sampler);
@@ -383,23 +386,12 @@ namespace Lobelia::Game {
 		//•½‹Ï‹P“x‚ª‘Î”‹óŠÔ‚É‚¢‚é‚Ì‚ÅA‹tŠÖ”‚Å–ß‚·
 		float avgLuminance = exp(*s_cast<float*>(subRes.pData));
 		//˜IŒõ“x‚ÌŒvZ ‚±‚ê‚ÉŒW”‚ğ‘«‚µ‚Ä’²®‚Å‚«‚é‚æ‚¤‚É‚·‚é
-		//Œ»İ‚ÌƒtƒŒ[ƒ€‚Å‚Ì˜IŒõ“x
+		//Œ»İ‚ÌƒtƒŒ[ƒ€‚Å‚Ì˜IŒõ“x‚ğZo
 		float keyValue = 0.18f;
 		float targetExposure = keyValue / avgLuminance;
 		if (info.exposure < targetExposure) info.exposure += 0.5f*Application::GetInstance()->GetProcessTimeSec();
 		if (info.exposure > targetExposure) info.exposure -= 0.5f*Application::GetInstance()->GetProcessTimeSec();
-		//if (avgLuminance <= 1.0f) {
-		//	if (info.exposure <= 1.1f) {
-		//		info.exposure += 1.0f*Application::GetInstance()->GetProcessTimeSec();
-		//	}
-		//}
-		//if (avgLuminance >= 0.7f) {
-		//	if (info.exposure >= 0.22f) {
-		//		info.exposure -= 1.0f*Application::GetInstance()->GetProcessTimeSec();
-		//	}
-		//}
 		Graphics::Device::GetContext()->Unmap(copyTex->Get().Get(), 0);
-		//HostConsole::GetInstance()->Printf("%f", avgLuminance);
 		//HDRÀs
 		cbuffer->Activate(info);
 		Graphics::SpriteRenderer::Render(colorBuffer->GetTexture());

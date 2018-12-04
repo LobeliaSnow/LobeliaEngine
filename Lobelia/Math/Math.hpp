@@ -10,7 +10,7 @@
 #include <DirectXMath.h>
 #include <math.h>
 #include <limits>
-
+#include <array>
 #ifndef PI
 #define PI 3.141592653589793f
 #endif
@@ -266,7 +266,43 @@ namespace Lobelia::Math {
 	__forceinline Vector4 operator *(float scala, const Vector4& v) { return Vector4(v.x * scala, v.y * scala, v.z * scala, v.w * scala); }
 	__forceinline Vector4 operator -(float scala, const Vector4& v) { return Vector4(scala - v.x, scala - v.y, scala - v.z, scala - v.w); }
 	__forceinline Vector4 operator -(const Vector4& v) { return Vector4(-v.x, -v.y, -v.z, -v.w); }
-
+	//カメラ視点でnearからfarの順番で反時計回り
+	using FrustumVertices = std::array<Math::Vector3, 8>;
+	inline void CreateFrustumVertices(const Vector3& pos, const Vector3& target, const Vector3& up, float fov, float near_z, float far_z, float aspect, FrustumVertices* frustum) {
+		//カメラ空間軸を求める
+		Vector3 camZ = target - pos; camZ.Normalize();
+		Vector3 camX = Vector3::Cross(up, camZ); camX.Normalize();
+		Vector3 camY = Vector3::Cross(camZ, camX); camY.Normalize();
+		//視野角から高さを算出
+		float nearHeight = tanf(fov * 0.5f) * near_z;
+		float farHeight = tanf(fov * 0.5f) * far_z;
+		//アスペクト比から横幅を求める
+		float nearWidth = nearHeight * aspect;
+		float farWidth = farHeight * aspect;
+		//平面の中心点を算出
+		Vector3 nearPlaneCenter = pos + camZ * near_z;
+		Vector3 farPlaneCenter = pos + camZ * far_z;
+		//各頂点算出
+		//カメラ視点でnearからfarの順番で反時計回り
+		//near平面
+		//左上
+		(*frustum)[0] = nearPlaneCenter - camX * nearWidth + camY * nearHeight;
+		//左下
+		(*frustum)[1] = nearPlaneCenter - camX * nearWidth - camY * nearHeight;
+		//右下
+		(*frustum)[2] = nearPlaneCenter + camX * nearWidth - camY * nearHeight;
+		//右上
+		(*frustum)[3] = nearPlaneCenter + camX * nearWidth + camY * nearHeight;
+		//far平面
+		//左上
+		(*frustum)[4] = farPlaneCenter - camX * farWidth + camY * farHeight;
+		//左下
+		(*frustum)[5] = farPlaneCenter - camX * farWidth - camY * farHeight;
+		//右下
+		(*frustum)[6] = farPlaneCenter + camX * farWidth - camY * farHeight;
+		//右上
+		(*frustum)[7] = farPlaneCenter + camX * farWidth + camY * farHeight;
+	}
 	__forceinline float CalcRadianToVectors(const Vector2& v1, const Vector2& v2)noexcept {
 		Vector2 temp1 = v1, temp2 = v2;
 		float cosTheata = Vector2::Dot(temp1, temp2) / (temp1.Length()*temp2.Length());
@@ -282,7 +318,7 @@ namespace Lobelia::Math {
 		Lobelia::Math::Vector3 sp_p0 = p0 - sp;
 		Lobelia::Math::Vector3 ep_p0 = p0 - ep;
 		// 線分が縮退している場合
-		if (sp_ep.Length() <= .0f) 
+		if (sp_ep.Length() <= .0f)
 			return (p0 - sp).Length();
 		if (Lobelia::Math::Vector3::Dot(sp_ep, sp_p0) < 0)  return sp_p0.Length();
 		if (Lobelia::Math::Vector3::Dot(-sp_ep, ep_p0) < 0) return ep_p0.Length();

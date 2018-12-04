@@ -257,6 +257,7 @@
     <ClCompile Include="Lobelia\Network\NetworkObject.cpp" />
     <ClCompile Include="Lobelia\Scene\Scene.cpp" />
     <ClCompile Include="Lobelia\XML\XML.cpp" />
+    <ClCompile Include="Source\Common\AdaptiveConsole.cpp" />
     <ClCompile Include="Source\Common\Camera.cpp" />
     <ClCompile Include="Source\Common\Character.cpp" />
     <ClCompile Include="Source\Common\ComputeBuffer.cpp" />
@@ -276,6 +277,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Data\ShaderFile\Define.h" />
+    <ClInclude Include="Header\Common\AdaptiveConsole.hpp" />
     <ClInclude Include="Header\Common\Camera.hpp" />
     <ClInclude Include="Header\Common\Character.hpp" />
     <ClInclude Include="Header\Common\ComputeBuffer.hpp" />
