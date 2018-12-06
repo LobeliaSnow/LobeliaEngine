@@ -9,8 +9,9 @@ namespace Lobelia::Game {
 	public:
 		Camera(const Math::Vector2& scale, const Math::Vector3& pos, const Math::Vector3& at);
 		virtual ~Camera() = default;
-		void SetPos(const Math::Vector3& pos);
-		void SetTarget(const Math::Vector3& at);
+		virtual void SetPos(const Math::Vector3& pos);
+		virtual void SetTarget(const Math::Vector3& at);
+		virtual void SetUp(const Math::Vector3& up);
 		std::shared_ptr<Graphics::View> GetView();
 		Math::Vector3 TakeFront();
 		Math::Vector3 TakeRight();
@@ -28,6 +29,8 @@ namespace Lobelia::Game {
 	public:
 		ViewerCamera(const Math::Vector2& scale, const Math::Vector3& pos, const Math::Vector3& at);
 		void Update()override;
+		void SetPos(const Math::Vector3& pos)override;
+		void SetTarget(const Math::Vector3& at)override;
 	private:
 		float radius;
 		Math::Vector3 front;

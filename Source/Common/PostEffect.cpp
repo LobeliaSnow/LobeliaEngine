@@ -71,6 +71,9 @@ namespace Lobelia::Game {
 		PostEffect::Begin(slot);
 		rwTexture->Set(this->slot, Graphics::ShaderStageList::PS);
 	}
+	void SSAOCS::SetEnable(bool enable) { info.useAO = enable; }
+	void SSAOCS::SetThresholdDepth(float threshold) { info.offsetPerPixel = threshold; }
+
 	SSAOPS::SSAOPS(const Math::Vector2& size) :PostEffect(size, true, DXGI_FORMAT_R16_FLOAT) {
 		//SSAOèëÇ´çûÇ›ëŒè€
 		ps = std::make_unique<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "SSAOPS", Graphics::PixelShader::Model::PS_5_0, false);
@@ -247,13 +250,13 @@ namespace Lobelia::Game {
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/PostEffect.hlsl", "GaussianDoFPS", Graphics::PixelShader::Model::PS_5_0, false);
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(12, Graphics::ShaderStageList::PS);
 		//èâä˙íl
-		SetFocus(150.0f);
+		SetFocusRange(150.0f);
 		useDoF = true;
 	}
-	void DepthOfField::SetFocus(float range) { info = { range }; }
+	void DepthOfField::SetFocusRange(float range) { info = { range }; }
 	void DepthOfField::SetEnable(bool enable) { useDoF = enable; }
 	void DepthOfField::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::RenderTarget* color, Graphics::RenderTarget* depth_of_view) {
-		if (Input::GetKeyboardKey(DIK_4) == 1)useDoF = !useDoF;
+		//if (Input::GetKeyboardKey(DIK_4) == 1)useDoF = !useDoF;
 		//É{ÉPâÊëúìÒñáçÏêª
 		view->Activate();
 		rt->Clear(0x00000000);
@@ -353,6 +356,13 @@ namespace Lobelia::Game {
 		HostConsole::GetInstance()->IntRegister("HDR", "useVignette", &info.useVignette, false);
 	}
 	void HDRPS::EnableVignette(bool use_vignette) { info.useVignette = use_vignette; }
+	void HDRPS::SetChromaticAberrationIntensity(float chromatic_aberration_intensity) { info.chromaticAberrationIntensity = chromatic_aberration_intensity; }
+	void HDRPS::SetRadius2(float radius2) { info.radius2 = radius2; }
+	void HDRPS::SetSmooth(float smooth) { info.smooth = smooth; }
+	void HDRPS::SetMechanicalScale(float mechanical_scale) { info.mechanicalScale = mechanical_scale; }
+	void HDRPS::SetCosFactor(float cos_factor) { info.cosFactor = cos_factor; }
+	void HDRPS::SetCosPower(float cos_power) { info.cosPower = cos_power; }
+	void HDRPS::SetNaturalScale(float natural_scale) { info.naturalScale = natural_scale; }
 	void HDRPS::Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color, int step) {
 		if (Input::GetKeyboardKey(DIK_2) == 1)info.useVignette = !info.useVignette;
 		if (info.exposure < 0)info.exposure = 0.0f;

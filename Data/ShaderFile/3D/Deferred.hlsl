@@ -270,7 +270,19 @@ float4 CascadeVarianceShadow(GBufferPS_IN ps_in) {
 	if (shadowTex.x < 0.0f || shadowTex.x > 1.0f || shadowTex.y < 0.0f || shadowTex.y > 1.0f) {
 		return float4(1.0f, 0.0f, 0.0f, 1.0f);
 	}
-	if (lightSpaceLength > lightDepth.x) {
+	//最大深度傾斜を求める
+	float maxDepthSlope = max(abs(ddx(shadowTex.z)), abs(ddy(shadowTex.z)));
+	//固定バイアス
+	const float bias = 0.003f;
+	//深度傾斜
+	const float slopedScaleBias = 0.005f;
+	//深度クランプ値
+	const float depthBiasClamp = 0.1f;
+	//アクネ対策の補正値算出
+	float shadowBias = bias + slopedScaleBias * maxDepthSlope;
+	//深度判定
+	//if (lightSpaceLength > lightDepth.x + min(shadowBias, depthBiasClamp)) return float4((float3)1.0f / 2.0f, 1.0f);
+	if (lightSpaceLength > lightDepth.x + min(shadowBias, depthBiasClamp)) {
 		//80
 		//if (lightDepth.x >= exp(80 * (lightSpaceLength - 0.01f)))float4(1.0f, 1.0f, 1.0f, 1.0f);
 		//チェビシェフの不等式
@@ -279,7 +291,7 @@ float4 CascadeVarianceShadow(GBufferPS_IN ps_in) {
 		float delta = lightSpaceLength - lightDepth.x;
 		float p = variance / (variance + (delta*delta));
 		float shadow = max(p, lightSpaceLength <= lightDepth.x);
-		shadow = saturate(shadow * 0.8f + 0.2f);
+		shadow = saturate(shadow * 0.7f + 0.3f);
 
 		return float4(shadow, 0.0f, 0.0f, 1.0f);
 	}
@@ -322,14 +334,24 @@ float4 CascadeShadow(GBufferPS_IN ps_in) {
 	if (uv.x < 0.0f || uv.x > 1.0f || uv.y < 0.0f || uv.y > 1.0f) {
 		return float4(1.0f, 1.0f, 1.0f, 1.0f);
 	}
-	//return float4(uv, 0.0f, 1.0f);
-	//return float4(depth, 0.0f, 0.0f, 1.0f);
-	//return float4(shadowDepth, 0.0f, 0.0f, 1.0f);
-	float4 ret = (float4)1.0f;
-	if (depth > shadowDepth + 0.001f)ret = float4(0.5f, 0.5f, 0.5f, 1.0f);
-	else ret = float4(1.0f, 1.0f, 1.0f, 1.0f);
-	return ret;
-	//return float4(shadowThreshold, 0.0f, 0.0f, 1.0f);
+	//最大深度傾斜を求める
+	float maxDepthSlope = max(abs(ddx(depth)), abs(ddy(depth)));
+	//固定バイアス
+	const float bias = 0.003f;
+	//深度傾斜
+	const float slopedScaleBias = 0.005f;
+	//深度クランプ値
+	const float depthBiasClamp = 0.1f;
+	//アクネ対策の補正値算出
+	float shadowBias = bias + slopedScaleBias * maxDepthSlope;
+	//深度判定
+	if (depth > shadowDepth.x + min(shadowBias, depthBiasClamp)) return float4((float3)0.3f, 1.0f);
+	else return float4(1.0f, 1.0f, 1.0f, 1.0f);
+
+	//float4 ret = (float4)1.0f;
+	//if (depth > shadowDepth + 0.001f)ret = float4(0.5f, 0.5f, 0.5f, 1.0f);
+	//else ret = float4(1.0f, 1.0f, 1.0f, 1.0f);
+	//return ret;
 }
 //float4 CascadeShadow(GBufferPS_IN ps_in) {
 //	//現在の描画対象の距離算出
@@ -591,8 +613,8 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	//ハーフランバート
 	if (isLighting) {
 		float lambert = saturate(dot(lightDirection, normal));
-		/*lambert = lambert * 0.5f + 0.5f;
-		lambert = lambert * lambert;*/
+		lambert = lambert * 0.5f + 0.5f;
+		lambert = lambert * lambert;
 		color.rgb *= lambert;
 		float sss = 1.0f;
 		//影 この段階ではもうバリアンスとかは考慮の必要がない

@@ -14,6 +14,14 @@ namespace Lobelia::Game {
 		Math::Vector2 scale = Application::GetInstance()->GetWindow()->GetSize();
 		hdr = std::make_unique<HDRPS>(scale);
 	}
+	void DeferredShader::EnableVignette(bool use_vignette) { hdr->EnableVignette(use_vignette); }
+	void DeferredShader::SetChromaticAberrationIntensity(float chromatic_aberration_intensity) { hdr->SetChromaticAberrationIntensity(chromatic_aberration_intensity); }
+	void DeferredShader::SetRadius2(float radius2) { hdr->SetRadius2(radius2); }
+	void DeferredShader::SetSmooth(float smooth) { hdr->SetSmooth(smooth); }
+	void DeferredShader::SetMechanicalScale(float mechanical_scale) { hdr->SetMechanicalScale(mechanical_scale); }
+	void DeferredShader::SetCosFactor(float cos_factor) { hdr->SetCosFactor(cos_factor); }
+	void DeferredShader::SetCosPower(float cos_power) { hdr->SetCosPower(cos_power); }
+	void DeferredShader::SetNaturalScale(float natural_scale) { hdr->SetNaturalScale(natural_scale); }
 	void DeferredShader::Render(DeferredBuffer* buffer) {
 		buffer->Begin();
 		auto& defaultVS = Graphics::SpriteRenderer::GetVertexShader();

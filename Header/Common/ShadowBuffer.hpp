@@ -31,6 +31,8 @@ namespace Lobelia::Game {
 		void SetLamda(float lamda);
 		void SetPos(const Math::Vector3& pos);
 		void SetTarget(const Math::Vector3& at);
+		void SetVariance(bool use_variance);
+		void SetEnable(bool use_shadow);
 		void CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt);
 		//シャドウマップをセットする
 		//テクスチャスロット6~6+split_countセットする

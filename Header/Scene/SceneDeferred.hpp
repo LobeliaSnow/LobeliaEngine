@@ -27,8 +27,9 @@ namespace Lobelia::Game {
 		void Initialize()override;
 		void AlwaysUpdate()override;
 		void AlwaysRender()override;
-	private:
+	public://デモ用
 		std::shared_ptr<Camera> camera;
+	private:
 		std::unique_ptr<Graphics::RenderTarget> rt;
 		//std::unique_ptr<Graphics::View> view;
 		std::unique_ptr<DeferredBuffer> deferredBuffer;
@@ -69,10 +70,38 @@ namespace Lobelia::Game {
 		std::unique_ptr<SSMotionBlur> motionBlur;
 #endif
 		std::shared_ptr<SkyBox> skybox;
+	public://デモ用、いったん面倒なのでpublic
 		//描画制御用パラメーター
 		int useLight;
 		int useFog;
+		bool useDof;
+		float focusRange;
 		int useMotionBlur;
+		bool useCamera;
+		bool useShadow;
+		bool useVariance;
+		bool renderGBuffer;
+		bool renderShadowMap;
+		bool renderSSAOBuffer;
+		bool renderBlumeBuffer;
+		bool useSSAO;
+		float ssaoDepthThreshold;
+		bool useVignette;
+		float chromaticAberrationIntensity;
+		float blumeIntensity;
+		float radius2;
+		float smooth;
+		float mechanicalScale;
+		float cosFactor;
+		float cosPower;
+		float naturalScale;
 		std::unique_ptr<AdaptiveConsole> console;
 	};
+	//void DeferredShader::SetRadius2(float radius2) { hdr->SetRadius2(radius2); }
+	//void DeferredShader::SetSmooth(float smooth) { hdr->SetSmooth(smooth); }
+	//void DeferredShader::SetMechanicalScale(float mechanical_scale) { hdr->SetMechanicalScale(mechanical_scale); }
+	//void DeferredShader::SetCosFactor(float cos_factor) { hdr->SetCosFactor(cos_factor); }
+	//void DeferredShader::SetCosPower(float cos_power) { hdr->SetCosPower(cos_power); }
+	//void DeferredShader::SetNaturalScale(float natural_scale) { hdr->SetNaturalScale(natural_scale); }
+
 }

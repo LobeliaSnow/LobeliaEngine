@@ -14,6 +14,7 @@ namespace Lobelia::Game {
 	}
 	void Camera::SetPos(const Math::Vector3& pos) { this->pos = pos; }
 	void Camera::SetTarget(const Math::Vector3& at) { this->at = at; }
+	void Camera::SetUp(const Math::Vector3& up) { this->up = up; }
 	std::shared_ptr<Graphics::View> Camera::GetView() { return view; }
 	Math::Vector3 Camera::TakeFront() {
 		Math::Vector3 ret = at - pos; ret.Normalize();
@@ -72,20 +73,13 @@ namespace Lobelia::Game {
 		pos = at - front * radius;
 		right = Math::Vector3::Cross(up, front);
 		up = Math::Vector3::Cross(front, right);
-		//ここ外から追加できるようにしても良いが、外から使う予定もないためこれで
-		//カメラをAOが映える場所へ
-		if (Input::GetKeyboardKey(DIK_P)) {
-			pos = Math::Vector3(57.0f, 66.0f, 106.0f);
-			at = Math::Vector3();
-			up = Math::Vector3(0.0f, 1.0f, 0.0f);
-			radius = (pos - at).Length();
-		}
-		//ライトが映える場所へ
-		if (Input::GetKeyboardKey(DIK_O)) {
-			pos = Math::Vector3(-343.0f, 33.0f, -11.0f);
-			at = Math::Vector3();
-			up = Math::Vector3(0.0f, 1.0f, 0.0f);
-			radius = (pos - at).Length();
-		}
+	}
+	void ViewerCamera::SetPos(const Math::Vector3& pos) {
+		this->pos = pos;
+		radius = (pos - at).Length();
+	}
+	void ViewerCamera::SetTarget(const Math::Vector3& at) {
+		this->at = at;
+		radius = (pos - at).Length();
 	}
 }

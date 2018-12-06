@@ -41,6 +41,9 @@ namespace Lobelia::Game {
 		//AOを直接描画することはないため、デバッグ描画を入れている
 		void Render()override;
 		void Begin(int slot);
+		void SetEnable(bool enable);
+		//深度差の閾値
+		void SetThresholdDepth(float threshold);
 	private:
 		ALIGN(16) struct Info {
 			float offsetPerPixel;
@@ -149,7 +152,7 @@ namespace Lobelia::Game {
 		//1.0まで
 		DepthOfField(const Math::Vector2& size, float quality = 1.0f);
 		~DepthOfField() = default;
-		void SetFocus(float range);
+		void SetFocusRange(float range);
 		void SetEnable(bool enable);
 		void Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::RenderTarget* color, Graphics::RenderTarget* depth_of_view);
 	private:
@@ -191,6 +194,13 @@ namespace Lobelia::Game {
 		HDRPS(const Math::Vector2& scale, int blur_count = 4);
 		~HDRPS() = default;
 		void EnableVignette(bool use_vignette);
+		void SetChromaticAberrationIntensity(float chromatic_aberration_intensity);
+		void SetRadius2(float radius2);
+		void SetSmooth(float smooth);
+		void SetMechanicalScale(float mechanical_scale);
+		void SetCosFactor(float cos_factor);
+		void SetCosPower(float cos_power);
+		void SetNaturalScale(float natural_scale);
 		//平均輝度値の計算を何ステップ進めるか
 		void Dispatch(Graphics::View* active_view, Graphics::RenderTarget* active_buffer, Graphics::Texture* hdr_texture, Graphics::Texture* color, int step = 1);
 		void DebugRender();
@@ -215,6 +225,16 @@ namespace Lobelia::Game {
 			//倍率式収差の補正値
 			float chromaticAberrationIntensity = 0.005f;
 			int useVignette = TRUE;
+			float radius2 = 4.8f;
+			//暗いところから明るくなる際の滑らかさ、下がれば滑らかではなくなる
+			//理由は上のほうに浮いた曲線グラフになるので
+			float smooth = 1.0f;
+			//減光量 全体的に減光する
+			float mechanicalScale = 1.0f;
+			//コサイン四乗則
+			float cosFactor = 1.0f;
+			float cosPower = 1.0f;
+			float naturalScale = 1.0f;
 		};
 	private:
 		//ブルーム用

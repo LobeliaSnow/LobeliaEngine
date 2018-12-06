@@ -9,6 +9,14 @@ namespace Lobelia::Game {
 	public:
 		DeferredShader(const char* file_path, const char* entry_vs, const char* entry_ps);
 		virtual ~DeferredShader() = default;
+		void EnableVignette(bool use_vignette);
+		void SetChromaticAberrationIntensity(float chromatic_aberration_intensity);
+		void SetRadius2(float radius2);
+		void SetSmooth(float radius2);
+		void SetMechanicalScale(float mechanical_scale);
+		void SetCosFactor(float cos_factor);
+		void SetCosPower(float cos_power);
+		void SetNaturalScale(float natural_scale);
 		//自前でブルーム掛ける場合
 		void Render(class DeferredBuffer* buffer);
 		//ブルームが自動でかかる場合

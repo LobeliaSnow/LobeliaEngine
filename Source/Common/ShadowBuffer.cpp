@@ -17,10 +17,17 @@ namespace Lobelia::Game {
 		fov = PI / 4.0f;
 		aspect = size.x / size.y;
 		Math::Vector2 ssize = size;
+
 		for (int i = 0; i < split_count; i++) {
-			rts[i] = std::make_shared<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, format);
+			float bias = 1.0f;
+			switch (i) {
+			case 0:bias = 1.5f; break;
+			case 1: bias = 1.3f; break;
+			case 3: bias = 0.8f; break;
+			}
+			rts[i] = std::make_shared<Graphics::RenderTarget>(size*bias, DXGI_SAMPLE_DESC{ 1,0 }, format);
 			//ここの視野角カメラの置く位置次第ではもう少し絞って精度上げれるかも。
-			views[i] = std::make_unique<Graphics::View>(Math::Vector2(), size, fov, 1, 1000.0f);
+			views[i] = std::make_unique<Graphics::View>(Math::Vector2(), size*bias, fov, 1, 1000.0f);
 			//縮小バッファにして処理稼ぐのもいいかも
 #ifdef GAUSSIAN_CS
 			gaussian[i] = std::make_unique<GaussianFilterCS>(size, format);
@@ -28,7 +35,7 @@ namespace Lobelia::Game {
 #ifdef GAUSSIAN_PS
 			gaussian[i] = std::make_unique<GaussianFilterPS>(size, format);
 #endif
-			gaussian[i]->SetDispersion(0.1f);
+			gaussian[i]->SetDispersion(0.8f);
 		}
 		sampler = std::make_unique<Graphics::SamplerState>(Graphics::SAMPLER_PRESET::COMPARISON_LINEAR, 16);
 		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/deferred.hlsl", "CreateShadowMapVS", Graphics::VertexShader::Model::VS_5_0, false);
@@ -45,6 +52,8 @@ namespace Lobelia::Game {
 	void ShadowBuffer::SetLamda(float lamda) { this->lamda = lamda; }
 	void ShadowBuffer::SetPos(const Math::Vector3& pos) { this->pos = pos; }
 	void ShadowBuffer::SetTarget(const Math::Vector3& at) { this->at = at; }
+	void ShadowBuffer::SetVariance(bool use_variance) { info.useVariance = use_variance; }
+	void ShadowBuffer::SetEnable(bool use_shadow) { info.useShadowMap = use_shadow; }
 	namespace {
 		//Vector3の各要素に比較関数をかけて返す
 		auto ExecuteVector3Component(const Math::Vector3& v0, const Math::Vector3 v1, std::function<float(float, float)> func) {
@@ -98,8 +107,7 @@ namespace Lobelia::Game {
 		float farDivisionNear = far_z / near_z;
 		float farSubNear = far_z - near_z;
 		//実用分割スキームを適用
-		// ※ GPU Gems 3, Chapter 10. Parallel-Split Shadow Maps on Programmable GPUs.
-		//    http://http.developer.nvidia.com/GPUGems3/gpugems3_ch10.html を参照.
+		//http://http.developer.nvidia.com/GPUGems3/gpugems3_ch10.html
 		for (int i = 1; i < count + 1; i++) {
 			//対数分割スキーム
 			float log = near_z * powf(farDivisionNear, invM*i);
@@ -191,10 +199,6 @@ namespace Lobelia::Game {
 	}
 	void ShadowBuffer::AddModel(std::shared_ptr<Graphics::Model> model) { models.push_back(model); }
 	void ShadowBuffer::CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt) {
-#ifdef _DEBUG
-		if (Input::GetKeyboardKey(DIK_0) == 1)info.useShadowMap = !info.useShadowMap;
-		if (Input::GetKeyboardKey(DIK_9) == 1)info.useVariance = !info.useVariance;
-#endif
 		if (!info.useShadowMap) {
 			models.clear();
 			return;
@@ -233,6 +237,8 @@ namespace Lobelia::Game {
 	void ShadowBuffer::Begin() {
 		//情報の更新
 		//DirectX::XMStoreFloat4x4(&info.view, views[0]->GetColumnViewMatrix());
+		Math::Vector3 lightVec = at - pos; lightVec.Normalize();
+		Graphics::Environment::GetInstance()->SetLightDirection(lightVec);
 		sampler->Set(1);
 		for (int i = 0; i < count; i++) {
 			//DirectX::XMStoreFloat4x4(&info.proj[i], views[i]->GetColumnProjectionMatrix());
@@ -257,7 +263,7 @@ namespace Lobelia::Game {
 	}
 	void ShadowBuffer::DebugRender() {
 		for (int i = 0; i < count; i++) {
-			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2(i*100.0f, 100.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), size, 0xFFFFFFFF);
+			Graphics::SpriteRenderer::Render(rts[i].get(), Math::Vector2(i*100.0f, 100.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), rts[i]->GetTexture()->GetSize(), 0xFFFFFFFF);
 			gaussian[i]->DebugRender(Math::Vector2(i*100.0f, 200.0f), Math::Vector2(100.0f, 100.0f));
 		}
 	}

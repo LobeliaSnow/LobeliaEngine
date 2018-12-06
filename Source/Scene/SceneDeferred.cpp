@@ -77,7 +77,13 @@ namespace Lobelia::Game {
 		camera = std::make_shared<ViewerCamera>(scale, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3(0.0f, 0.0f, 0.0f));
 		rt = std::make_unique<Graphics::RenderTarget>(scale, DXGI_SAMPLE_DESC{ 1,0 });
 		deferredBuffer = std::make_unique<DeferredBuffer>(scale);
-		useLight = TRUE; useFog = TRUE; useMotionBlur = TRUE;
+		//デモ用
+		useLight = TRUE; useFog = TRUE; useMotionBlur = TRUE; useCamera = true; useDof = true;
+		useShadow = true; useVariance = true; renderGBuffer = true; renderShadowMap = true;
+		renderSSAOBuffer = true; useSSAO = true; ssaoDepthThreshold = 5.0f; focusRange = 150.0f;
+		renderBlumeBuffer = true; chromaticAberrationIntensity = 0.005f; useVignette = true;
+		blumeIntensity = 6.0f;	radius2 = 5.0f; smooth = 2.1f; mechanicalScale = 0.25f;
+		cosFactor = 0.53f; cosPower = 0.45f; naturalScale = 0.09f;
 #ifdef _DEBUG
 		HostConsole::GetInstance()->IntRegister("deferred", "use light", &useLight, false);
 		HostConsole::GetInstance()->IntRegister("deferred", "use fog", &useFog, false);
@@ -126,7 +132,7 @@ namespace Lobelia::Game {
 #endif
 #ifdef USE_DOF
 		dof = std::make_unique<DepthOfField>(scale, DOF_QUALITY);
-		dof->SetFocus(150.0f);
+		dof->SetFocusRange(150.0f);
 #endif
 		skybox = std::make_shared<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
 		skybox->SetCamera(camera);
@@ -146,11 +152,144 @@ namespace Lobelia::Game {
 		rad = 0.0f;
 		shadow->SetNearPlane(1.0f);
 		shadow->SetFarPlane(1000.0f);
-		shadow->SetLamda(0.7f);
+		shadow->SetLamda(0.8f);
 #ifdef USE_MOTION_BLUR
 		motionBlur = std::make_unique<SSMotionBlur>(scale);
 #endif
-		console = std::make_unique<AdaptiveConsole>("TEST");
+#ifdef _DEBUG
+		//----------------------------------------------------------------------------------------------------------------------------------
+		//
+		//			この先デモ用メニュー
+		//
+		//----------------------------------------------------------------------------------------------------------------------------------
+		//ImGuiウインドウを作成
+		console = std::make_unique<AdaptiveConsole>("Operation Console");
+		//表示内容を構築
+		//カメラ
+		console->AddFunction([this]() {
+			ImGui::Checkbox("Move Camera", &this->useCamera);
+			if (ImGui::TreeNode("Camera")) {
+				if (ImGui::Button("Reset Position Start")) {
+					this->camera->SetPos(Math::Vector3(57.0f, 66.0f, 106.0f));
+					this->camera->SetTarget(Math::Vector3());
+					this->camera->SetUp(Math::Vector3(0.0f, 1.0f, 0.0f));
+				}
+				if (ImGui::Button("Reset Position HDR")) {
+					this->camera->SetPos(Math::Vector3(-172.0f, 68.0f, -0.90f));
+					this->camera->SetTarget(Math::Vector3(-185.5f, 0.0f, -3.0f));
+					this->camera->SetUp(Math::Vector3(0.0f, 1.0f, 0.0f));
+				}
+				if (ImGui::Button("Reset Position Light")) {
+					this->camera->SetPos(Math::Vector3(-343.0f, 33.0f, -11.0f));
+					this->camera->SetTarget(Math::Vector3(-185.5f, 0.0f, -3.0f));
+					this->camera->SetUp(Math::Vector3(0.0f, 1.0f, 0.0f));
+				}
+				ImGui::TreePop();
+			}
+		});
+		//G-Buffer
+		console->AddFunction([this]() {
+			ImGui::Checkbox("Debug Render", &Application::GetInstance()->debugRender);
+			if (Application::GetInstance()->debugRender && ImGui::TreeNode("G-Buffer")) {
+				ImGui::Checkbox("Render G-Buffer", &this->renderGBuffer);
+				ImGui::Checkbox("Render AO Buffer", &this->renderSSAOBuffer);
+				ImGui::Checkbox("Render Shadow Map", &this->renderShadowMap);
+				ImGui::Checkbox("Render Blume & HDR Buffer", &this->renderBlumeBuffer);
+				ImGui::TreePop();
+			}
+		});
+		//ブラー
+		console->AddFunction([this]() {
+			bool blur = this->useMotionBlur;
+			ImGui::Checkbox("Use Blur", &blur);
+			this->useMotionBlur = blur;
+		});
+		//影
+		console->AddFunction([this]() {
+			ImGui::Checkbox("Use Shadow", &this->useShadow);
+			if (this->useShadow && ImGui::TreeNode("Shadow")) {
+				ImGui::Checkbox("Use Variance", &this->useVariance);
+				ImGui::TreePop();
+			}
+		});
+		//SSAO
+		console->AddFunction([this] {
+			ImGui::Checkbox("Use SSAO", &this->useSSAO);
+			if (useSSAO && ImGui::TreeNode("AO")) {
+				ImGui::SliderFloat("Deoth Threshold", &ssaoDepthThreshold, 1.0f, 30.0f);
+				ImGui::TreePop();
+			}
+		});
+		//被写界深度
+		console->AddFunction([this]() {
+			ImGui::Checkbox("Use DoF", &this->useDof);
+			if (useDof && ImGui::TreeNode("DoF")) {
+				ImGui::SliderFloat("Focus Range", &focusRange, 1.0f, 300.0f);
+				ImGui::TreePop();
+			}
+		});
+		//フォグ
+		console->AddFunction([this]() {
+			bool fog = this->useFog;
+			ImGui::Checkbox("Use Fog", &fog);
+			this->useFog = fog;
+			static float fogBegin = 300.0f;
+			static float fogEnd = 1000.0f;
+			if (this->useFog && ImGui::TreeNode("Fog")) {
+				ImGui::SliderFloat("Begin", &fogBegin, 0.0f, 999.0f);
+				ImGui::SliderFloat("End", &fogEnd, 1.0f, 1000.0f);
+				ImGui::TreePop();
+			}
+			Graphics::Environment::GetInstance()->SetFogBegin(fogBegin);
+			Graphics::Environment::GetInstance()->SetFogEnd(fogEnd);
+		});
+		//ライト
+		console->AddFunction([this]() {
+			bool light = this->useLight;
+			ImGui::Checkbox("Use Light", &light);
+			this->useLight = light;
+			static int lightCount = LIGHT_COUNT;
+			if (useLight) {
+				if (ImGui::TreeNode("Light")) {
+					ImGui::SliderInt("count", &lightCount, 0, LIGHT_COUNT);
+					if (ImGui::Button("Relocation")) {
+						FullEffectDeferred::PointLight light;
+						for (int i = 0; i < LIGHT_COUNT; i++) {
+							light.pos = Math::Vector4(Utility::Frand(-60.0f, 60.0f), Utility::Frand(-10.0f, 10.0f), Utility::Frand(-40.0f, 40.0f), 0.0f);
+							light.pos += Math::Vector4(-213.0f, 5.0f, -5.0f, 0.0f);
+							light.color = Utility::Color(rand() % 255, rand() % 255, rand() % 255, 255);
+							light.attenuation = Utility::Frand(0.5f, 10.0f);
+							deferredShader->SetLightBuffer(i, light);
+						}
+					}
+					ImGui::TreePop();
+				}
+				deferredShader->SetUseCount(lightCount);
+			}
+			else deferredShader->SetUseCount(0);
+		});
+		//レンズ
+		console->AddFunction([this] {
+			if (ImGui::TreeNode("Lens")) {
+				ImGui::SliderFloat("Chromatic Aberration", &chromaticAberrationIntensity, 0.0f, 0.1f);
+				ImGui::Checkbox("Vignette", &useVignette);
+				ImGui::SliderFloat("Vignette Radius", &radius2, 0.0f, 10.0f);
+				ImGui::SliderFloat("Vignette Smooth", &smooth, 0.0f, 10.0f);
+				ImGui::SliderFloat("Vignette Mechanical Scale", &mechanicalScale, 0.0f, 10.0f);
+				ImGui::SliderFloat("Vignette Cos Factor", &cosFactor, 0.0f, 10.0f);
+				ImGui::SliderFloat("Vignette Cos Power", &cosPower, 0.0f, 10.0f);
+				ImGui::SliderFloat("Vignette Natural Scale", &naturalScale, 0.0f, 10.0f);
+				ImGui::TreePop();
+			}
+		});
+		//ブルーム
+		console->AddFunction([this] {
+			ImGui::SliderFloat("Blume Intensity", &blumeIntensity, 0.0f, 20.0f);
+		});
+
+		//----------------------------------------------------------------------------------------------------------------------------------
+		//----------------------------------------------------------------------------------------------------------------------------------
+#endif
 	}
 	SceneDeferred::~SceneDeferred() {
 #ifdef _DEBUG
@@ -158,18 +297,22 @@ namespace Lobelia::Game {
 #endif
 	}
 	void SceneDeferred::AlwaysUpdate() {
-		if (Input::GetKeyboardKey(DIK_6) == 1) useFog = !useFog;
-		if (Input::GetKeyboardKey(DIK_5) == 1) useLight = !useLight;
+		if (Input::GetKeyboardKey(DIK_0) == 1) useShadow = !useShadow;
+		if (Input::GetKeyboardKey(DIK_2) == 1) useVignette = !useVignette;
 		if (Input::GetKeyboardKey(DIK_3) == 1) useMotionBlur = !useMotionBlur;
+		if (Input::GetKeyboardKey(DIK_4) == 1) useDof = !useDof;
+		if (Input::GetKeyboardKey(DIK_5) == 1) useLight = !useLight;
+		if (Input::GetKeyboardKey(DIK_6) == 1) useFog = !useFog;
+		if (Input::GetKeyboardKey(DIK_9) == 1) useVariance = !useVariance;
+		shadow->SetEnable(useShadow);
+		shadow->SetVariance(useVariance);
 		deferredBuffer->AddModel(stage, DeferredBuffer::MATERIAL_TYPE::LAMBERT, 1.0f, 1.0f);
-		deferredBuffer->AddModel(box, DeferredBuffer::MATERIAL_TYPE::COLOR, 0.0f, 6.0f);
+		deferredBuffer->AddModel(box, DeferredBuffer::MATERIAL_TYPE::COLOR, 0.0f, blumeIntensity);
 		//deferredBuffer->AddModel(stageCollision, normalMap);
 #ifdef USE_CHARACTER
 		deferredBuffer->AddModel(character, false);
 #endif
 #ifdef FULL_EFFECT
-		if (useLight)deferredShader->SetUseCount(LIGHT_COUNT);
-		else deferredShader->SetUseCount(0);
 		deferredShader->Update();
 #endif
 		shadow->AddModel(box);
@@ -187,14 +330,23 @@ namespace Lobelia::Game {
 		shadow->SetPos(lpos);
 		shadow->SetTarget(Math::Vector3());
 		//shadow->SetPos(pos);
-		camera->Update();
+		if (useCamera)camera->Update();
+		dof->SetEnable(useDof);
+		dof->SetFocusRange(focusRange);
+		ssao->SetEnable(useSSAO);
+		ssao->SetThresholdDepth(ssaoDepthThreshold);
+		deferredShader->EnableVignette(useVignette);
+		deferredShader->SetChromaticAberrationIntensity(chromaticAberrationIntensity);
+		deferredShader->SetRadius2(radius2);
+		deferredShader->SetSmooth(smooth);
+		deferredShader->SetMechanicalScale(mechanicalScale);
+		deferredShader->SetCosFactor(cosFactor);
+		deferredShader->SetCosPower(cosPower);
+		deferredShader->SetNaturalScale(naturalScale);
 	}
 	void SceneDeferred::AlwaysRender() {
-		console->Update();
-		Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));
+		//Graphics::Environment::GetInstance()->SetLightDirection(-Math::Vector3(1.0f, 1.0f, 1.0f));
 		Graphics::Environment::GetInstance()->SetActiveLinearFog(useFog);
-		Graphics::Environment::GetInstance()->SetFogBegin(150.0f);
-		Graphics::Environment::GetInstance()->SetFogEnd(400.0f);
 		Graphics::Environment::GetInstance()->Activate();
 		camera->Activate();
 		rt->Clear(0xFF000000);
@@ -263,14 +415,15 @@ namespace Lobelia::Game {
 		}
 
 #ifdef _DEBUG
+		console->Update();
 		if (Application::GetInstance()->debugRender) {
-			deferredBuffer->DebugRender();
-			shadow->DebugRender();
+			if (renderGBuffer)deferredBuffer->DebugRender();
+			if (renderShadowMap)shadow->DebugRender();
 #ifdef USE_SSAO
-			ssao->Render();
+			if (renderSSAOBuffer)ssao->Render();
 #endif
 #ifdef USE_HDR
-			deferredShader->DebugRender();
+			if (renderBlumeBuffer) deferredShader->DebugRender();
 #endif
 		}
 #endif

@@ -35,6 +35,17 @@ cbuffer HDR : register(b13) {
 	float exposure : packoffset(c0.x);
 	float chromaticAberrationIntensity : packoffset(c0.y);
 	int useVignette : packoffset(c0.z);
+	//減光しない距離の二乗
+	float radius2 : packoffset(c0.w);
+	//暗いところから明るくなる際の滑らかさ、下がれば滑らかではなくなる
+	//理由は上のほうに浮いた曲線グラフになるので
+	float smooth : packoffset(c1.x);
+	//減光量 全体的に減光する
+	float mechanicalScale : packoffset(c1.y);
+	//コサイン四乗則
+	float cosFactor : packoffset(c1.z);
+	float cosPower : packoffset(c1.w);
+	float naturalScale : packoffset(c2.x);
 };
 // static const float offsetPerPixel = 20.0f;
 //入力用
@@ -550,19 +561,8 @@ float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
 		const float2 d = abs(ps_in.tex - float2(0.5f, 0.5f)) * float2(2.0f * aspect, 2.0f);
 		//同じベクトル同士の内積は、長さの二乗が求まる
 		const float r2 = dot(d, d);
-		//減光しない距離の二乗
-		const float radius2 = 4.8f;
-		//暗いところから明るくなる際の滑らかさ、下がれば滑らかではなくなる
-		//理由は上のほうに浮いた曲線グラフになるので
-		const float smooth = 1.0f;
-		//減光量 全体的に減光する
-		const float mechanicalScale = 1.0f;
 		//radius2よりもr2のほうが大きい場合、減光しない
 		float vignetteFactor = pow(min(1.0f, r2 / radius2), smooth) * mechanicalScale;
-		//コサイン四乗則
-		const float cosFactor = 1.0f;
-		const float cosPower = 1.0f;
-		const float naturalScale = 0.1f;
 		float cosTheta = 1.0f / sqrt(r2*cosFactor + 1.0f);
 		vignetteFactor += (1.0f - pow(cosTheta, cosPower))*naturalScale;
 		//合成
