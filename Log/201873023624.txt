@@ -1,4 +1,0 @@
-0行目: controller count : 0
-1行目: joystick count : 0
-2行目: Add Key ->analyze domain domain ->1.000000
-3行目: deleted data ->key analyze domain

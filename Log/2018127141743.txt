@@ -1,0 +1,15 @@
+0行目: joystick count : 0
+1行目: Add Key ->analyze domain domain ->1.000000
+2行目: Add Key ->deferred use light ->1
+3行目:  use fog ->1
+4行目:  use motion blur ->1
+5行目: Add Key ->HDR exposure ->0.500000
+6行目:  chromaticAberrationIntensity ->0.005000
+7行目:  useVignette ->1
+8行目:  use AO ->1
+9行目:  use offset per pixel ->5.000000
+10行目:  use shadow ->1
+11行目:  use variance ->1
+12行目: command execute screen shot
+13行目: deleted data ->key deferred
+14行目: deleted data ->key analyze domain
