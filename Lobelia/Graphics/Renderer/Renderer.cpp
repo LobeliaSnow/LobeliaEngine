@@ -121,7 +121,7 @@ namespace Lobelia::Graphics {
 		trans.position = {};
 		trans.scale = View::nowSize;
 		trans.rotation = 0.0f;
-		Math::Vector2 size(16, 16);
+		Math::Vector2 size = trans.scale;
 		if (tex)size = tex->GetSize();
 		Render(tex, trans, Math::Vector2(0.0f, 0.0f), size, color);
 	}

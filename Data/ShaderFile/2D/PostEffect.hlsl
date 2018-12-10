@@ -547,6 +547,9 @@ float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
 	//輝度ベース
 	float k = log(1.0f / 255.0f) / avgLuminance;
 	color.rgb *= 1.0f - exp(k*luminance*exposure);
+	////コントラスト調整
+	//const float contrast = 10.0f;
+	//color.rgb = 1 / (1 + exp(-contrast * (color.rgb - 0.5)));
 	//ガンマ補正
 	const float gamma = 2.2f;
 	color = GammaCollection(color, gamma);

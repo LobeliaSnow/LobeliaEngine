@@ -564,6 +564,7 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	//デコード
 	float4 normal = txDeferredNormal.Sample(samLinear, ps_in.tex) * 2.0 - 1.0;
 	normal.a = 0.0f;
+
 	int materialID = txMaterialID.Sample(samLinear, ps_in.tex).r + 0.1f;
 	bool isLighting = !(materialID == MAT_COLOR);
 	float4 diffuse = txDeferredColor.Sample(samLinear, ps_in.tex);
@@ -651,6 +652,7 @@ float4 FullDeferredPS(PS_IN_TEX ps_in) :SV_Target{
 		fog = CalcLinearFogFactor(vpos.z);
 	}
 	fogValue = (1.0f - fog) * float4(fogColor, 1.0f);
+	//return color;
 	//まだリニア空間にいるために、sRGB空間に戻さないといけない
 	//ここでやらない理由は、のちにポストプロセスでトーンマップをするから
 	return color * fog + fogValue;

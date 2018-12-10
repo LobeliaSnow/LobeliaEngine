@@ -456,6 +456,9 @@
     <ClCompile Include="Source\Common\AdaptiveConsole.cpp">
       <Filter>ソース ファイル\Common</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Scene\GBufferCompressionTest.cpp">
+      <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ImGui\Header\imconfig.h">
@@ -737,6 +740,9 @@
     <ClInclude Include="Header\Common\AdaptiveConsole.hpp">
       <Filter>ヘッダー ファイル\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Header\Scene\GBufferCompressionTest.hpp">
+      <Filter>ヘッダー ファイル\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\ShaderFile\Header.hlsli">
@@ -821,6 +827,9 @@
     </FxCompile>
     <FxCompile Include="Data\ShaderFile\GPGPU\GPGPU.hlsl">
       <Filter>Data\ShaderFile\GPGPU</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\GBufferCompressionTest.hlsl">
+      <Filter>Data\ShaderFile\3D</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

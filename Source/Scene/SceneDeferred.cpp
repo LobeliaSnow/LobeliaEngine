@@ -243,6 +243,7 @@ namespace Lobelia::Game {
 			Graphics::Environment::GetInstance()->SetFogBegin(fogBegin);
 			Graphics::Environment::GetInstance()->SetFogEnd(fogEnd);
 		});
+#ifdef FULL_EFFECT
 		//ƒ‰ƒCƒg
 		console->AddFunction([this]() {
 			bool light = this->useLight;
@@ -268,6 +269,7 @@ namespace Lobelia::Game {
 			}
 			else deferredShader->SetUseCount(0);
 		});
+#endif
 		//ƒŒƒ“ƒY
 		console->AddFunction([this] {
 			if (ImGui::TreeNode("Lens")) {
@@ -331,10 +333,14 @@ namespace Lobelia::Game {
 		shadow->SetTarget(Math::Vector3());
 		//shadow->SetPos(pos);
 		if (useCamera)camera->Update();
+#ifdef USE_DOF
 		dof->SetEnable(useDof);
 		dof->SetFocusRange(focusRange);
+#endif
+#ifdef USE_SSAO
 		ssao->SetEnable(useSSAO);
 		ssao->SetThresholdDepth(ssaoDepthThreshold);
+#endif
 		deferredShader->EnableVignette(useVignette);
 		deferredShader->SetChromaticAberrationIntensity(chromaticAberrationIntensity);
 		deferredShader->SetRadius2(radius2);
