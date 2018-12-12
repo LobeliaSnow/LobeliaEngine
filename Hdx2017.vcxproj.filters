@@ -456,7 +456,7 @@
     <ClCompile Include="Source\Common\AdaptiveConsole.cpp">
       <Filter>ソース ファイル\Common</Filter>
     </ClCompile>
-    <ClCompile Include="Source\Scene\GBufferCompressionTest.cpp">
+    <ClCompile Include="Source\Scene\SceneGBufferCompression.cpp">
       <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
   </ItemGroup>
@@ -740,7 +740,7 @@
     <ClInclude Include="Header\Common\AdaptiveConsole.hpp">
       <Filter>ヘッダー ファイル\Common</Filter>
     </ClInclude>
-    <ClInclude Include="Header\Scene\GBufferCompressionTest.hpp">
+    <ClInclude Include="Header\Scene\SceneGBufferCompression.hpp">
       <Filter>ヘッダー ファイル\Scene</Filter>
     </ClInclude>
   </ItemGroup>
@@ -828,7 +828,16 @@
     <FxCompile Include="Data\ShaderFile\GPGPU\GPGPU.hlsl">
       <Filter>Data\ShaderFile\GPGPU</Filter>
     </FxCompile>
-    <FxCompile Include="Data\ShaderFile\3D\GBufferCompressionTest.hlsl">
+    <FxCompile Include="Data\ShaderFile\3D\GBufferCompression.hlsl">
+      <Filter>Data\ShaderFile\3D</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\2D\GBufferRenderPS.hlsl">
+      <Filter>Data\ShaderFile\2D</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\2D\CodecGBuffer.hlsli">
+      <Filter>Data\ShaderFile\2D</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\CascadeShadow.hlsl">
       <Filter>Data\ShaderFile\3D</Filter>
     </FxCompile>
   </ItemGroup>

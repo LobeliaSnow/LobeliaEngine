@@ -268,7 +268,7 @@
     <ClCompile Include="Source\Common\ShadowBuffer.cpp" />
     <ClCompile Include="Source\Common\SkyBox.cpp" />
     <ClCompile Include="Source\ParaboloidEnvironmentMap.cpp" />
-    <ClCompile Include="Source\Scene\GBufferCompressionTest.cpp" />
+    <ClCompile Include="Source\Scene\SceneGBufferCompression.cpp" />
     <ClCompile Include="Source\Scene\SceneCompute.cpp" />
     <ClCompile Include="Source\Scene\SceneDeferred.cpp" />
     <ClCompile Include="Source\Scene\SceneDissolve.cpp" />
@@ -289,7 +289,7 @@
     <ClInclude Include="Header\Common\ShadowBuffer.hpp" />
     <ClInclude Include="Header\Common\SkyBox.hpp" />
     <ClInclude Include="Header\ParaboloidEnvironmentMap.hpp" />
-    <ClInclude Include="Header\Scene\GBufferCompressionTest.hpp" />
+    <ClInclude Include="Header\Scene\SceneGBufferCompression.hpp" />
     <ClInclude Include="Header\Scene\SceneCompute.hpp" />
     <ClInclude Include="Header\Scene\SceneDeferred.hpp" />
     <ClInclude Include="Header\Scene\SceneDissolve.hpp" />
@@ -394,6 +394,28 @@
     <None Include="Lobelia\Graphics\Shader\ShaderBank.inl" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Data\ShaderFile\2D\CodecGBuffer.hlsli">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\2D\GBufferRenderPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="Data\ShaderFile\2D\PS.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -426,6 +448,9 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Main2D</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\CascadeShadow.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
     <FxCompile Include="Data\ShaderFile\3D\Deferred.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -446,7 +471,7 @@
       <FileType>Document</FileType>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </None>
-    <FxCompile Include="Data\ShaderFile\3D\GBufferCompressionTest.hlsl">
+    <FxCompile Include="Data\ShaderFile\3D\GBufferCompression.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Geometry</ShaderType>

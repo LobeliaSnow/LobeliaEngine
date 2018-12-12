@@ -197,7 +197,7 @@ namespace Lobelia::Game {
 		//#endif
 		//		}
 	}
-	void ShadowBuffer::AddModel(std::shared_ptr<Graphics::Model> model) { models.push_back(model); }
+	void ShadowBuffer::AddModel(std::shared_ptr<Graphics::Model>& model) { models.push_back(model); }
 	void ShadowBuffer::CreateShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt) {
 		if (!info.useShadowMap) {
 			models.clear();
@@ -206,7 +206,6 @@ namespace Lobelia::Game {
 		CameraUpdate(active_view);
 		auto& defaultVS = Graphics::Model::GetVertexShader();
 		auto& defaultPS = Graphics::Model::GetPixelShader();
-		Graphics::Model::ChangeVertexShader(vs);
 		Graphics::Model::ChangeVertexShader(vs);
 		Graphics::Model::ChangePixelShader(ps);
 		for (int i = 0; i < count; i++) {

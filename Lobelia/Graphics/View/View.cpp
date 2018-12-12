@@ -61,7 +61,7 @@ namespace Lobelia::Graphics {
 	void View::Activate() {
 		Update();
 		constantBuffer->Activate(buffer);
-		Device::GetContext()->RSSetViewports(1, &viewport);
+		ViewportActivate();
 		nowSize = size;
 		nowView = buffer.view; nowProjection = buffer.projection;
 	}

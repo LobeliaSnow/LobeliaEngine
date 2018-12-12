@@ -25,7 +25,7 @@ namespace Lobelia::Game {
 	class ShadowBuffer {
 	public:
 		ShadowBuffer(const Math::Vector2& size, int split_count, bool use_variance);
-		void AddModel(std::shared_ptr<Graphics::Model> model);
+		void AddModel(std::shared_ptr<Graphics::Model>& model);
 		void SetNearPlane(float near_z);
 		void SetFarPlane(float far_z);
 		void SetLamda(float lamda);
