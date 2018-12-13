@@ -57,8 +57,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, PSTR, int) {
 		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneSea>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
 		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneDissolve>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
 		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneFur>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
-		Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneDeferred>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
-		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneGBufferCompression>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
+		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneDeferred>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
+		Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneGBufferCompression>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
 		Lobelia::Audio::EffectVoice::DisableEffect(0);
 
 #ifdef USE_IMGUI_AND_CONSOLE

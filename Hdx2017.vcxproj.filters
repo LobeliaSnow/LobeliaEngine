@@ -793,6 +793,9 @@
     <None Include="Data\ShaderFile\3D\ParaboloidEnvironmentMap.hlsl">
       <Filter>Data\ShaderFile\3D</Filter>
     </None>
+    <None Include="Data\ShaderFile\3D\ApplyCascadeShadow.hlsli">
+      <Filter>Data\ShaderFile\3D</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Data\ShaderFile\2D\PS.hlsl">
@@ -837,7 +840,7 @@
     <FxCompile Include="Data\ShaderFile\2D\CodecGBuffer.hlsli">
       <Filter>Data\ShaderFile\2D</Filter>
     </FxCompile>
-    <FxCompile Include="Data\ShaderFile\3D\CascadeShadow.hlsl">
+    <FxCompile Include="Data\ShaderFile\3D\RenderCascadeShadowMap.hlsl">
       <Filter>Data\ShaderFile\3D</Filter>
     </FxCompile>
   </ItemGroup>

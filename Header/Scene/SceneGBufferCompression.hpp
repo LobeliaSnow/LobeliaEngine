@@ -79,6 +79,9 @@ namespace Lobelia::Game {
 			BIT_32,
 		};
 	public:
+		//現状分割数6だけ未対応
+		//RenderTargetが6枚で作成した際、キューブマップとして作っているので破綻
+		//ライブラリ作り直す際に修正
 		CascadeShadowBuffers(int split_count, const Math::Vector2& size, FORMAT format, bool use_variance);
 		~CascadeShadowBuffers() = default;
 		//ライトカメラ用情報を設定
@@ -99,6 +102,8 @@ namespace Lobelia::Game {
 		void RenderShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt);
 		//シャドウマップを別テクスチャに書き込み
 		void DebugShadowMapRender(int index, const Math::Vector2& pos, const Math::Vector2& size);
+		//シャドウマップをセットする
+		void SetShadowMap(int shadow_map_slot, int data_slot);
 	private:
 		//制御用パラメータ
 		ALIGN(16) struct Info {

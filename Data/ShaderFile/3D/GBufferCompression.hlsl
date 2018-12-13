@@ -3,6 +3,7 @@
 #include "../2D/Header2D.hlsli"
 #include "../2D/CodecGBuffer.hlsli"
 #include "../Define.h"
+#include "ApplyCascadeShadow.hlsli"
 
 //聞きたいこと
 //GBufferの詳細
@@ -41,7 +42,7 @@ struct GBufferPS_IN {
 //単位行列
 static const column_major float4x4 IDENTITY_MATRIX = float4x4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 //影用
-static const column_major float4x4 UVTRANS_MATRIX = float4x4(0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 0.5f, 0.0f, 1.0f);
+//static const column_major float4x4 UVTRANS_MATRIX = float4x4(0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.5f, 0.5f, 0.0f, 1.0f);
 //接空間へ変換するための行列を作成
 inline float4x4 TangentMatrix(in float3 tangent, in float3 binormal, in float3 normal) {
 	float4x4 mat = {
@@ -146,6 +147,73 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 Texture2D<uint4> txData0 : register(t0);
 //R深度
 Texture2D<uint4> txData1 : register(t1);
+//カスケード描画されたシャドウマップ
+Texture2DArray shadowMaps :register(t2);
+Texture2D txSplitLVP : register(t3);
+//このピクセルのカスケードのインデックスを調べる
+int CheckCascadeIndex(in Texture2D tx_data, in int split_count, in float light_space_length) {
+	int index = 0;
+	for (; index < splitCount; index++) {
+		float splitPos = txSplitLVP.Load(int3(4, index, 0)).r;
+		if (light_space_length <= splitPos) break;
+	}
+	return index;
+}
+//カスケード情報テクスチャからLVP行列を取得
+column_major float4x4 LoadCascadeLVP(in Texture2D tx_data, in int index) {
+	column_major float4x4 lvp = (float4x4)0.0f;
+	//LVP復元
+	lvp._11_21_31_41 = tx_data.Load(int3(0, index, 0));
+	lvp._12_22_32_42 = tx_data.Load(int3(1, index, 0));
+	lvp._13_23_33_43 = tx_data.Load(int3(2, index, 0));
+	lvp._14_24_34_44 = tx_data.Load(int3(3, index, 0));
+	return lvp;
+}
+//影をフェッチするためのUVや、比較用の位置を算出
+void ComputeShadowLightInfo(in float4x4 lvp, in float4 world_pos, out float depth, out float4 light_uv) {
+	//ライト空間での位置を算出
+	float4 lightSpacePos = mul(world_pos, lvp);
+	light_uv = mul(lightSpacePos, UVTRANS_MATRIX);
+	light_uv /= light_uv.w;
+	depth = lightSpacePos.z / lightSpacePos.w;
+}
+//シャドウに履かせる下駄の大きさを算出
+float ComputeDepthBias(in float light_depth, in float depth) {
+	//最大深度傾斜を求める
+	float maxDepthSlope = max(abs(ddx(depth)), abs(ddy(depth)));
+	//固定バイアス
+	const float bias = 0.003f;
+	//深度傾斜
+	const float slopedScaleBias = 0.005f;
+	//深度クランプ値
+	const float depthBiasClamp = 0.1f;
+	//アクネ対策の補正値算出
+	float shadowAcneBias = bias + slopedScaleBias * maxDepthSlope;
+	return min(shadowAcneBias, depthBiasClamp);
+}
+//シャドウの適用
+float ApplyShadow(in float2 light_uv, in float light_depth, in float depth) {
+	float shadowBias = 1.0f;
+	//範囲外チェック
+	if (light_uv.x < 0.0f || light_uv.x > 1.0f || light_uv.y < 0.0f || light_uv.y > 1.0f)return 1.0f;
+	//深度判定
+	if (depth > light_depth + ComputeDepthBias(light_depth, depth)) shadowBias = 0.3f;
+	return shadowBias;
+}
+//バリアンスシャドウの適用
+float ApplyVarianceShadow(in float2 light_uv, in float2 variance_info, in float depth) {
+	float shadowBias = 1.0f;
+	//範囲外チェック
+	if (light_uv.x < 0.0f || light_uv.x > 1.0f || light_uv.y < 0.0f || light_uv.y > 1.0f)return 1.0f;
+	//チェビシェフの不等式
+	float variance = variance_info.y - (variance_info.x * variance_info.x);
+	//variance = min(1.0f, max(0.0f, variance + 0.01f));
+	float delta = depth - variance_info.x;
+	float p = variance / (variance + (delta*delta));
+	float shadow = max(p, depth <= variance_info.x);
+	shadow = saturate(shadow * 0.7f + 0.3f);
+	return shadowBias;
+}
 
 //実際に情報をデコードしてライティングを行う
 float4 DeferredPS(PS_IN_TEX ps_in) :SV_Target{
@@ -158,10 +226,32 @@ float4 DeferredPS(PS_IN_TEX ps_in) :SV_Target{
 	//位置のデコード
 	float depth = DecodeDepth(data0.b);
 	float4 worldPos = DecodeDepthToWorldPos(depth, ps_in.tex, inverseViewProjection);
+	float4 viewProjPos = mul(mul(worldPos, view), projection);
+	float lightSpaceLength = viewProjPos.w;
+	//viewProjPos /= viewProjPos.w;
 	//ライティング処理
 	float lambert = saturate(dot(lightDirection, (normal)));
 	lambert = lambert * 0.5f + 0.5f;
 	lambert = lambert * lambert;
 	color.rgb *= lambert;
+	if (useShadowMap) {
+		//カスケードシャドウ
+		int index = CheckCascadeIndex(txSplitLVP,splitCount, lightSpaceLength);
+		column_major float4x4 lvp = LoadCascadeLVP(txSplitLVP, index);
+		float depth = 0.0f; float4 lightUV = (float4)0.0f;
+		ComputeShadowLightInfo(lvp, worldPos, depth, lightUV);
+		float shadowBias = 1.0f;
+		if (useVariance) {
+			float2 varianceInfo = shadowMaps.Sample(samLinear, float3(lightUV.xy, index)).rg;
+			//まだテクスチャの準備ができていない
+			shadowBias = ApplyShadow(lightUV, varianceInfo.x, depth);
+			//shadowBias = ApplyVarianceShadow(lightUV, varianceInfo, depth);
+		}
+		else {
+			float lightDepth = shadowMaps.Sample(samLinear, float3(lightUV.xy, index)).r;
+			shadowBias = ApplyShadow(lightUV, lightDepth, depth);
+		}
+		color.rgb *= shadowBias;
+	}
 	return color;
 }

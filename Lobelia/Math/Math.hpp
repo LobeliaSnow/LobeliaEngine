@@ -41,7 +41,7 @@ namespace Lobelia::Math {
 	struct Vector2 {
 	public:
 		union {
-			struct { float y, x; };
+			struct { float x, y; };
 			float v[2];
 		};
 		/**

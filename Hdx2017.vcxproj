@@ -374,6 +374,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\ShaderFile\2D\Header2D.hlsli" />
+    <None Include="Data\ShaderFile\3D\ApplyCascadeShadow.hlsli">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </None>
     <None Include="Data\ShaderFile\3D\Header3D.hlsli">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </None>
@@ -448,7 +451,7 @@
       <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Main2D</EntryPointName>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
     </FxCompile>
-    <FxCompile Include="Data\ShaderFile\3D\CascadeShadow.hlsl">
+    <FxCompile Include="Data\ShaderFile\3D\RenderCascadeShadowMap.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Data\ShaderFile\3D\Deferred.hlsl">

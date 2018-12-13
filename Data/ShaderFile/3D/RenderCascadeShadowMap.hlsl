@@ -73,3 +73,5 @@ Texture2DArray shadowMaps :register(t0);
 float4 RenderShadowMapPS(PS_IN_TEX ps_in) :SV_Target{
 	return shadowMaps.Sample(samLinear,float3(ps_in.tex,nowIndex));
 }
+
+//レンダーターゲット配列用のガウスフィルタ
