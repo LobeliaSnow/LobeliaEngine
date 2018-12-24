@@ -1,0 +1,3 @@
+0s–Ú: joystick count : 0
+1s–Ú: Add Key ->analyze domain domain ->1.000000
+2s–Ú: deleted data ->key analyze domain

@@ -434,12 +434,18 @@ namespace Lobelia::Game {
 		focusRange = 150.0f; renderShadingBuffer = true;
 		//モデル描画用パラメーター
 		stageInfo.lightingFactor = 1.0f; stageInfo.specularFactor = 0.0f; stageInfo.emissionFactor = 0.0f;
+		boxInfo.lightingFactor = -1.0f; boxInfo.specularFactor = 0.0f; boxInfo.emissionFactor = 0.0f;
 		shadowMap = std::make_unique<CascadeShadowBuffers>(cascadeCount, shadowMapSize, CascadeShadowBuffers::FORMAT::BIT_16, useVariance);
 		//const Math::Vector2& size, const DXGI_SAMPLE_DESC& sample, const DXGI_FORMAT&  format = DXGI_FORMAT_R32G32B32A32_FLOAT, int array_count = 1);
 		stage = std::make_shared<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
 		stage->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
 		//stage->Scalling(3.0f);
 		stage->CalcWorldMatrix();
+		box = std::make_shared<Graphics::Model>("Data/Model/box.dxd", "Data/Model/box.mt");
+		box->Translation(Math::Vector3(0.0f, 5.0f, 0.0f));
+		box->Scalling(3.0f);
+		//box->Scalling(9.0f);
+		box->CalcWorldMatrix();
 		ssao = std::make_unique<Experimental::SSAO>(wsize*0.5f);
 		dof = std::make_unique<Experimental::DepthOfField>(wsize, 0.5f);
 		GBufferDecodeRenderer::Initialize();
@@ -501,6 +507,9 @@ namespace Lobelia::Game {
 		operationConsole->AddFunction([this] {
 			ImGui::Checkbox("Use DoF", &useDoF);
 			if (useSSAO&&ImGui::TreeNode("DoF Parameters")) {
+				static float quality = 0.5f;
+				ImGui::SliderFloat("Quality", &quality, 0.1f, 1.0f);
+				if (ImGui::Button("Apply")) dof->ChangeQuality(quality);
 				ImGui::SliderFloat("Focus Range", &focusRange, 1.0f, 1000.0f);
 				ImGui::TreePop();
 			}
@@ -512,7 +521,9 @@ namespace Lobelia::Game {
 	void SceneGBufferCompression::AlwaysUpdate() {
 		if (cameraMove)camera->Update();
 		gbuffer->AddModel(stage, stageInfo);
+		gbuffer->AddModel(box, boxInfo);
 		shadowMap->AddModel(stage);
+		shadowMap->AddModel(box);
 		//回転ライト
 		rad += Application::GetInstance()->GetProcessTimeSec()*0.1f;
 		lpos = Math::Vector3(sinf(rad), 0.0f, cos(rad))*100.0f;

@@ -240,7 +240,7 @@ namespace Lobelia::Game {
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 	}
 	DepthOfField::DepthOfField(const Math::Vector2& size, float quality) :PostEffect(size, true, DXGI_FORMAT_R8G8B8A8_UNORM) {
-		quality = max(1.0f, quality);
+		quality = min(1.0f, max(quality, 0.1f));
 		view = std::make_unique<Graphics::View>(Math::Vector2(), size);
 		//縮小バッファを使用
 		step0 = std::make_unique<GaussianFilterPS>(size*quality, DXGI_FORMAT_R8G8B8A8_UNORM);

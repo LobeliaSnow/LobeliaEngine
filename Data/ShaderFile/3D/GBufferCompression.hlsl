@@ -149,14 +149,13 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	output.data0.g = EncodeNormalVector(normal, view);
 	//深度の保存。位置とかはこれから復元できる
 	output.data0.b = EncodeDepth(ps_in.depth.z / ps_in.depth.w);
-	output.data0.a = asuint(f32tof16(normal.z) | f32tof16(specularFactor) << 16);
+	output.data0.a = asuint(f32tof16(lightingFactor) | f32tof16(specularFactor) << 16);
 	//エミッションの書き込み
 	if (emissionFactor > 0.0f) {
 		float4 emission = txEmission.Sample(samLinear, ps_in.tex);
 		output.data1.r = EncodeSDRColor(emission);
 		output.data1.g = f32tof16(emissionFactor);
 	}
-	output.data1.xyz = asuint((normal.xyz + 1.0f) / 2.0f);
 	return output;
 }
 //R色、G法線XY、B深度、A現在無し
@@ -265,11 +264,11 @@ float4 DeferredPS(PS_IN_DEFERRED ps_in) :SV_Target{
 	lambert = lambert * 0.5f + 0.5f;
 	lambert = lambert * lambert;
 	//return float4((float3)lambert, 1.0f);
-	color.rgb *= lambert;
+	//color.rgb *= lambert;
 	//制御しやすいように0-1反転
-	//lambert = lambert * lambert - 1.0f;
+	lambert = 1.0f - lambert;
 	//反転されたものを復元
-	//color.rgb *= saturate(lambert * f16tof32(asfloat(data0.a)) + 1.0f);
+	color.rgb *= saturate(1.0f - lambert * f16tof32(data0.a));
 	if (useAO) {
 		float ao = txAO.Sample(samLinear, ps_in.tex);
 		color.rgb *= ao;

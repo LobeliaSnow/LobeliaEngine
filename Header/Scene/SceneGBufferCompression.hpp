@@ -219,6 +219,7 @@ namespace Lobelia::Game {
 		std::shared_ptr<Graphics::RenderTarget> offScreen;
 		std::shared_ptr<Graphics::RenderTarget> depth;
 		std::shared_ptr<Graphics::Model> stage;
+		std::shared_ptr<Graphics::Model> box;
 		//PostEffect
 		std::unique_ptr<Experimental::DepthOfField> dof;
 		std::unique_ptr<Experimental::SSAO> ssao;
@@ -250,6 +251,7 @@ namespace Lobelia::Game {
 		float focusRange;
 		//モデル描画用パラメーター
 		GBufferManager::Info stageInfo;
+		GBufferManager::Info boxInfo;
 		//影ライト用
 		float rad;
 		Math::Vector3 lpos;
