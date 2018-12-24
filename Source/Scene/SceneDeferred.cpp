@@ -413,6 +413,7 @@ namespace Lobelia::Game {
 			backBuffer->Activate();
 			//skybox->Render();
 #ifdef USE_MOTION_BLUR
+			camera->Activate();
 			motionBlur->Render();
 #else
 			Graphics::SpriteRenderer::Render(rt.get());

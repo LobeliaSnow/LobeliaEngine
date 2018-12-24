@@ -2,30 +2,31 @@
 #include "Common/Camera.hpp"
 #include "../Data/ShaderFile/Define.h"
 #include "Common/AdaptiveConsole.hpp"
+#include "Common/ComputeBuffer.hpp"
+#include "Common/PostEffect.hpp"
+#include "Common/PostEffectExperimental.hpp"
 
 namespace Lobelia::Game {
 	//圧縮したG-Buffer格納用
 	class GBufferManager {
 	public:
-		enum class MATERIAL_TYPE :int {
-			LAMBERT = MAT_LAMBERT,
-			PHONG = MAT_PHONG,
-			COLOR = MAT_COLOR,
+		//すべて精度はfloat16として保存されます
+		ALIGN(16) struct Info {
+			//ハーフランバートに対して掛けられる値
+			float lightingFactor;
+			//スぺキュラの強さ
+			float specularFactor;
+			//エミッションの強さ
+			float emissionFactor;
 		};
 	public:
 		GBufferManager(const Math::Vector2& size);
 		~GBufferManager() = default;
-		void AddModel(std::shared_ptr<Graphics::Model>& model);
+		void AddModel(std::shared_ptr<Graphics::Model>& model, Info info);
 		void SetSkybox(std::shared_ptr<class SkyBox>& skybox);
 		void RenderGBuffer(std::shared_ptr<Graphics::View>& view);
 		std::array<std::unique_ptr<Graphics::RenderTarget>, 2>& GetRTs();
 	private:
-		ALIGN(16) struct Info {
-			MATERIAL_TYPE materialType;
-			float specularFactor;
-			float emissionFactor;
-			float transparent;
-		};
 		struct ModelStorage {
 			std::weak_ptr<Graphics::Model> model;
 			Info info;
@@ -37,7 +38,7 @@ namespace Lobelia::Game {
 		std::shared_ptr<Graphics::PixelShader> ps;
 		std::shared_ptr<Graphics::BlendState> blend;
 		std::shared_ptr<SkyBox> skybox;
-		std::list<std::weak_ptr<Graphics::Model>> modelList;
+		std::list<ModelStorage> modelList;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
 	};
 
@@ -49,6 +50,7 @@ namespace Lobelia::Game {
 		void Render(std::shared_ptr<Graphics::View>& view, std::shared_ptr<GBufferManager>& gbuffer);
 	private:
 		std::unique_ptr<Graphics::View> viewport;
+		std::shared_ptr<Graphics::VertexShader> vs;
 		std::shared_ptr<Graphics::PixelShader> ps;
 	};
 
@@ -70,7 +72,35 @@ namespace Lobelia::Game {
 		static std::shared_ptr<Graphics::PixelShader> psWorldPos;
 		static std::shared_ptr<Graphics::PixelShader> psNormal;
 	};
-
+	//実質カスケード用
+	class GaussianTextureArray {
+	public:
+		GaussianTextureArray(const Math::Vector2& size, int array_count, DXGI_FORMAT format);
+		~GaussianTextureArray() = default;
+		//サイズ等の変更
+		void ChangeBuffer(const Math::Vector2& size, int array_count, DXGI_FORMAT format);
+		void Update(float dispersion);
+		void Dispatch(Graphics::RenderTarget* active_rt, Graphics::View*active_view, Graphics::Texture* tex);
+		std::shared_ptr<Graphics::RenderTarget>& GetRTSResult();
+	private:
+		static constexpr const int DIVISION = 4;
+	private:
+		ALIGN(16) struct Info {
+			float weight[DIVISION];
+			int texIndex;
+			Math::Vector2 texSize;
+		};
+	private:
+		int arrayCount;
+		std::shared_ptr<Graphics::VertexShader> vsX;
+		std::shared_ptr<Graphics::VertexShader> vsY;
+		std::shared_ptr<Graphics::PixelShader> ps;
+		std::unique_ptr<Graphics::RenderTarget> rtsX;
+		std::shared_ptr<Graphics::RenderTarget> rtsResult;
+		std::unique_ptr<Graphics::View> viewport;
+		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
+		Info info;
+	};
 	//カスケードシャドウを実現するためのバッファ
 	class CascadeShadowBuffers {
 	public:
@@ -95,6 +125,7 @@ namespace Lobelia::Game {
 		void ChangeState(int split_count, const Math::Vector2& size, FORMAT format, bool use_variance);
 		//シャドウ有効、無効
 		void SetEnable(bool enable);
+		/*void SetDispersion(float dispersion);*/
 		void AddModel(std::shared_ptr<Graphics::Model>& model);
 		//内部で自動的に呼ばれます、大体の場合は明示的に呼ぶ必要はない
 		void ClearModels();
@@ -102,6 +133,7 @@ namespace Lobelia::Game {
 		void RenderShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt);
 		//シャドウマップを別テクスチャに書き込み
 		void DebugShadowMapRender(int index, const Math::Vector2& pos, const Math::Vector2& size);
+		void DebugDataTextureRender(const Math::Vector2& pos, const Math::Vector2& size);
 		//シャドウマップをセットする
 		void SetShadowMap(int shadow_map_slot, int data_slot);
 	private:
@@ -138,6 +170,7 @@ namespace Lobelia::Game {
 	private:
 		//RenderTargetArray
 		std::unique_ptr<Graphics::RenderTarget> rts;
+		std::unique_ptr<GaussianTextureArray> gaussian;
 		//データ用テクスチャのサイズ
 		Math::Vector2 dataSize;
 		//データ書き込み用テクスチャ
@@ -184,25 +217,40 @@ namespace Lobelia::Game {
 		std::unique_ptr<CascadeShadowBuffers> shadowMap;
 	private:
 		std::shared_ptr<Graphics::RenderTarget> offScreen;
+		std::shared_ptr<Graphics::RenderTarget> depth;
 		std::shared_ptr<Graphics::Model> stage;
+		//PostEffect
+		std::unique_ptr<Experimental::DepthOfField> dof;
+		std::unique_ptr<Experimental::SSAO> ssao;
 		std::unique_ptr<AdaptiveConsole> operationConsole;
 	public:
 		//デモ用
+		bool cameraMove;
 		//G-Bufferの描画フラグ
 		bool renderGBuffer;
 		bool renderColor;
 		bool renderDepth;
 		bool renderWPos;
 		bool renderNormal;
+		bool renderSSAO;
+		bool renderShadingBuffer;
+		bool renderDoFBuffer;
+		bool renderShadowMap;
 		//ShadowMap用
 		Math::Vector2 shadowMapSize;
 		bool useShadow;
 		bool useVariance;
-		bool renderShadowMap;
 		int cascadeCount;
 		float shadowNearZ;
 		float shadowFarZ;
 		float shadowLamda;
+		bool useSSAO;
+		float ssaoThreshold;
+		bool useDoF;
+		float focusRange;
+		//モデル描画用パラメーター
+		GBufferManager::Info stageInfo;
+		//影ライト用
 		float rad;
 		Math::Vector3 lpos;
 	};

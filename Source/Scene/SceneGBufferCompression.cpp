@@ -16,7 +16,7 @@ namespace Lobelia::Game {
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/3D/GBufferCompression.hlsl", "CreateGBufferPS", Graphics::PixelShader::Model::PS_5_0);
 		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(8, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
 	}
-	void GBufferManager::AddModel(std::shared_ptr<Graphics::Model>& model) { modelList.push_back(model); }
+	void GBufferManager::AddModel(std::shared_ptr<Graphics::Model>& model, Info info) { modelList.push_back(ModelStorage{ model,info }); }
 	void GBufferManager::SetSkybox(std::shared_ptr<class SkyBox>& skybox) { this->skybox = skybox; }
 	void GBufferManager::RenderGBuffer(std::shared_ptr<Graphics::View>& view) {
 		for (int i = 0; i < rts.size(); i++) {
@@ -34,9 +34,10 @@ namespace Lobelia::Game {
 		Graphics::Model::ChangeBlendState(blend);
 		//G-Bufferへの書き込み
 		for (auto&& weak : modelList) {
-			if (weak.expired())continue;
-			std::shared_ptr<Graphics::Model> model = weak.lock();
+			if (weak.model.expired())continue;
+			std::shared_ptr<Graphics::Model> model = weak.model.lock();
 			model->ChangeAnimVS(vs);
+			cbuffer->Activate(weak.info);
 			model->Render();
 		}
 		//ステートを戻す
@@ -51,19 +52,24 @@ namespace Lobelia::Game {
 	std::array<std::unique_ptr<Graphics::RenderTarget>, 2>& GBufferManager::GetRTs() { return rts; }
 	DeferredShadeManager::DeferredShadeManager(const Math::Vector2& size) {
 		viewport = std::make_unique<Graphics::View>(Math::Vector2(), size);
+		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/GBufferCompression.hlsl", "DeferredVS", Graphics::VertexShader::Model::VS_5_0);
 		//ShaderModel5.0以上必須
 		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/3D/GBufferCompression.hlsl", "DeferredPS", Graphics::PixelShader::Model::PS_5_0);
 	}
 	void DeferredShadeManager::Render(std::shared_ptr<Graphics::View>& view, std::shared_ptr<GBufferManager>& gbuffer) {
+		view->Activate();
 		viewport->ViewportActivate();
 		//gbuffer->GetRTs()[0]->GetTexture()->Set(0, Graphics::ShaderStageList::PS);
 		gbuffer->GetRTs()[1]->GetTexture()->Set(1, Graphics::ShaderStageList::PS);
 		//シェーダーの保管
 		std::shared_ptr<Graphics::PixelShader> defaultPS = Graphics::SpriteRenderer::GetPixelShader();
+		std::shared_ptr<Graphics::VertexShader> defaultVS = Graphics::SpriteRenderer::GetVertexShader();
 		//ステートの変更
+		Graphics::SpriteRenderer::ChangeVertexShader(vs);
 		Graphics::SpriteRenderer::ChangePixelShader(ps);
 		Graphics::SpriteRenderer::Render(gbuffer->GetRTs()[0]->GetTexture());
 		//ステートを戻す
+		Graphics::SpriteRenderer::ChangeVertexShader(defaultVS);
 		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
 		for (int i = 0; i < gbuffer->GetRTs().size(); i++) {
 			Graphics::Texture::Clean(i, Graphics::ShaderStageList::PS);
@@ -105,6 +111,68 @@ namespace Lobelia::Game {
 	}
 	//-------------------------------------------------------------------------------------------------------------------
 	//
+	//		レンダーターゲット配列用
+	//
+	//-------------------------------------------------------------------------------------------------------------------
+	GaussianTextureArray::GaussianTextureArray(const Math::Vector2& size, int array_count, DXGI_FORMAT format) {
+		vsX = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/RenderCascadeShadowMap.hlsl", "GaussianFilterVSX", Graphics::VertexShader::Model::VS_5_0);
+		vsY = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/RenderCascadeShadowMap.hlsl", "GaussianFilterVSY", Graphics::VertexShader::Model::VS_5_0);
+		ps = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/3D/RenderCascadeShadowMap.hlsl", "GaussianFilterPS", Graphics::PixelShader::Model::PS_5_0);
+		cbuffer = std::make_unique<Graphics::ConstantBuffer<Info>>(5, Graphics::ShaderStageList::VS | Graphics::ShaderStageList::PS);
+		ChangeBuffer(size, array_count, format);
+	}
+	//サイズ等の変更
+	void GaussianTextureArray::ChangeBuffer(const Math::Vector2& size, int array_count, DXGI_FORMAT format) {
+		arrayCount = array_count;
+		rtsX = std::make_unique<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, format, array_count);
+		rtsResult = std::make_unique<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, format, array_count);
+		viewport = std::make_unique<Graphics::View>(Math::Vector2(), size);
+	}
+	void GaussianTextureArray::Update(float dispersion) {
+		if (dispersion <= 0.0f)dispersion = 0.01f;
+		float total = 0.0f;
+		// ガウス関数による重みの計算
+		for (int i = 0; i < DIVISION; i++) {
+			float pos = (float)i * 2.0f;
+			info.weight[i] = expf(-pos * pos * dispersion);
+			total += info.weight[i];
+		}
+		// 重みの規格化
+		for (int i = 0; i < DIVISION; i++) {
+			info.weight[i] = info.weight[i] / total * 0.5f;
+		}
+	}
+	void GaussianTextureArray::Dispatch(Graphics::RenderTarget* active_rt, Graphics::View*active_view, Graphics::Texture* tex) {
+		viewport->ViewportActivate();
+		info.texSize = tex->GetSize();
+		auto defaultVS = Graphics::SpriteRenderer::GetVertexShader();
+		auto defaultPS = Graphics::SpriteRenderer::GetPixelShader();
+		rtsX->Clear(0x00000000);
+		rtsX->Activate();
+		Graphics::SpriteRenderer::ChangeVertexShader(vsX);
+		Graphics::SpriteRenderer::ChangePixelShader(ps);
+		for (int i = 0; i < arrayCount; i++) {
+			info.texIndex = i;
+			cbuffer->Activate(info);
+			Graphics::SpriteRenderer::Render(tex);
+		}
+		rtsResult->Clear(0x00000000);
+		rtsResult->Activate();
+		Graphics::SpriteRenderer::ChangeVertexShader(vsY);
+		for (int i = 0; i < arrayCount; i++) {
+			info.texIndex = i;
+			cbuffer->Activate(info);
+			Graphics::SpriteRenderer::Render(rtsX.get());
+		}
+		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
+		Graphics::SpriteRenderer::ChangeVertexShader(defaultVS);
+		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
+		active_rt->Activate();
+		active_view->ViewportActivate();
+	}
+	std::shared_ptr<Graphics::RenderTarget>& GaussianTextureArray::GetRTSResult() { return rtsResult; }
+	//-------------------------------------------------------------------------------------------------------------------
+	//
 	//		可変長カスケードシャドウ
 	//
 	//-------------------------------------------------------------------------------------------------------------------
@@ -141,6 +209,12 @@ namespace Lobelia::Game {
 		}
 		//描画用テクスチャ再作成
 		rts = std::make_unique<Graphics::RenderTarget>(size, DXGI_SAMPLE_DESC{ 1,0 }, dxgiFormat, info.splitCount);
+		if (info.useVariance) {
+			if (!gaussian)gaussian = std::make_unique<GaussianTextureArray>(size, split_count, dxgiFormat);
+			else gaussian->ChangeBuffer(size, split_count, dxgiFormat);
+			gaussian->Update(1.0f);
+		}
+		else if (gaussian) gaussian.reset();
 		viewport = std::make_unique<Graphics::View>(Math::Vector2(), size);
 		//1要素目 float(splitPos) 2要素目 float4x4(lvp)
 		//全部で17要素でいいが、テクスチャのサイズは2のべき乗にしないと都合が悪いので32
@@ -153,6 +227,7 @@ namespace Lobelia::Game {
 	void CascadeShadowBuffers::ClearModels() { models.clear(); }
 	void CascadeShadowBuffers::RenderShadowMap(Graphics::View* active_view, Graphics::RenderTarget* active_rt) {
 		if (!info.useShadowMap) {
+			cbuffer->Activate(info);
 			ClearModels();
 			return;
 		}
@@ -178,22 +253,26 @@ namespace Lobelia::Game {
 		ClearModels();
 		Graphics::Model::ChangeVertexShader(defaultVS);
 		Graphics::Model::ChangePixelShader(defaultPS);
-		active_view->ViewportActivate();
-		active_rt->Activate();
-		////ガウスによるぼかし バリアンス用
-		//if (info.useVariance) {
-		//	for (int i = 0; i < count; i++) {
-		//		gaussian[i]->Dispatch(active_view, active_rt, rts[i]->GetTexture());
-		//	}
-		//}
+		//ガウスによるぼかし バリアンス用
+		if (info.useVariance) gaussian->Dispatch(active_rt, active_view, rts->GetTexture());
+		else {
+			active_view->ViewportActivate();
+			active_rt->Activate();
+		}
+		Math::Vector3 lightVec = at - pos; lightVec.Normalize();
+		Graphics::Environment::GetInstance()->SetLightDirection(lightVec);
 	}
 	void CascadeShadowBuffers::DebugShadowMapRender(int index, const Math::Vector2& pos, const Math::Vector2& size) {
 		auto& defaultPS = Graphics::SpriteRenderer::GetPixelShader();
 		Graphics::SpriteRenderer::ChangePixelShader(debugPS);
 		info.nowIndex = index;
 		cbuffer->Activate(info);
-		Graphics::SpriteRenderer::Render(rts->GetTexture(), pos, size, 0.0f, Math::Vector2(), rts->GetTexture()->GetSize(), 0xFFFFFFFF);
+		if (info.useVariance)Graphics::SpriteRenderer::Render(gaussian->GetRTSResult()->GetTexture(), pos, size, 0.0f, Math::Vector2(), rts->GetTexture()->GetSize(), 0xFFFFFFFF);
+		else Graphics::SpriteRenderer::Render(rts->GetTexture(), pos, size, 0.0f, Math::Vector2(), rts->GetTexture()->GetSize(), 0xFFFFFFFF);
 		Graphics::SpriteRenderer::ChangePixelShader(defaultPS);
+	}
+	void CascadeShadowBuffers::DebugDataTextureRender(const Math::Vector2& pos, const Math::Vector2& size) {
+		Graphics::SpriteRenderer::Render(dataTexture.get(), pos, size, 0.0f, Math::Vector2(), dataSize, 0xFFFFFFFF);
 	}
 	void CascadeShadowBuffers::SetShadowMap(int shadow_map_slot, int data_slot) {
 		D3D11_MAPPED_SUBRESOURCE resource;
@@ -205,13 +284,14 @@ namespace Lobelia::Game {
 			//ライト行列の書き込み
 			memcpy_s(&texture[instance * i_cast(dataSize.x) * 4 + x], sizeof(data[instance].lvp), &data[instance].lvp, sizeof(data[instance].lvp));
 			x += 4 * 4;//ライト情報分進める
-			//分割情報書き込み
+			//分割情報書き込みb
 			texture[instance * i_cast(dataSize.x) * 4 + x] = data[instance].splitDist;
 			x++;//float1つ分先へ進める(現状省略可能)
 		}
 		Graphics::Device::GetContext()->Unmap(dataTexture->Get().Get(), 0);
 		//テクスチャのセット
-		rts->GetTexture()->Set(shadow_map_slot, Graphics::ShaderStageList::PS);
+		if (info.useVariance)gaussian->GetRTSResult()->GetTexture()->Set(shadow_map_slot, Graphics::ShaderStageList::PS);
+		else rts->GetTexture()->Set(shadow_map_slot, Graphics::ShaderStageList::PS);
 		dataTexture->Set(data_slot, Graphics::ShaderStageList::PS);
 	}
 	namespace {
@@ -325,7 +405,7 @@ namespace Lobelia::Game {
 			storage = { up.x, up.y, up.z, 1.0f };
 			DirectX::XMVECTOR calcUp = DirectX::XMLoadFloat4(&storage);
 			DirectX::XMMATRIX lightView = DirectX::XMMatrixLookAtLH(calcPos, calcAt, calcUp);
-			DirectX::XMMATRIX lightProjection = DirectX::XMMatrixOrthographicLH(400, 400, nearZ, farZ);
+			DirectX::XMMATRIX lightProjection = DirectX::XMMatrixOrthographicLH(500, 500, nearZ, farZ);
 			//DirectX::XMMATRIX lightProjection = DirectX::XMMatrixPerspectiveFovLH(fov, aspect, nearZ, farZ);
 			//使いまわし
 			lightView = lightView * lightProjection;
@@ -341,32 +421,47 @@ namespace Lobelia::Game {
 	//-------------------------------------------------------------------------------------------------------------------
 	void SceneGBufferCompression::Initialize() {
 		const Math::Vector2 wsize = Application::GetInstance()->GetWindow()->GetSize();
-		camera = std::make_unique<ViewerCamera>(wsize, Math::Vector3(0.0f, 10.0f, 10.0f), Math::Vector3());
+		camera = std::make_unique<ViewerCamera>(wsize, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3());
 		offScreen = std::make_shared<Graphics::RenderTarget>(wsize, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R8G8B8A8_UNORM);
+		depth = std::make_shared<Graphics::RenderTarget>(wsize, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R32_FLOAT);
 		gbuffer = std::make_shared<GBufferManager>(wsize);
 		deferredShader = std::make_unique<DeferredShadeManager>(wsize);
 		//int split_count, const Math::Vector2& size, FORMAT format, bool use_variance
-		cascadeCount = 4; shadowMapSize = Math::Vector2(512.0f, 512.0f);
-		rad = 0.0f; shadowNearZ = 1.0f; shadowFarZ = 600.0f; shadowLamda = 0.8f;
-		useShadow = true; renderShadowMap = true; useVariance = true;
+		cascadeCount = 4; shadowMapSize = Math::Vector2(1024.0f, 1024.0f);
+		rad = 0.0f; shadowNearZ = 25.0f; shadowFarZ = 350.0f; shadowLamda = 0.8f;
+		useShadow = true; renderShadowMap = true; useVariance = true; useSSAO = true; renderSSAO = true;
+		ssaoThreshold = 5.0f; cameraMove = true; renderShadowMap = true; useDoF = true; renderDoFBuffer = true;
+		focusRange = 150.0f; renderShadingBuffer = true;
+		//モデル描画用パラメーター
+		stageInfo.lightingFactor = 1.0f; stageInfo.specularFactor = 0.0f; stageInfo.emissionFactor = 0.0f;
 		shadowMap = std::make_unique<CascadeShadowBuffers>(cascadeCount, shadowMapSize, CascadeShadowBuffers::FORMAT::BIT_16, useVariance);
 		//const Math::Vector2& size, const DXGI_SAMPLE_DESC& sample, const DXGI_FORMAT&  format = DXGI_FORMAT_R32G32B32A32_FLOAT, int array_count = 1);
 		stage = std::make_shared<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
 		stage->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
 		//stage->Scalling(3.0f);
 		stage->CalcWorldMatrix();
+		ssao = std::make_unique<Experimental::SSAO>(wsize*0.5f);
+		dof = std::make_unique<Experimental::DepthOfField>(wsize, 0.5f);
 		GBufferDecodeRenderer::Initialize();
 		//デモ用
 		renderGBuffer = true; renderColor = true; renderDepth = true; renderWPos = true; renderNormal = true;
 		operationConsole = std::make_unique<AdaptiveConsole>("Operation Console");
+		operationConsole->AddFunction([this]() {
+			ImGui::Checkbox("Camera Move", &cameraMove);
+			ImGui::SliderFloat("Lighting Factor", &stageInfo.lightingFactor, 0.0f, 1.0f);
+		});
 		//G-Buffer
 		operationConsole->AddFunction([this]() {
-			ImGui::Checkbox("Render G-Buffer", &renderGBuffer);
+			ImGui::Checkbox("Render Buffer", &renderGBuffer);
 			if (renderGBuffer&&ImGui::TreeNode("Render Flag")) {
 				ImGui::Checkbox("Color", &renderColor);
 				ImGui::Checkbox("Depth", &renderDepth);
 				ImGui::Checkbox("World Pos", &renderWPos);
 				ImGui::Checkbox("Normal", &renderNormal);
+				ImGui::Checkbox("SSAO", &renderSSAO);
+				ImGui::Checkbox("Shading", &renderShadingBuffer);
+				ImGui::Checkbox("ShadowMap", &renderShadowMap);
+				ImGui::Checkbox("DoF", &renderDoFBuffer);
 				ImGui::TreePop();
 			}
 		});
@@ -380,13 +475,33 @@ namespace Lobelia::Game {
 				shadowMapSize.y = shadowMapSize.x = f_cast(size);
 				static int tempCascadeCount = cascadeCount;
 				ImGui::SliderInt("Cascade Count", &tempCascadeCount, 1, 8);
+				static CascadeShadowBuffers::FORMAT format = CascadeShadowBuffers::FORMAT::BIT_32;
+				ImGui::RadioButton("16Bit", r_cast<int*>(&format), i_cast(CascadeShadowBuffers::FORMAT::BIT_16));
+				ImGui::SameLine();
+				ImGui::RadioButton("32Bit", r_cast<int*>(&format), i_cast(CascadeShadowBuffers::FORMAT::BIT_32));
 				if (ImGui::Button("Apply")) {
 					cascadeCount = tempCascadeCount;
-					shadowMap->ChangeState(cascadeCount, shadowMapSize, CascadeShadowBuffers::FORMAT::BIT_32, useVariance);
+					shadowMap->ChangeState(cascadeCount, shadowMapSize, format, useVariance);
 				}
 				ImGui::SliderFloat("Near Z", &shadowNearZ, 1.0f, 999.0f);
 				ImGui::SliderFloat("Far Z", &shadowFarZ, 2.0f, 1000.0f);
 				ImGui::SliderFloat("Lamda", &shadowLamda, 0.0f, 1.0f);
+				ImGui::TreePop();
+			}
+		});
+		//SSAO
+		operationConsole->AddFunction([this] {
+			ImGui::Checkbox("Use SSAO", &useSSAO);
+			if (useSSAO&&ImGui::TreeNode("SSAO Parameters")) {
+				ImGui::SliderFloat("SSAO Threshold", &ssaoThreshold, 1.0f, 20.0f);
+				ImGui::TreePop();
+			}
+		});
+		//DoF
+		operationConsole->AddFunction([this] {
+			ImGui::Checkbox("Use DoF", &useDoF);
+			if (useSSAO&&ImGui::TreeNode("DoF Parameters")) {
+				ImGui::SliderFloat("Focus Range", &focusRange, 1.0f, 1000.0f);
 				ImGui::TreePop();
 			}
 		});
@@ -395,14 +510,14 @@ namespace Lobelia::Game {
 		GBufferDecodeRenderer::Finalize();
 	}
 	void SceneGBufferCompression::AlwaysUpdate() {
-		camera->Update();
-		gbuffer->AddModel(stage);
+		if (cameraMove)camera->Update();
+		gbuffer->AddModel(stage, stageInfo);
 		shadowMap->AddModel(stage);
 		//回転ライト
 		rad += Application::GetInstance()->GetProcessTimeSec()*0.1f;
 		lpos = Math::Vector3(sinf(rad), 0.0f, cos(rad))*100.0f;
 		//lpos.x = lpos.z = 0.0f;
-		lpos.y = 100.0f;
+		lpos.y = 80.0f;
 		//固定ライト
 		//lpos = Math::Vector3(200.0f, 130.0f, 200.0f);
 		shadowMap->SetPos(lpos);
@@ -411,22 +526,39 @@ namespace Lobelia::Game {
 		shadowMap->SetFar(shadowFarZ);
 		shadowMap->SetLamda(shadowLamda);
 		shadowMap->SetEnable(useShadow);
+		ssao->SetThresholdDepth(ssaoThreshold);
+		ssao->SetEnable(useSSAO);
+		dof->SetEnable(useDoF);
+		dof->SetFocusRange(focusRange);
 	}
 	void SceneGBufferCompression::AlwaysRender() {
-		Graphics::Environment::GetInstance()->SetLightDirection(Math::Vector3(-1.0f, -1.0f, -1.0f));
+		//Graphics::Environment::GetInstance()->SetLightDirection(Math::Vector3(-1.0f, -1.0f, -1.0f));
 		Graphics::Environment::GetInstance()->Activate();
-		//バックバッファを有効化
 		camera->Activate();
 		gbuffer->RenderGBuffer(camera->GetView());
 		shadowMap->RenderShadowMap(camera->GetView().get(), offScreen.get());
+		//深度描画
+		depth->Clear(0x00000000);
+		depth->Activate();
+		GBufferDecodeRenderer::DepthRender(gbuffer, Math::Vector2(), depth->GetTexture()->GetSize());
 		offScreen->Clear(0x00000000);
 		offScreen->Activate();
+		ssao->Dispatch(offScreen.get(), camera->GetView().get(), depth.get());
+		ssao->Begin(4);
 		shadowMap->SetShadowMap(2, 3);
+		camera->Activate();
 		deferredShader->Render(camera->GetView(), gbuffer);
+		ssao->End();
 		Graphics::Texture::Clean(2, Graphics::ShaderStageList::PS);
 		Graphics::Texture::Clean(3, Graphics::ShaderStageList::PS);
-		Application::GetInstance()->GetSwapChain()->GetRenderTarget()->Activate();
-		Graphics::SpriteRenderer::Render(offScreen.get());
+		//バックバッファを有効化
+		Graphics::RenderTarget* rt = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
+		rt->Activate();
+		if (useDoF) {
+			dof->Dispatch(camera->GetView().get(), rt, offScreen.get(), depth.get());
+			dof->Render(Math::Vector2(), rt->GetTexture()->GetSize());
+		}
+		else Graphics::SpriteRenderer::Render(offScreen.get());
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 		//デバッグ描画
 		if (Application::GetInstance()->debugRender) {
@@ -434,14 +566,22 @@ namespace Lobelia::Game {
 			//G-Bufferデバッグ描画
 			if (renderGBuffer) {
 				if (renderColor) GBufferDecodeRenderer::ColorRender(gbuffer, Math::Vector2(0.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
-				if (renderDepth) GBufferDecodeRenderer::DepthRender(gbuffer, Math::Vector2(100.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
+				if (renderDepth) Graphics::SpriteRenderer::Render(depth.get(), Math::Vector2(100.0f, 0.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), depth->GetTexture()->GetSize(), 0xFFFFFFFF);
+				//if (renderDepth) GBufferDecodeRenderer::DepthRender(gbuffer, Math::Vector2(100.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
 				if (renderWPos) GBufferDecodeRenderer::WorldPosRender(gbuffer, Math::Vector2(200.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
 				if (renderNormal) GBufferDecodeRenderer::NormalRender(gbuffer, Math::Vector2(300.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
-			}
-			//Shadow Mapデバッグ描画
-			if (useShadow&&renderShadowMap) {
-				for (int i = 0; i < cascadeCount; i++) {
-					shadowMap->DebugShadowMapRender(i, Math::Vector2(100.0f*i, 100.0f), Math::Vector2(100.0f, 100.0f));
+				if (renderSSAO) ssao->Render(Math::Vector2(400.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
+				if (renderShadingBuffer)Graphics::SpriteRenderer::Render(offScreen.get(), Math::Vector2(500.0f, 0.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), offScreen->GetTexture()->GetSize(), 0xFFFFFFFF);
+				if (renderDoFBuffer) {
+					Graphics::SpriteRenderer::Render(dof->GetStep0().get(), Math::Vector2(0.0f, 200.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), dof->GetStep0()->GetTexture()->GetSize(), 0xFFFFFFFFF);
+					Graphics::SpriteRenderer::Render(dof->GetStep1().get(), Math::Vector2(100.0f, 200.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), dof->GetStep1()->GetTexture()->GetSize(), 0xFFFFFFFFF);
+				}
+				//Shadow Mapデバッグ描画
+				if (useShadow&&renderShadowMap) {
+					for (int i = 0; i < cascadeCount; i++) {
+						shadowMap->DebugShadowMapRender(i, Math::Vector2(100.0f*i, 100.0f), Math::Vector2(100.0f, 100.0f));
+					}
+					shadowMap->DebugDataTextureRender(Math::Vector2(100.0f*cascadeCount, 100.0f), Math::Vector2(100.0f, 100.0f));
 				}
 			}
 			Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);

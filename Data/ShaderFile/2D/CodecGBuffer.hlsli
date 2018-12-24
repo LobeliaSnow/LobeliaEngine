@@ -27,28 +27,34 @@ float4 DecodeSDRColor(in uint encode_color) {
 	return (float4)colorUint / 255.0f;
 }
 //正規化された法線の圧縮
-uint EncodeNormalVector(in float3 normal) {
+uint EncodeNormalVector(in float4 normal, float4x4 view_matrix) {
+	normal = mul(float4(normal.xyz, 0.0f), view_matrix);
+	//normal /= normal.w;
+	normal = normalize(normal);
 	//0.0~1.0へ
-	normal = normal * 0.5f + 0.5;
+	normal = normal * 0.5f + 0.5f;
 	//xy情報からzを再構築するので、zをそぎ落とし、
 	//floatをhalfにまで情報を落とし、パッキング、uintとしてビット列を認識させる
 	return asuint(f32tof16(normal.x) | f32tof16(normal.y) << 16);
 }
-//圧縮された法線のデコード
+//圧縮された法線のデコード(ビュー空間)
 float4 DecodeNormalVector(in uint encode_normal) {
 	//法線のデコード Killzone2方式採用
 	//http://aras-p.info/texts/CompactNormalStorage.html#method01xy
+	//https://game.watch.impress.co.jp/docs/series/3dcg/125909.html
 	float4 normal = (float4)0.0f;
 	//要素を展開し、バイト列をfloatとして認識
 	normal.x = asfloat(f16tof32(encode_normal));
 	normal.y = asfloat(f16tof32(encode_normal >> 16));
-	normal.xy = normal.xy * 2.0 - 1.0;
-	//三平方の定理による法線Zの復元 メモ帳参照 Killzone2でも使用
+	normal = normal * 2.0 - 1.0;
+	//三平方の定理による法線Zの復元 Killzone2でも使用
 	//1.0fは1.0fの2乗を省略して書いていて、dot(v,v)は長さの二乗なので三平方
-	normal.z = sqrt(1.0f - dot(normal.xy, normal.xy));
+	//左手系なのでZを反転、sqrt内部が負の値になるとアーティファクトが発生するので、絶対値にして回避
+	//https://www.gamedev.net/forums/topic/600666-deferred-rendering-reconstruction-of-normalz-fails/
+	normal.z = -sqrt(abs(1.0f - dot(normal.xy, normal.xy)));
 	return normal;
 }
-//深度とUVからViewProjectionPosを復元
+//深度とUVからViewProjection座標を復元
 float4 DecodeDepthToVPPos(in float depth, in float2 uv) {
 	return float4(uv.x*2.0f - 1.0f, (1.0f - uv.y)*2.0f - 1.0f, depth, 1.0f);
 }

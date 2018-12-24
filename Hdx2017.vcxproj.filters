@@ -246,9 +246,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="System\WinMain.cpp">
-      <Filter>ソース ファイル\System</Filter>
-    </ClCompile>
     <ClCompile Include="Source\Scene\SceneMain.cpp">
       <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
@@ -458,6 +455,12 @@
     </ClCompile>
     <ClCompile Include="Source\Scene\SceneGBufferCompression.cpp">
       <Filter>ソース ファイル\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="System\WinMain.cpp">
+      <Filter>ソース ファイル</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Common\PostEffectExperimental.cpp">
+      <Filter>ソース ファイル\Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -743,6 +746,9 @@
     <ClInclude Include="Header\Scene\SceneGBufferCompression.hpp">
       <Filter>ヘッダー ファイル\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Header\Common\PostEffectExperimental.hpp">
+      <Filter>ヘッダー ファイル\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Data\ShaderFile\Header.hlsli">
@@ -842,6 +848,9 @@
     </FxCompile>
     <FxCompile Include="Data\ShaderFile\3D\RenderCascadeShadowMap.hlsl">
       <Filter>Data\ShaderFile\3D</Filter>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\2D\PostEffectExperimental.hlsl">
+      <Filter>Data\ShaderFile\2D</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

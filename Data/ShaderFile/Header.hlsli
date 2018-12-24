@@ -50,13 +50,6 @@ cbuffer Environment : register(b4)
 	int useLinearFog :packoffset(c3.z);
 }
 
-cbuffer GaussianFilterInfo : register(b5)
-{
-	//サーフェスのサイズ
-	float width : packoffset(c0.x);
-	float height : packoffset(c0.y);
-}
-
 //0~9までファイルから読み込んだテクスチャ情報
 Texture2D txDiffuse : register(t0);
 Texture2D txNormal : register(t1);

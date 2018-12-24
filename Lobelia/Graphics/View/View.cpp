@@ -76,6 +76,7 @@ namespace Lobelia::Graphics {
 	void View::CreateView(const Data& data) {
 		buffer.view = DirectX::XMMatrixLookAtLH(data.eye, data.at, data.up);
 		buffer.view = DirectX::XMMatrixTranspose(buffer.view);
+		DirectX::XMVECTOR temp = {};
 	}
 	void View::CreateBillboardMat(const Data& data) {
 		DirectX::XMVECTOR origin{ 0.0f, 0.0f, 0.0f, 0.0f };

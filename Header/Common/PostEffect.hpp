@@ -33,11 +33,10 @@ namespace Lobelia::Game {
 	class SSAOCS :public PostEffect {
 		friend class SSAOPS;
 	public:
-		//TODO : 解像度下げれるようにする
 		SSAOCS(const Math::Vector2& size);
 		//テクスチャそのまま渡せばいいだけの方式にすれば汎用性は上がる
 		//useAOオプションが無効の時はAOマップは作成されない
-		void CreateAO(Graphics::RenderTarget* active_rt, Graphics::View* active_view, DeferredBuffer* deferred_buffer);
+		void CreateAO(Graphics::RenderTarget* active_rt, Graphics::View* active_view, class DeferredBuffer* deferred_buffer);
 		//AOを直接描画することはないため、デバッグ描画を入れている
 		void Render()override;
 		void Begin(int slot);

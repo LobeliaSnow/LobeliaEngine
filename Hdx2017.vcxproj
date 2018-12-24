@@ -264,6 +264,7 @@
     <ClCompile Include="Source\Common\DeferredBuffer.cpp" />
     <ClCompile Include="Source\Common\DeferredShader.cpp" />
     <ClCompile Include="Source\Common\PostEffect.cpp" />
+    <ClCompile Include="Source\Common\PostEffectExperimental.cpp" />
     <ClCompile Include="Source\Common\Raycaster.cpp" />
     <ClCompile Include="Source\Common\ShadowBuffer.cpp" />
     <ClCompile Include="Source\Common\SkyBox.cpp" />
@@ -285,6 +286,7 @@
     <ClInclude Include="Header\Common\DeferredBuffer.hpp" />
     <ClInclude Include="Header\Common\DeferredShader.hpp" />
     <ClInclude Include="Header\Common\PostEffect.hpp" />
+    <ClInclude Include="Header\Common\PostEffectExperimental.hpp" />
     <ClInclude Include="Header\Common\Raycaster.hpp" />
     <ClInclude Include="Header\Common\ShadowBuffer.hpp" />
     <ClInclude Include="Header\Common\SkyBox.hpp" />
@@ -409,6 +411,17 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </FxCompile>
     <FxCompile Include="Data\ShaderFile\2D\GBufferRenderPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">4.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Geometry</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">4.0</ShaderModel>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="Data\ShaderFile\2D\PostEffectExperimental.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Geometry</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">4.0</ShaderModel>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Geometry</ShaderType>

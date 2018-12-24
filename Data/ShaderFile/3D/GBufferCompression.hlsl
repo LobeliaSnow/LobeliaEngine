@@ -13,9 +13,22 @@
 //Shader,Materialの管理
 //マルチスレッド
 
+//リソースは基本JSON→実行時バイナリ
+//並列のタイミングは優先度、スロットを設定してそのスレッドで動かす
+//Update、LateUpdateが存在して、座標決定しているのはUpdate-LateUpdate
+//当たり判定用のメッシュを
+
 //参考サイト
 //http://d.hatena.ne.jp/hanecci/20130818/p1
 //http://aras-p.info/texts/CompactNormalStorage.html
+
+//定数バッファ
+cbuffer SSAO :register(b7) {
+	//チェックする深度の範囲
+	float offsetPerPixel : packoffset(c0.x);
+	//AO使うか否か
+	int useAO : packoffset(c0.y);
+}
 
 //G-Buffer圧縮用のテストシェーダーです
 //出力構造体
@@ -83,8 +96,7 @@ inline Skin SkinVertex(in VS_IN vs_in) {
 //G-Buffer作成
 //書き込み用GBuffer
 cbuffer DeferredOption : register(b8) {
-	//0 ランバート 1 フォン 2 カラー
-	int materialType : packoffset(c0.x);
+	float lightingFactor : packoffset(c0.x);
 	float specularFactor : packoffset(c0.y);
 	float emissionFactor : packoffset(c0.z);
 };
@@ -130,17 +142,21 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 		normal = mul(normal, TangentMatrix(ps_in.tangent, ps_in.binormal, ps_in.normal));
 		normal = normalize(normal);
 	}
-	else normal = ps_in.normal;
-	output.data0.g = EncodeNormalVector(normal);
+	else normal = normalize(ps_in.normal);
+	//normal = mul(normal, view);
+	//normal /= normal.w;
+	//normal.xyz = normalize(normal.xyz);
+	output.data0.g = EncodeNormalVector(normal, view);
 	//深度の保存。位置とかはこれから復元できる
 	output.data0.b = EncodeDepth(ps_in.depth.z / ps_in.depth.w);
+	output.data0.a = asuint(f32tof16(normal.z) | f32tof16(specularFactor) << 16);
 	//エミッションの書き込み
 	if (emissionFactor > 0.0f) {
 		float4 emission = txEmission.Sample(samLinear, ps_in.tex);
 		output.data1.r = EncodeSDRColor(emission);
 		output.data1.g = f32tof16(emissionFactor);
 	}
-
+	output.data1.xyz = asuint((normal.xyz + 1.0f) / 2.0f);
 	return output;
 }
 //R色、G法線XY、B深度、A現在無し
@@ -202,38 +218,62 @@ float ApplyShadow(in float2 light_uv, in float light_depth, in float depth) {
 }
 //バリアンスシャドウの適用
 float ApplyVarianceShadow(in float2 light_uv, in float2 variance_info, in float depth) {
-	float shadowBias = 1.0f;
 	//範囲外チェック
-	if (light_uv.x < 0.0f || light_uv.x > 1.0f || light_uv.y < 0.0f || light_uv.y > 1.0f)return 1.0f;
+	if (light_uv.x < 0.0f || light_uv.x > 1.0f || light_uv.y < 0.0f || light_uv.y > 1.0f) return 1.0f;
 	//チェビシェフの不等式
 	float variance = variance_info.y - (variance_info.x * variance_info.x);
-	//variance = min(1.0f, max(0.0f, variance + 0.01f));
+	variance = min(1.0f, max(0.0f, variance + 0.01f));
 	float delta = depth - variance_info.x;
 	float p = variance / (variance + (delta*delta));
-	float shadow = max(p, depth <= variance_info.x);
-	shadow = saturate(shadow * 0.7f + 0.3f);
+	float shadowBias = max(p, depth <= variance_info.x);
+	shadowBias = saturate(shadowBias * 0.7f + 0.3f);
 	return shadowBias;
 }
 
+Texture2D txAO : register(t4);
+struct PS_IN_DEFERRED {
+	float4 pos : SV_POSITION;
+	float4 viewLightDirection : LIGHT_DIRECTION;
+	float2 tex : TEXCOORD;
+};
+PS_IN_DEFERRED DeferredVS(VS_IN_TEX vs_in) {
+	PS_IN_DEFERRED output;
+	output.pos = vs_in.pos;
+	//ライトをビュー空間にもっていって空間を合わせる
+	output.viewLightDirection = mul(lightDirection.xyz, view);
+	output.tex = vs_in.tex;
+	return output;
+}
 //実際に情報をデコードしてライティングを行う
-float4 DeferredPS(PS_IN_TEX ps_in) :SV_Target{
+float4 DeferredPS(PS_IN_DEFERRED ps_in) :SV_Target{
 	//圧縮された情報の読み込み
 	uint4 data0 = LoadUintTexture(txData0, ps_in.tex);
+	uint4 data1 = LoadUintTexture(txData1, ps_in.tex);
 	//色のデコード
 	float4 color = DecodeSDRColor(data0.r);
+	color.rgb = pow(color.rgb, 2.2f);
 	//法線のデコード
 	float4 normal = DecodeNormalVector(data0.g);
+	//return float4(normal.xyz, 1.0f);
 	//位置のデコード
 	float depth = DecodeDepth(data0.b);
 	float4 worldPos = DecodeDepthToWorldPos(depth, ps_in.tex, inverseViewProjection);
 	float4 viewProjPos = mul(mul(worldPos, view), projection);
 	float lightSpaceLength = viewProjPos.w;
-	//viewProjPos /= viewProjPos.w;
 	//ライティング処理
-	float lambert = saturate(dot(lightDirection, (normal)));
+	float lambert = saturate(dot(ps_in.viewLightDirection, normal));
 	lambert = lambert * 0.5f + 0.5f;
 	lambert = lambert * lambert;
+	//return float4((float3)lambert, 1.0f);
 	color.rgb *= lambert;
+	//制御しやすいように0-1反転
+	//lambert = lambert * lambert - 1.0f;
+	//反転されたものを復元
+	//color.rgb *= saturate(lambert * f16tof32(asfloat(data0.a)) + 1.0f);
+	if (useAO) {
+		float ao = txAO.Sample(samLinear, ps_in.tex);
+		color.rgb *= ao;
+	}
 	if (useShadowMap) {
 		//カスケードシャドウ
 		int index = CheckCascadeIndex(txSplitLVP,splitCount, lightSpaceLength);
@@ -243,9 +283,7 @@ float4 DeferredPS(PS_IN_TEX ps_in) :SV_Target{
 		float shadowBias = 1.0f;
 		if (useVariance) {
 			float2 varianceInfo = shadowMaps.Sample(samLinear, float3(lightUV.xy, index)).rg;
-			//まだテクスチャの準備ができていない
-			shadowBias = ApplyShadow(lightUV, varianceInfo.x, depth);
-			//shadowBias = ApplyVarianceShadow(lightUV, varianceInfo, depth);
+			shadowBias = ApplyVarianceShadow(lightUV, varianceInfo, depth);
 		}
 		else {
 			float lightDepth = shadowMaps.Sample(samLinear, float3(lightUV.xy, index)).r;
@@ -253,5 +291,10 @@ float4 DeferredPS(PS_IN_TEX ps_in) :SV_Target{
 		}
 		color.rgb *= shadowBias;
 	}
+	//スぺキュラの計算
+	float4 eyeVector = normalize(cpos - worldPos);
+	float4 reflectVector = reflect(-eyeVector, normal);
+	color += pow(saturate(dot(reflectVector, eyeVector)), 4)*asfloat(data0.a >> 16);
+	color.rgb = pow(color.rgb, 1.0f / 2.2f);
 	return color;
 }
