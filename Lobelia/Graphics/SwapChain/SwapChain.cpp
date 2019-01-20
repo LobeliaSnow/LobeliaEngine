@@ -27,7 +27,6 @@ namespace Lobelia::Graphics {
 	void SwapChain::CreateSwapChain(Window* window, DXGI_SAMPLE_DESC sample_desc, int refresh_rate) {
 		ComPtr<IDXGIFactory> factory;
 		CreateDXGIFactory(__uuidof(IDXGIFactory), reinterpret_cast<void**>(factory.GetAddressOf()));
-
 		DXGI_SWAP_CHAIN_DESC desc = {};
 		desc.BufferDesc.Width = window->GetSize().Get().x;
 		desc.BufferDesc.Height = window->GetSize().Get().y;
@@ -39,10 +38,15 @@ namespace Lobelia::Graphics {
 		//ここに関しては要相談
 		desc.SampleDesc = sample_desc;
 		desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		desc.BufferCount = 1;
 		desc.OutputWindow = window->GetHandle();
 		desc.Windowed = true;
+#ifdef _DEBUG
+		desc.BufferCount = 1;
 		desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+#else
+		desc.BufferCount = 2;
+		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+#endif
 		desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		HRESULT hr = factory->CreateSwapChain(Device::Get().Get(), &desc, swapChain.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("スワップチェインの作成に失敗");

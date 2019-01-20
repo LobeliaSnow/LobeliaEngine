@@ -16,6 +16,7 @@
 #include "SceneFur.hpp"
 #include "SceneDeferred.hpp"
 #include "SceneGBufferCompression.hpp"
+#include "SceneMain.hpp"
 
 #ifdef _DEBUG	
 //メモリリーク検知用
@@ -54,6 +55,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, PSTR, int) {
 	WPARAM wp = {};
 	try {
 		Lobelia::Bootup();
+		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneMain>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
 		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneSea>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
 		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneDissolve>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);
 		//Lobelia::Application::GetInstance()->Bootup<Lobelia::Game::SceneFur>(Lobelia::Math::Vector2(1280, 720), ENGINE_VERSION, WndProc);

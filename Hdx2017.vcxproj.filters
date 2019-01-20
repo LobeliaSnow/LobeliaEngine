@@ -852,6 +852,9 @@
     <FxCompile Include="Data\ShaderFile\2D\PostEffectExperimental.hlsl">
       <Filter>Data\ShaderFile\2D</Filter>
     </FxCompile>
+    <FxCompile Include="Data\ShaderFile\3D\ComputeTile.hlsl">
+      <Filter>Data\ShaderFile\3D</Filter>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <Xml Include="Data\Config\Config.xml">

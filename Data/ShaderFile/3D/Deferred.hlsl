@@ -416,7 +416,7 @@ float4 VarianceShadow(float4 shadowTex, GBufferPS_IN ps_in) {
 	if (lightSpaceLength - 0.01f > lightDepth.x) {
 		//チェビシェフの不等式
 		float variance = lightDepth.y - (lightDepth.x * lightDepth.x);
-		//variance = min(1.0f, max(0.0f, variance + 0.01f));
+		variance = min(1.0f, max(0.0f, variance + 0.01f));
 		float md = lightSpaceLength - lightDepth.x;
 		float p = variance / (variance + (md*md));
 		float shadow = max(p, lightSpaceLength <= lightDepth.x);

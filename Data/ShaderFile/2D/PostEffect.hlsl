@@ -525,7 +525,7 @@ float4 ToneMapPS(PS_IN_TEX ps_in) :SV_Target{
 		float2 redUV = (screen*(1.0f - chromaticAberrationIntensity * 2.0f) + 1.0f) / 2.0f;
 		float2 greenUV = (screen*(1.0f - chromaticAberrationIntensity) + 1.0f) / 2.0f;
 		float2 blueUV = (screen + 1.0f) / 2.0f;
-		//三食別々にサンプリング
+		//三色別々にサンプリング
 		float red = inputTex.Sample(samLinear,redUV).r;
 		float green = inputTex.Sample(samLinear, greenUV).g;
 		float blue = inputTex.Sample(samLinear,blueUV).b;

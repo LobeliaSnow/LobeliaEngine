@@ -41,8 +41,8 @@ namespace Lobelia::Game {
 		std::list<ModelStorage> modelList;
 		std::unique_ptr<Graphics::ConstantBuffer<Info>> cbuffer;
 	};
-
 	//圧縮したG-Bufferを使用してシェーディングを行う用
+	//また、トーンマップやカラーコレクションも行う
 	class DeferredShadeManager {
 	public:
 		DeferredShadeManager(const Math::Vector2& size);
@@ -52,6 +52,7 @@ namespace Lobelia::Game {
 		std::unique_ptr<Graphics::View> viewport;
 		std::shared_ptr<Graphics::VertexShader> vs;
 		std::shared_ptr<Graphics::PixelShader> ps;
+		//std::unique_ptr<Graphics::RenderTarget> rt;
 	};
 
 	//圧縮されたG-Bufferをデコードし、個別表示等を行ったりする
@@ -63,6 +64,9 @@ namespace Lobelia::Game {
 		static void DepthRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size);
 		static void WorldPosRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size);
 		static void NormalRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size);
+		static void LightingIntensityRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size);
+		static void SpecularIntensityRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size);
+		static void EmissionRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size);
 	private:
 		static void BufferRender(std::shared_ptr<Graphics::PixelShader>& ps, Graphics::RenderTarget* rt, const Math::Vector2& pos, const Math::Vector2& size);
 	private:
@@ -71,6 +75,10 @@ namespace Lobelia::Game {
 		static std::shared_ptr<Graphics::PixelShader> psDepth;
 		static std::shared_ptr<Graphics::PixelShader> psWorldPos;
 		static std::shared_ptr<Graphics::PixelShader> psNormal;
+		static std::shared_ptr<Graphics::PixelShader> psLightingIntensity;
+		static std::shared_ptr<Graphics::PixelShader> psSpecularIntensity;
+		static std::shared_ptr<Graphics::PixelShader> psEmission;
+		static std::shared_ptr<Graphics::PixelShader> psEmissionIntensity;
 	};
 	//実質カスケード用
 	class GaussianTextureArray {
@@ -199,7 +207,6 @@ namespace Lobelia::Game {
 		Math::Vector3 at;
 		Math::Vector3 up;
 	};
-
 	//G-Buffer圧縮用のシーンです
 	class SceneGBufferCompression :public Scene {
 	public:
@@ -209,15 +216,18 @@ namespace Lobelia::Game {
 		void AlwaysUpdate()override;
 		void AlwaysRender()override;
 	private:
-		std::unique_ptr<Camera> camera;
+		std::shared_ptr<Camera> camera;
 		std::shared_ptr<GBufferManager> gbuffer;
 		std::unique_ptr<DeferredShadeManager> deferredShader;
+		std::unique_ptr<Experimental::MultipleGaussianBloom> bloom;
 	public:
 		//デモ用関数から触れるように
 		std::unique_ptr<CascadeShadowBuffers> shadowMap;
 	private:
 		std::shared_ptr<Graphics::RenderTarget> offScreen;
 		std::shared_ptr<Graphics::RenderTarget> depth;
+		std::shared_ptr<Graphics::RenderTarget> emission;
+		std::shared_ptr<SkyBox> skybox;
 		std::shared_ptr<Graphics::Model> stage;
 		std::shared_ptr<Graphics::Model> box;
 		//PostEffect
@@ -233,10 +243,14 @@ namespace Lobelia::Game {
 		bool renderDepth;
 		bool renderWPos;
 		bool renderNormal;
+		bool renderLightingIntensity;
+		bool renderSpecularIntensity;
+		bool renderEmissionColor;
 		bool renderSSAO;
 		bool renderShadingBuffer;
 		bool renderDoFBuffer;
 		bool renderShadowMap;
+		bool renderBloomBuffer;
 		//ShadowMap用
 		Math::Vector2 shadowMapSize;
 		bool useShadow;

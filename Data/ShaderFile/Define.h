@@ -22,9 +22,9 @@
 //çÇ
 //#define QUALITY 2.0f
 //íÜ
-//#define QUALITY 1.0f
+#define QUALITY 1.0f
 //í·
-#define QUALITY 0.5f
+//#define QUALITY 0.5f
 #define DOF_QUALITY 1.0f
 //#define DOF_QUALITY QUALITY
 

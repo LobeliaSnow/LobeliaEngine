@@ -24,3 +24,21 @@ float4 DecodeNormalVectorPS(PS_IN_TEX ps_in) : SV_Target{
 	uint encodeNormal = LoadUintTexture(txData0, ps_in.tex).g;
 	return float4(DecodeNormalVector(encodeNormal).xyz,1.0f);
 }
+float4 DecodeLightingIntensityPS(PS_IN_TEX ps_in) : SV_Target{
+	uint encodeLightingPower = LoadUintTexture(txData0, ps_in.tex).a;
+	return float4((float3)DecodeLightingIntensity(encodeLightingPower),1.0f);
+}
+float4 DecodeSpecularIntensityPS(PS_IN_TEX ps_in) : SV_Target{
+	uint encodeLightingPower = LoadUintTexture(txData0, ps_in.tex).a;
+	return float4((float3)DecodeSpecularIntensity(encodeLightingPower),1.0f);
+}
+float4 DecodeEmissionPS(PS_IN_TEX ps_in) : SV_Target{
+	uint2 encodeData = LoadUintTexture(txData0, ps_in.tex).rg;
+	float4 emission = DecodeSDRColor(encodeData.r);
+	emission.rgb *= f16tof32(encodeData.g);
+	return emission;
+}
+float4 DecodeEmissionIntensityPS(PS_IN_TEX ps_in) : SV_Target{
+	uint encodeEmissionPower = LoadUintTexture(txData0, ps_in.tex).g;
+	return float4((float3)f16tof32(encodeEmissionPower), 1.0f);
+}

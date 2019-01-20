@@ -1,5 +1,14 @@
 #include "Lobelia.hpp"
 #include "SceneGBufferCompression.hpp"
+#include "Common/Camera.hpp"
+#include "Common/SkyBox.hpp"
+//タイルベースやる予定なので参考資料
+//http://momose-d.cocolog-nifty.com/blog/2014/03/post-a593.html
+//https://software.intel.com/en-us/articles/deferred-rendering-for-current-and-future-rendering-pipelines/
+
+//高輝度の部分を抽出してブルーム掛けるようにする
+
+//ライトはとりあえず簡易的にする
 
 namespace Lobelia::Game {
 	GBufferManager::GBufferManager(const Math::Vector2& size) {
@@ -32,6 +41,11 @@ namespace Lobelia::Game {
 		Graphics::Model::ChangeVertexShader(vs);
 		Graphics::Model::ChangePixelShader(ps);
 		Graphics::Model::ChangeBlendState(blend);
+		if (skybox) {
+			static Info info = { 0.0f,0.0f,0.0f };
+			cbuffer->Activate(info);
+			skybox->Render();
+		}
 		//G-Bufferへの書き込み
 		for (auto&& weak : modelList) {
 			if (weak.model.expired())continue;
@@ -50,6 +64,7 @@ namespace Lobelia::Game {
 		modelList.clear();
 	}
 	std::array<std::unique_ptr<Graphics::RenderTarget>, 2>& GBufferManager::GetRTs() { return rts; }
+
 	DeferredShadeManager::DeferredShadeManager(const Math::Vector2& size) {
 		viewport = std::make_unique<Graphics::View>(Math::Vector2(), size);
 		vs = std::make_shared<Graphics::VertexShader>("Data/ShaderFile/3D/GBufferCompression.hlsl", "DeferredVS", Graphics::VertexShader::Model::VS_5_0);
@@ -82,11 +97,19 @@ namespace Lobelia::Game {
 	std::shared_ptr<Graphics::PixelShader> GBufferDecodeRenderer::psDepth;
 	std::shared_ptr<Graphics::PixelShader> GBufferDecodeRenderer::psWorldPos;
 	std::shared_ptr<Graphics::PixelShader> GBufferDecodeRenderer::psNormal;
+	std::shared_ptr<Graphics::PixelShader> GBufferDecodeRenderer::psLightingIntensity;
+	std::shared_ptr<Graphics::PixelShader> GBufferDecodeRenderer::psSpecularIntensity;
+	std::shared_ptr<Graphics::PixelShader> GBufferDecodeRenderer::psEmission;
+	std::shared_ptr<Graphics::PixelShader> GBufferDecodeRenderer::psEmissionIntensity;
 	void GBufferDecodeRenderer::Initialize() {
 		psColor = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/GBufferRenderPS.hlsl", "DecodeSDRColorPS", Graphics::PixelShader::Model::PS_5_0);
 		psDepth = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/GBufferRenderPS.hlsl", "DecodeDepthPS", Graphics::PixelShader::Model::PS_5_0);
 		psWorldPos = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/GBufferRenderPS.hlsl", "DecodeWorldPosPS", Graphics::PixelShader::Model::PS_5_0);
 		psNormal = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/GBufferRenderPS.hlsl", "DecodeNormalVectorPS", Graphics::PixelShader::Model::PS_5_0);
+		psLightingIntensity = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/GBufferRenderPS.hlsl", "DecodeLightingIntensityPS", Graphics::PixelShader::Model::PS_5_0);
+		psSpecularIntensity = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/GBufferRenderPS.hlsl", "DecodeSpecularIntensityPS", Graphics::PixelShader::Model::PS_5_0);
+		psEmission = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/GBufferRenderPS.hlsl", "DecodeEmissionPS", Graphics::PixelShader::Model::PS_5_0);
+		psEmissionIntensity = std::make_shared<Graphics::PixelShader>("Data/ShaderFile/2D/GBufferRenderPS.hlsl", "DecodeEmissionIntensityPS", Graphics::PixelShader::Model::PS_5_0);
 	}
 	void GBufferDecodeRenderer::Finalize() {
 		psColor.reset(); psDepth.reset(); psWorldPos.reset(); psNormal.reset();
@@ -102,6 +125,15 @@ namespace Lobelia::Game {
 	}
 	void GBufferDecodeRenderer::NormalRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size) {
 		BufferRender(psNormal, gbuffer->GetRTs()[0].get(), pos, size);
+	}
+	void GBufferDecodeRenderer::LightingIntensityRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size) {
+		BufferRender(psLightingIntensity, gbuffer->GetRTs()[0].get(), pos, size);
+	}
+	void GBufferDecodeRenderer::SpecularIntensityRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size) {
+		BufferRender(psSpecularIntensity, gbuffer->GetRTs()[0].get(), pos, size);
+	}
+	void GBufferDecodeRenderer::EmissionRender(std::shared_ptr<GBufferManager>& gbuffer, const Math::Vector2& pos, const Math::Vector2& size) {
+		BufferRender(psEmission, gbuffer->GetRTs()[1].get(), pos, size);
 	}
 	void GBufferDecodeRenderer::BufferRender(std::shared_ptr<Graphics::PixelShader>& ps, Graphics::RenderTarget* rt, const Math::Vector2& pos, const Math::Vector2& size) {
 		std::shared_ptr<Graphics::PixelShader>& defaultPS = Graphics::SpriteRenderer::GetPixelShader();
@@ -413,7 +445,6 @@ namespace Lobelia::Game {
 		}
 		ComputeCascade(main_camera, lvp);
 	}
-
 	//-------------------------------------------------------------------------------------------------------------------
 	//
 	//		G-Buffer圧縮用のテストシーンです
@@ -421,22 +452,29 @@ namespace Lobelia::Game {
 	//-------------------------------------------------------------------------------------------------------------------
 	void SceneGBufferCompression::Initialize() {
 		const Math::Vector2 wsize = Application::GetInstance()->GetWindow()->GetSize();
-		camera = std::make_unique<ViewerCamera>(wsize, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3());
+		camera = std::make_shared<ViewerCamera>(wsize, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3());
 		offScreen = std::make_shared<Graphics::RenderTarget>(wsize, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R8G8B8A8_UNORM);
 		depth = std::make_shared<Graphics::RenderTarget>(wsize, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R32_FLOAT);
+		emission = std::make_shared<Graphics::RenderTarget>(wsize, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16B16A16_FLOAT);
 		gbuffer = std::make_shared<GBufferManager>(wsize);
 		deferredShader = std::make_unique<DeferredShadeManager>(wsize);
-		//int split_count, const Math::Vector2& size, FORMAT format, bool use_variance
+		bloom = std::make_unique<Experimental::MultipleGaussianBloom>(wsize);
+		//シャドウマップ制御用パラメーター
 		cascadeCount = 4; shadowMapSize = Math::Vector2(1024.0f, 1024.0f);
 		rad = 0.0f; shadowNearZ = 25.0f; shadowFarZ = 350.0f; shadowLamda = 0.8f;
+		//デモ用パラメーター
 		useShadow = true; renderShadowMap = true; useVariance = true; useSSAO = true; renderSSAO = true;
 		ssaoThreshold = 5.0f; cameraMove = true; renderShadowMap = true; useDoF = true; renderDoFBuffer = true;
-		focusRange = 150.0f; renderShadingBuffer = true;
+		renderLightingIntensity = true; renderSpecularIntensity = true; renderEmissionColor = true;
+		focusRange = 150.0f; renderShadingBuffer = true; renderBloomBuffer = true;
 		//モデル描画用パラメーター
 		stageInfo.lightingFactor = 1.0f; stageInfo.specularFactor = 0.0f; stageInfo.emissionFactor = 0.0f;
-		boxInfo.lightingFactor = -1.0f; boxInfo.specularFactor = 0.0f; boxInfo.emissionFactor = 0.0f;
+		boxInfo.lightingFactor = 0.0f; boxInfo.specularFactor = 1.0f; boxInfo.emissionFactor = 5.0f;
 		shadowMap = std::make_unique<CascadeShadowBuffers>(cascadeCount, shadowMapSize, CascadeShadowBuffers::FORMAT::BIT_16, useVariance);
 		//const Math::Vector2& size, const DXGI_SAMPLE_DESC& sample, const DXGI_FORMAT&  format = DXGI_FORMAT_R32G32B32A32_FLOAT, int array_count = 1);
+		skybox = std::make_shared<SkyBox>("Data/Model/skybox.dxd", "Data/Model/skybox.mt");
+		skybox->SetCamera(camera);
+		gbuffer->SetSkybox(skybox);
 		stage = std::make_shared<Graphics::Model>("Data/Model/maps/stage.dxd", "Data/Model/maps/stage.mt");
 		stage->Translation(Math::Vector3(0.0f, 1.0f, 0.0f));
 		//stage->Scalling(3.0f);
@@ -452,6 +490,8 @@ namespace Lobelia::Game {
 		//デモ用
 		renderGBuffer = true; renderColor = true; renderDepth = true; renderWPos = true; renderNormal = true;
 		operationConsole = std::make_unique<AdaptiveConsole>("Operation Console");
+		//operationConsole->AddFunction([this]() {
+		//});
 		operationConsole->AddFunction([this]() {
 			ImGui::Checkbox("Camera Move", &cameraMove);
 			ImGui::SliderFloat("Lighting Factor", &stageInfo.lightingFactor, 0.0f, 1.0f);
@@ -460,14 +500,28 @@ namespace Lobelia::Game {
 		operationConsole->AddFunction([this]() {
 			ImGui::Checkbox("Render Buffer", &renderGBuffer);
 			if (renderGBuffer&&ImGui::TreeNode("Render Flag")) {
-				ImGui::Checkbox("Color", &renderColor);
-				ImGui::Checkbox("Depth", &renderDepth);
-				ImGui::Checkbox("World Pos", &renderWPos);
-				ImGui::Checkbox("Normal", &renderNormal);
-				ImGui::Checkbox("SSAO", &renderSSAO);
-				ImGui::Checkbox("Shading", &renderShadingBuffer);
-				ImGui::Checkbox("ShadowMap", &renderShadowMap);
-				ImGui::Checkbox("DoF", &renderDoFBuffer);
+				if (ImGui::TreeNode("G-Buffer 0 RGBA32_UINT")) {
+					ImGui::Checkbox("Color", &renderColor);
+					ImGui::Checkbox("Depth", &renderDepth);
+					ImGui::Checkbox("World Pos", &renderWPos);
+					ImGui::Checkbox("Normal", &renderNormal);
+					ImGui::Checkbox("Lighting Intensity", &renderLightingIntensity);
+					ImGui::Checkbox("Specular Intensity", &renderSpecularIntensity);
+					ImGui::TreePop();
+				}
+				if (ImGui::TreeNode("G-Buffer 1 RGBA32_UINT")) {
+					ImGui::Checkbox("Emission Color", &renderEmissionColor);
+					ImGui::Text("Three element is empty");
+					ImGui::TreePop();
+				}
+				if (ImGui::TreeNode("Other")) {
+					ImGui::Checkbox("SSAO", &renderSSAO);
+					ImGui::Checkbox("Shading", &renderShadingBuffer);
+					ImGui::Checkbox("ShadowMap", &renderShadowMap);
+					ImGui::Checkbox("DoF", &renderDoFBuffer);
+					ImGui::Checkbox("Bloom", &renderBloomBuffer);
+					ImGui::TreePop();
+				}
 				ImGui::TreePop();
 			}
 		});
@@ -552,6 +606,9 @@ namespace Lobelia::Game {
 		depth->Clear(0x00000000);
 		depth->Activate();
 		GBufferDecodeRenderer::DepthRender(gbuffer, Math::Vector2(), depth->GetTexture()->GetSize());
+		emission->Clear(0xFF000000);
+		emission->Activate();
+		GBufferDecodeRenderer::EmissionRender(gbuffer, Math::Vector2(), emission->GetTexture()->GetSize());
 		offScreen->Clear(0x00000000);
 		offScreen->Activate();
 		ssao->Dispatch(offScreen.get(), camera->GetView().get(), depth.get());
@@ -570,6 +627,7 @@ namespace Lobelia::Game {
 			dof->Render(Math::Vector2(), rt->GetTexture()->GetSize());
 		}
 		else Graphics::SpriteRenderer::Render(offScreen.get());
+		bloom->Render(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize(), emission, camera->GetView().get(), rt);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 		//デバッグ描画
 		if (Application::GetInstance()->debugRender) {
@@ -581,8 +639,12 @@ namespace Lobelia::Game {
 				//if (renderDepth) GBufferDecodeRenderer::DepthRender(gbuffer, Math::Vector2(100.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
 				if (renderWPos) GBufferDecodeRenderer::WorldPosRender(gbuffer, Math::Vector2(200.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
 				if (renderNormal) GBufferDecodeRenderer::NormalRender(gbuffer, Math::Vector2(300.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
-				if (renderSSAO) ssao->Render(Math::Vector2(400.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
-				if (renderShadingBuffer)Graphics::SpriteRenderer::Render(offScreen.get(), Math::Vector2(500.0f, 0.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), offScreen->GetTexture()->GetSize(), 0xFFFFFFFF);
+				if (renderLightingIntensity) GBufferDecodeRenderer::LightingIntensityRender(gbuffer, Math::Vector2(400.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
+				if (renderSpecularIntensity) GBufferDecodeRenderer::SpecularIntensityRender(gbuffer, Math::Vector2(500.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
+				//if (renderEmissionColor) GBufferDecodeRenderer::EmissionRender(gbuffer, Math::Vector2(600.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
+				if (renderEmissionColor) Graphics::SpriteRenderer::Render(emission.get(), Math::Vector2(600.0f, 0.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), depth->GetTexture()->GetSize(), 0xFFFFFFFF);
+				if (renderSSAO) ssao->Render(Math::Vector2(700.0f, 0.0f), Math::Vector2(100.0f, 100.0f));
+				if (renderShadingBuffer)Graphics::SpriteRenderer::Render(offScreen.get(), Math::Vector2(800.0f, 0.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), offScreen->GetTexture()->GetSize(), 0xFFFFFFFF);
 				if (renderDoFBuffer) {
 					Graphics::SpriteRenderer::Render(dof->GetStep0().get(), Math::Vector2(0.0f, 200.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), dof->GetStep0()->GetTexture()->GetSize(), 0xFFFFFFFFF);
 					Graphics::SpriteRenderer::Render(dof->GetStep1().get(), Math::Vector2(100.0f, 200.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), dof->GetStep1()->GetTexture()->GetSize(), 0xFFFFFFFFF);
@@ -594,9 +656,13 @@ namespace Lobelia::Game {
 					}
 					shadowMap->DebugDataTextureRender(Math::Vector2(100.0f*cascadeCount, 100.0f), Math::Vector2(100.0f, 100.0f));
 				}
+				for (int i = 0; i < 4; i++) {
+					std::shared_ptr<Graphics::RenderTarget>& rt = bloom->GetGaussianRenderTarget(i);
+					Graphics::SpriteRenderer::Render(rt.get(), Math::Vector2(100.0f*i, 300.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFFF);
+				}
+				if (renderBloomBuffer) bloom->Render(Math::Vector2(400.0f, 300.0f), Math::Vector2(100.0f, 100.0f), emission, camera->GetView().get(), rt, false);
 			}
 			Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 		}
 	}
-
 }

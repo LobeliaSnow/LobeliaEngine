@@ -71,3 +71,11 @@ float4 DecodeDepthToWorldPos(in float depth, in float2 uv, in column_major float
 //NDC空間へ正規化されたDepthが対象
 uint EncodeDepth(in float depth) { return asuint(depth); }
 float DecodeDepth(in uint encode_depth) { return asfloat(encode_depth); }
+//ライティング系のパラメータのエンコード
+uint EncodeLightingPower(float lighting_intensity, float specular_intensity) {
+	return asuint(f32tof16(lighting_intensity) | f32tof16(specular_intensity) << 16);
+}
+//ライティングの強さのデコード
+float DecodeLightingIntensity(uint lighting_power) { return asfloat(f16tof32(lighting_power)); }
+//スぺキュラの強度のデコード
+float DecodeSpecularIntensity(uint lighting_power) { return asfloat(f16tof32(lighting_power >> 16)); }

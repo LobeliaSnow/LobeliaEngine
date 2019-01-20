@@ -149,7 +149,9 @@ MRTOutput CreateGBufferPS(GBufferPS_IN ps_in) {
 	output.data0.g = EncodeNormalVector(normal, view);
 	//深度の保存。位置とかはこれから復元できる
 	output.data0.b = EncodeDepth(ps_in.depth.z / ps_in.depth.w);
-	output.data0.a = asuint(f32tof16(lightingFactor) | f32tof16(specularFactor) << 16);
+	float specularIntensity = specularFactor;
+	if (useSpecularMap) specularIntensity *= txSpecular.Sample(samLinear, ps_in.tex);
+	output.data0.a = EncodeLightingPower(lightingFactor, specularIntensity);
 	//エミッションの書き込み
 	if (emissionFactor > 0.0f) {
 		float4 emission = txEmission.Sample(samLinear, ps_in.tex);
@@ -225,7 +227,7 @@ float ApplyVarianceShadow(in float2 light_uv, in float2 variance_info, in float 
 	float delta = depth - variance_info.x;
 	float p = variance / (variance + (delta*delta));
 	float shadowBias = max(p, depth <= variance_info.x);
-	shadowBias = saturate(shadowBias * 0.7f + 0.3f);
+	shadowBias = saturate(shadowBias*0.9f + 0.1f);
 	return shadowBias;
 }
 
@@ -251,6 +253,8 @@ float4 DeferredPS(PS_IN_DEFERRED ps_in) :SV_Target{
 	//色のデコード
 	float4 color = DecodeSDRColor(data0.r);
 	color.rgb = pow(color.rgb, 2.2f);
+	//ライト成分だけにするように色情報をキャンセル
+	//color.rgb = 1.0f;
 	//法線のデコード
 	float4 normal = DecodeNormalVector(data0.g);
 	//return float4(normal.xyz, 1.0f);
@@ -268,12 +272,13 @@ float4 DeferredPS(PS_IN_DEFERRED ps_in) :SV_Target{
 	//制御しやすいように0-1反転
 	lambert = 1.0f - lambert;
 	//反転されたものを復元
-	color.rgb *= saturate(1.0f - lambert * f16tof32(data0.a));
+	float lightingIntensity = DecodeLightingIntensity(data0.a);
+	color.rgb *= saturate(1.0f - lambert * lightingIntensity);
 	if (useAO) {
 		float ao = txAO.Sample(samLinear, ps_in.tex);
 		color.rgb *= ao;
 	}
-	if (useShadowMap) {
+	if (useShadowMap&&lightingIntensity > 0.0f) {
 		//カスケードシャドウ
 		int index = CheckCascadeIndex(txSplitLVP,splitCount, lightSpaceLength);
 		column_major float4x4 lvp = LoadCascadeLVP(txSplitLVP, index);
@@ -292,8 +297,10 @@ float4 DeferredPS(PS_IN_DEFERRED ps_in) :SV_Target{
 	}
 	//スぺキュラの計算
 	float4 eyeVector = normalize(cpos - worldPos);
-	float4 reflectVector = reflect(-eyeVector, normal);
-	color += pow(saturate(dot(reflectVector, eyeVector)), 4)*asfloat(data0.a >> 16);
+	eyeVector = mul(-eyeVector, view);
+	float4 reflectVector = reflect(eyeVector, normal);
+	color += pow(saturate(dot(reflectVector, eyeVector)), 4)*DecodeSpecularIntensity(data0.a);
+	//HDRをするならここは別になる
 	color.rgb = pow(color.rgb, 1.0f / 2.2f);
 	return color;
 }

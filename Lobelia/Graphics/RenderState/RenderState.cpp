@@ -100,8 +100,8 @@ namespace Lobelia::Graphics {
 	}
 	void BlendState::Set(bool force_set)noexcept {
 		if (!force_set&&IsSet())return;
-		float blendFactory[4] = { D3D11_BLEND_ZERO, D3D11_BLEND_ZERO, D3D11_BLEND_ZERO, D3D11_BLEND_ZERO };
-		Device::GetContext()->OMSetBlendState(state.Get(), blendFactory, 0xFFFFFFFF);
+		float blendFactor[4] = { D3D11_BLEND_ZERO, D3D11_BLEND_ZERO, D3D11_BLEND_ZERO, D3D11_BLEND_ZERO };
+		Device::GetContext()->OMSetBlendState(state.Get(), blendFactor, 0xFFFFFFFF);
 	}
 
 	SamplerState::SamplerState(SAMPLER_PRESET preset, int max_anisotropy, bool is_border) {
