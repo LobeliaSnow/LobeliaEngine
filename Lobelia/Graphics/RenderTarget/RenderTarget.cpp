@@ -86,7 +86,11 @@ namespace Lobelia::Graphics {
 		depthView = view->depthView;
 	}
 	void RenderTarget::Activate() {
+		ID3D11UnorderedAccessView* nullUAV = nullptr;
 		Device::GetContext()->OMSetRenderTargets(1, renderTarget.GetAddressOf(), depthView.Get());
+	}
+	void RenderTarget::ActivateUAV(ID3D11UnorderedAccessView** uav, int count) {
+		Device::GetContext()->OMSetRenderTargetsAndUnorderedAccessViews(1, renderTarget.GetAddressOf(), depthView.Get(), 1, count, uav, nullptr);
 	}
 	void RenderTarget::Activate(int rt_count, RenderTarget** rts) {
 		ID3D11RenderTargetView** renderTransform = new ID3D11RenderTargetView*[rt_count];

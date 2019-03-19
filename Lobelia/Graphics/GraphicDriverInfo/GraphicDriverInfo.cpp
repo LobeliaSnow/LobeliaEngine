@@ -27,10 +27,10 @@ namespace Lobelia::Graphics {
 		HRESULT hr = CreateDXGIFactory(__uuidof(IDXGIFactory), reinterpret_cast<void**>(factory.GetAddressOf()));
 		if (FAILED(hr))STRICT_THROW("ファクトリーの作成に失敗しました");
 		for (driverCount = 0;; driverCount++) {
-			ComPtr<IDXGIAdapter> renderTransform;
-			HRESULT hr = factory->EnumAdapters(driverCount, renderTransform.GetAddressOf());
+			ComPtr<IDXGIAdapter> adapter;
+			HRESULT hr = factory->EnumAdapters(driverCount, adapter.GetAddressOf());
 			if (hr == DXGI_ERROR_NOT_FOUND)break;
-			drivers.push_back(std::make_shared<GraphicDriverInfo>(renderTransform));
+			drivers.push_back(std::make_shared<GraphicDriverInfo>(adapter));
 		}
 	}
 	void GraphicDriverInfoList::Shutdown() { drivers.clear(); driverCount = 0; factory.Reset(); }

@@ -7,7 +7,6 @@ namespace Lobelia::Graphics {
 		friend class GraphicDriverInfoList;
 		friend class Device;
 	private:
-	private:
 		DXGI_ADAPTER_DESC desc;
 		ComPtr<IDXGIAdapter> adapter;
 	public:

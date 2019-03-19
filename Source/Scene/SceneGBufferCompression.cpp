@@ -9,6 +9,7 @@
 //高輝度の部分を抽出してブルーム掛けるようにする
 
 //ライトはとりあえず簡易的にする
+//大気散乱シミュレーションもしたい
 
 namespace Lobelia::Game {
 	GBufferManager::GBufferManager(const Math::Vector2& size) {
@@ -454,6 +455,7 @@ namespace Lobelia::Game {
 		const Math::Vector2 wsize = Application::GetInstance()->GetWindow()->GetSize();
 		camera = std::make_shared<ViewerCamera>(wsize, Math::Vector3(57.0f, 66.0f, 106.0f), Math::Vector3());
 		offScreen = std::make_shared<Graphics::RenderTarget>(wsize, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R8G8B8A8_UNORM);
+		offScreenPost = std::make_shared<Graphics::RenderTarget>(wsize, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R32G32B32A32_FLOAT);
 		depth = std::make_shared<Graphics::RenderTarget>(wsize, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R32_FLOAT);
 		emission = std::make_shared<Graphics::RenderTarget>(wsize, DXGI_SAMPLE_DESC{ 1,0 }, DXGI_FORMAT_R16G16B16A16_FLOAT);
 		gbuffer = std::make_shared<GBufferManager>(wsize);
@@ -466,7 +468,8 @@ namespace Lobelia::Game {
 		useShadow = true; renderShadowMap = true; useVariance = true; useSSAO = true; renderSSAO = true;
 		ssaoThreshold = 5.0f; cameraMove = true; renderShadowMap = true; useDoF = true; renderDoFBuffer = true;
 		renderLightingIntensity = true; renderSpecularIntensity = true; renderEmissionColor = true;
-		focusRange = 150.0f; renderShadingBuffer = true; renderBloomBuffer = true;
+		focusRange = 150.0f; renderShadingBuffer = true; renderBloomBuffer = true; useBloom = true;
+		useTonemap = true; renderTonemapBuffer = true; renderAvgLuminance = true; renderExposure = true;
 		//モデル描画用パラメーター
 		stageInfo.lightingFactor = 1.0f; stageInfo.specularFactor = 0.0f; stageInfo.emissionFactor = 0.0f;
 		boxInfo.lightingFactor = 0.0f; boxInfo.specularFactor = 1.0f; boxInfo.emissionFactor = 5.0f;
@@ -486,6 +489,7 @@ namespace Lobelia::Game {
 		box->CalcWorldMatrix();
 		ssao = std::make_unique<Experimental::SSAO>(wsize*0.5f);
 		dof = std::make_unique<Experimental::DepthOfField>(wsize, 0.5f);
+		tonemap = std::make_unique<Experimental::ToneMap>(wsize);
 		GBufferDecodeRenderer::Initialize();
 		//デモ用
 		renderGBuffer = true; renderColor = true; renderDepth = true; renderWPos = true; renderNormal = true;
@@ -520,6 +524,10 @@ namespace Lobelia::Game {
 					ImGui::Checkbox("ShadowMap", &renderShadowMap);
 					ImGui::Checkbox("DoF", &renderDoFBuffer);
 					ImGui::Checkbox("Bloom", &renderBloomBuffer);
+					ImGui::Checkbox("Tonemap", &renderTonemapBuffer);
+					ImGui::Checkbox("Avg Luminace", &renderAvgLuminance);
+					ImGui::Checkbox("Exposure", &renderExposure);
+					
 					ImGui::TreePop();
 				}
 				ImGui::TreePop();
@@ -528,7 +536,7 @@ namespace Lobelia::Game {
 		//Shadow Map
 		operationConsole->AddFunction([this]() {
 			ImGui::Checkbox("Use Shadow Map", &useShadow);
-			if (renderGBuffer&&ImGui::TreeNode("Shadow Parameters")) {
+			if (ImGui::TreeNode("Shadow Parameters")) {
 				ImGui::Checkbox("Use Variance", &useVariance);
 				static int size = shadowMapSize.x;
 				ImGui::SliderInt("size", &size, 256.0f, 4096);
@@ -567,6 +575,15 @@ namespace Lobelia::Game {
 				ImGui::SliderFloat("Focus Range", &focusRange, 1.0f, 1000.0f);
 				ImGui::TreePop();
 			}
+		});
+		operationConsole->AddFunction([this] {
+			ImGui::Checkbox("Use Bloom", &useBloom);
+			if (useBloom) {
+				ImGui::SliderFloat("Box Bloom Intensity", &boxInfo.emissionFactor, 0.0f, 20.0f);
+			}
+		});
+		operationConsole->AddFunction([this] {
+			ImGui::Checkbox("Use Tonemap", &useTonemap);
 		});
 	}
 	SceneGBufferCompression::~SceneGBufferCompression() {
@@ -620,17 +637,31 @@ namespace Lobelia::Game {
 		Graphics::Texture::Clean(2, Graphics::ShaderStageList::PS);
 		Graphics::Texture::Clean(3, Graphics::ShaderStageList::PS);
 		//バックバッファを有効化
-		Graphics::RenderTarget* rt = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
-		rt->Activate();
+		Graphics::RenderTarget* rt = offScreenPost.get();
+		offScreenPost->Clear(0x00000000);
+		offScreenPost->Activate();
 		if (useDoF) {
 			dof->Dispatch(camera->GetView().get(), rt, offScreen.get(), depth.get());
 			dof->Render(Math::Vector2(), rt->GetTexture()->GetSize());
 		}
 		else Graphics::SpriteRenderer::Render(offScreen.get());
-		bloom->Render(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize(), emission, camera->GetView().get(), rt);
+		if (useBloom) {
+			bloom->Dispatch(emission, camera->GetView().get(), rt);
+			bloom->Render(Math::Vector2(0.0f, 0.0f), Application::GetInstance()->GetWindow()->GetSize());
+		}
+		rt = Application::GetInstance()->GetSwapChain()->GetRenderTarget();
+		rt->Activate();
+		if (useTonemap) {
+			tonemap->Dispatch(camera->GetView().get(), rt, offScreenPost, 11);
+			tonemap->Render(Math::Vector2(), Application::GetInstance()->GetWindow()->GetSize());
+		}
+		else Graphics::SpriteRenderer::Render(offScreenPost.get(), 0xFFFFFFFF);
 		Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 		//デバッグ描画
-		if (Application::GetInstance()->debugRender) {
+#ifdef _DEBUG
+		if (Application::GetInstance()->debugRender)
+#endif
+		{
 			operationConsole->Update();
 			//G-Bufferデバッグ描画
 			if (renderGBuffer) {
@@ -656,11 +687,18 @@ namespace Lobelia::Game {
 					}
 					shadowMap->DebugDataTextureRender(Math::Vector2(100.0f*cascadeCount, 100.0f), Math::Vector2(100.0f, 100.0f));
 				}
-				for (int i = 0; i < 4; i++) {
-					std::shared_ptr<Graphics::RenderTarget>& rt = bloom->GetGaussianRenderTarget(i);
-					Graphics::SpriteRenderer::Render(rt.get(), Math::Vector2(100.0f*i, 300.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFFF);
+				if (useBloom&&renderBloomBuffer) {
+					for (int i = 0; i < 4; i++) {
+						std::shared_ptr<Graphics::RenderTarget>& rt = bloom->GetGaussianRenderTarget(i);
+						Graphics::SpriteRenderer::Render(rt.get(), Math::Vector2(100.0f*i, 300.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), rt->GetTexture()->GetSize(), 0xFFFFFFFFF);
+					}
+					bloom->Render(Math::Vector2(400.0f, 300.0f), Math::Vector2(100.0f, 100.0f));
 				}
-				if (renderBloomBuffer) bloom->Render(Math::Vector2(400.0f, 300.0f), Math::Vector2(100.0f, 100.0f), emission, camera->GetView().get(), rt, false);
+				if (useTonemap) {
+					if (renderTonemapBuffer)tonemap->Render(Math::Vector2(0.0f, 400.0f), Math::Vector2(100.0f, 100.0f));
+					if (renderAvgLuminance) Graphics::SpriteRenderer::Render(tonemap->AvgLuminanceTexture(), Math::Vector2(100.0f, 400.0f), Math::Vector2(100.0f, 100.0f), 0.0f, Math::Vector2(), tonemap->AvgLuminanceTexture()->GetSize(), 0xFFFFFFFF);
+					if (renderExposure)tonemap->DebugRender(rt, Math::Vector2(200.0f, 400.0f), Math::Vector2(100.0f, 100.0f));
+				}
 			}
 			Graphics::Texture::Clean(0, Graphics::ShaderStageList::PS);
 		}

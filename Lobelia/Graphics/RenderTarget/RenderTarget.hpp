@@ -25,6 +25,7 @@ namespace Lobelia::Graphics {
 		void Clear(Utility::Color color);
 		void ChangeDepthStencil(RenderTarget* view);
 		void Activate();
+		void ActivateUAV(ID3D11UnorderedAccessView** uav, int count);
 		//TODO : 複数同時にセットできるように(MRT)
 		//深度バッファは0番目のだけ使われます
 		static void Activate(int rt_count, RenderTarget** rts);

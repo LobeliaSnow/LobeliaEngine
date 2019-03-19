@@ -47,6 +47,8 @@ namespace Lobelia::Graphics {
 		desc.BufferCount = 2;
 		desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 #endif
+		desc.BufferCount = 1;
+		desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 		desc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 		HRESULT hr = factory->CreateSwapChain(Device::Get().Get(), &desc, swapChain.GetAddressOf());
 		if (FAILED(hr))STRICT_THROW("スワップチェインの作成に失敗");

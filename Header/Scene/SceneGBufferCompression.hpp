@@ -6,6 +6,9 @@
 #include "Common/PostEffect.hpp"
 #include "Common/PostEffectExperimental.hpp"
 
+//ファイル名似たものが多いので、とりあえずここにまとめる
+//前の成果物との比較ができ次第分離する
+
 namespace Lobelia::Game {
 	//圧縮したG-Buffer格納用
 	class GBufferManager {
@@ -225,6 +228,8 @@ namespace Lobelia::Game {
 		std::unique_ptr<CascadeShadowBuffers> shadowMap;
 	private:
 		std::shared_ptr<Graphics::RenderTarget> offScreen;
+		//トーンマップ前の色が入っている
+		std::shared_ptr<Graphics::RenderTarget> offScreenPost;
 		std::shared_ptr<Graphics::RenderTarget> depth;
 		std::shared_ptr<Graphics::RenderTarget> emission;
 		std::shared_ptr<SkyBox> skybox;
@@ -233,6 +238,7 @@ namespace Lobelia::Game {
 		//PostEffect
 		std::unique_ptr<Experimental::DepthOfField> dof;
 		std::unique_ptr<Experimental::SSAO> ssao;
+		std::unique_ptr<Experimental::ToneMap> tonemap;
 		std::unique_ptr<AdaptiveConsole> operationConsole;
 	public:
 		//デモ用
@@ -263,6 +269,12 @@ namespace Lobelia::Game {
 		float ssaoThreshold;
 		bool useDoF;
 		float focusRange;
+		bool useBloom;
+		bool renderBloom;
+		bool useTonemap;
+		bool renderTonemapBuffer;
+		bool renderAvgLuminance;
+		bool renderExposure;
 		//モデル描画用パラメーター
 		GBufferManager::Info stageInfo;
 		GBufferManager::Info boxInfo;

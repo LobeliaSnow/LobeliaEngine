@@ -49,5 +49,16 @@ namespace Lobelia::Game {
 		ComPtr<ID3D11Buffer> buffer;
 		std::weak_ptr<StructuredBuffer> origin;
 	};
-
+	//---------------------------------------------------------------------------------------------
+	struct RWByteAddressBuffer {
+	public:
+		ComPtr<ID3D11Buffer> buffer;
+		ComPtr<ID3D11UnorderedAccessView> uav;
+		RWByteAddressBuffer(void* init_buffer, UINT element_size, UINT element_count, bool is_vertex_buffer, bool is_index_buffer, bool is_indirect_args);
+		~RWByteAddressBuffer();
+		void ResourceUpdate(void* data_buffer, UINT element_size, UINT element_count);
+	private:
+		void CreateRWByteAddressBuffer(ComPtr<ID3D11Buffer>& buffer, void* init_buffer, UINT element_size, UINT element_count, bool is_vertex_buffer, bool is_index_buffer, bool is_indirect_args);
+		void CreateUAV(ComPtr<ID3D11UnorderedAccessView>& uav, const ComPtr<ID3D11Buffer>& buffer);
+	};
 }
