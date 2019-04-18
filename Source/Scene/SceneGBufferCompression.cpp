@@ -496,95 +496,95 @@ namespace Lobelia::Game {
 		operationConsole = std::make_unique<AdaptiveConsole>("Operation Console");
 		//operationConsole->AddFunction([this]() {
 		//});
-		operationConsole->AddFunction([this]() {
-			ImGui::Checkbox("Camera Move", &cameraMove);
-			ImGui::SliderFloat("Lighting Factor", &stageInfo.lightingFactor, 0.0f, 1.0f);
-		});
-		//G-Buffer
-		operationConsole->AddFunction([this]() {
-			ImGui::Checkbox("Render Buffer", &renderGBuffer);
-			if (renderGBuffer&&ImGui::TreeNode("Render Flag")) {
-				if (ImGui::TreeNode("G-Buffer 0 RGBA32_UINT")) {
-					ImGui::Checkbox("Color", &renderColor);
-					ImGui::Checkbox("Depth", &renderDepth);
-					ImGui::Checkbox("World Pos", &renderWPos);
-					ImGui::Checkbox("Normal", &renderNormal);
-					ImGui::Checkbox("Lighting Intensity", &renderLightingIntensity);
-					ImGui::Checkbox("Specular Intensity", &renderSpecularIntensity);
-					ImGui::TreePop();
-				}
-				if (ImGui::TreeNode("G-Buffer 1 RGBA32_UINT")) {
-					ImGui::Checkbox("Emission Color", &renderEmissionColor);
-					ImGui::Text("Three element is empty");
-					ImGui::TreePop();
-				}
-				if (ImGui::TreeNode("Other")) {
-					ImGui::Checkbox("SSAO", &renderSSAO);
-					ImGui::Checkbox("Shading", &renderShadingBuffer);
-					ImGui::Checkbox("ShadowMap", &renderShadowMap);
-					ImGui::Checkbox("DoF", &renderDoFBuffer);
-					ImGui::Checkbox("Bloom", &renderBloomBuffer);
-					ImGui::Checkbox("Tonemap", &renderTonemapBuffer);
-					ImGui::Checkbox("Avg Luminace", &renderAvgLuminance);
-					ImGui::Checkbox("Exposure", &renderExposure);
-					
-					ImGui::TreePop();
-				}
-				ImGui::TreePop();
-			}
-		});
-		//Shadow Map
-		operationConsole->AddFunction([this]() {
-			ImGui::Checkbox("Use Shadow Map", &useShadow);
-			if (ImGui::TreeNode("Shadow Parameters")) {
-				ImGui::Checkbox("Use Variance", &useVariance);
-				static int size = shadowMapSize.x;
-				ImGui::SliderInt("size", &size, 256.0f, 4096);
-				shadowMapSize.y = shadowMapSize.x = f_cast(size);
-				static int tempCascadeCount = cascadeCount;
-				ImGui::SliderInt("Cascade Count", &tempCascadeCount, 1, 8);
-				static CascadeShadowBuffers::FORMAT format = CascadeShadowBuffers::FORMAT::BIT_32;
-				ImGui::RadioButton("16Bit", r_cast<int*>(&format), i_cast(CascadeShadowBuffers::FORMAT::BIT_16));
-				ImGui::SameLine();
-				ImGui::RadioButton("32Bit", r_cast<int*>(&format), i_cast(CascadeShadowBuffers::FORMAT::BIT_32));
-				if (ImGui::Button("Apply")) {
-					cascadeCount = tempCascadeCount;
-					shadowMap->ChangeState(cascadeCount, shadowMapSize, format, useVariance);
-				}
-				ImGui::SliderFloat("Near Z", &shadowNearZ, 1.0f, 999.0f);
-				ImGui::SliderFloat("Far Z", &shadowFarZ, 2.0f, 1000.0f);
-				ImGui::SliderFloat("Lamda", &shadowLamda, 0.0f, 1.0f);
-				ImGui::TreePop();
-			}
-		});
-		//SSAO
-		operationConsole->AddFunction([this] {
-			ImGui::Checkbox("Use SSAO", &useSSAO);
-			if (useSSAO&&ImGui::TreeNode("SSAO Parameters")) {
-				ImGui::SliderFloat("SSAO Threshold", &ssaoThreshold, 1.0f, 20.0f);
-				ImGui::TreePop();
-			}
-		});
-		//DoF
-		operationConsole->AddFunction([this] {
-			ImGui::Checkbox("Use DoF", &useDoF);
-			if (useSSAO&&ImGui::TreeNode("DoF Parameters")) {
-				static float quality = 0.5f;
-				ImGui::SliderFloat("Quality", &quality, 0.1f, 1.0f);
-				if (ImGui::Button("Apply")) dof->ChangeQuality(quality);
-				ImGui::SliderFloat("Focus Range", &focusRange, 1.0f, 1000.0f);
-				ImGui::TreePop();
-			}
-		});
-		operationConsole->AddFunction([this] {
-			ImGui::Checkbox("Use Bloom", &useBloom);
-			if (useBloom) {
-				ImGui::SliderFloat("Box Bloom Intensity", &boxInfo.emissionFactor, 0.0f, 20.0f);
-			}
-		});
-		operationConsole->AddFunction([this] {
-			ImGui::Checkbox("Use Tonemap", &useTonemap);
-		});
+		//operationConsole->AddFunction([this]() {
+		//	ImGui::Checkbox("Camera Move", &cameraMove);
+		//	ImGui::SliderFloat("Lighting Factor", &stageInfo.lightingFactor, 0.0f, 1.0f);
+		//});
+		////G-Buffer
+		//operationConsole->AddFunction([this]() {
+		//	ImGui::Checkbox("Render Buffer", &renderGBuffer);
+		//	if (renderGBuffer&&ImGui::TreeNode("Render Flag")) {
+		//		if (ImGui::TreeNode("G-Buffer 0 RGBA32_UINT")) {
+		//			ImGui::Checkbox("Color", &renderColor);
+		//			ImGui::Checkbox("Depth", &renderDepth);
+		//			ImGui::Checkbox("World Pos", &renderWPos);
+		//			ImGui::Checkbox("Normal", &renderNormal);
+		//			ImGui::Checkbox("Lighting Intensity", &renderLightingIntensity);
+		//			ImGui::Checkbox("Specular Intensity", &renderSpecularIntensity);
+		//			ImGui::TreePop();
+		//		}
+		//		if (ImGui::TreeNode("G-Buffer 1 RGBA32_UINT")) {
+		//			ImGui::Checkbox("Emission Color", &renderEmissionColor);
+		//			ImGui::Text("Three element is empty");
+		//			ImGui::TreePop();
+		//		}
+		//		if (ImGui::TreeNode("Other")) {
+		//			ImGui::Checkbox("SSAO", &renderSSAO);
+		//			ImGui::Checkbox("Shading", &renderShadingBuffer);
+		//			ImGui::Checkbox("ShadowMap", &renderShadowMap);
+		//			ImGui::Checkbox("DoF", &renderDoFBuffer);
+		//			ImGui::Checkbox("Bloom", &renderBloomBuffer);
+		//			ImGui::Checkbox("Tonemap", &renderTonemapBuffer);
+		//			ImGui::Checkbox("Avg Luminace", &renderAvgLuminance);
+		//			ImGui::Checkbox("Exposure", &renderExposure);
+		//			
+		//			ImGui::TreePop();
+		//		}
+		//		ImGui::TreePop();
+		//	}
+		//});
+		////Shadow Map
+		//operationConsole->AddFunction([this]() {
+		//	ImGui::Checkbox("Use Shadow Map", &useShadow);
+		//	if (ImGui::TreeNode("Shadow Parameters")) {
+		//		ImGui::Checkbox("Use Variance", &useVariance);
+		//		static int size = shadowMapSize.x;
+		//		ImGui::SliderInt("size", &size, 256.0f, 4096);
+		//		shadowMapSize.y = shadowMapSize.x = f_cast(size);
+		//		static int tempCascadeCount = cascadeCount;
+		//		ImGui::SliderInt("Cascade Count", &tempCascadeCount, 1, 8);
+		//		static CascadeShadowBuffers::FORMAT format = CascadeShadowBuffers::FORMAT::BIT_32;
+		//		ImGui::RadioButton("16Bit", r_cast<int*>(&format), i_cast(CascadeShadowBuffers::FORMAT::BIT_16));
+		//		ImGui::SameLine();
+		//		ImGui::RadioButton("32Bit", r_cast<int*>(&format), i_cast(CascadeShadowBuffers::FORMAT::BIT_32));
+		//		if (ImGui::Button("Apply")) {
+		//			cascadeCount = tempCascadeCount;
+		//			shadowMap->ChangeState(cascadeCount, shadowMapSize, format, useVariance);
+		//		}
+		//		ImGui::SliderFloat("Near Z", &shadowNearZ, 1.0f, 999.0f);
+		//		ImGui::SliderFloat("Far Z", &shadowFarZ, 2.0f, 1000.0f);
+		//		ImGui::SliderFloat("Lamda", &shadowLamda, 0.0f, 1.0f);
+		//		ImGui::TreePop();
+		//	}
+		//});
+		////SSAO
+		//operationConsole->AddFunction([this] {
+		//	ImGui::Checkbox("Use SSAO", &useSSAO);
+		//	if (useSSAO&&ImGui::TreeNode("SSAO Parameters")) {
+		//		ImGui::SliderFloat("SSAO Threshold", &ssaoThreshold, 1.0f, 20.0f);
+		//		ImGui::TreePop();
+		//	}
+		//});
+		////DoF
+		//operationConsole->AddFunction([this] {
+		//	ImGui::Checkbox("Use DoF", &useDoF);
+		//	if (useSSAO&&ImGui::TreeNode("DoF Parameters")) {
+		//		static float quality = 0.5f;
+		//		ImGui::SliderFloat("Quality", &quality, 0.1f, 1.0f);
+		//		if (ImGui::Button("Apply")) dof->ChangeQuality(quality);
+		//		ImGui::SliderFloat("Focus Range", &focusRange, 1.0f, 1000.0f);
+		//		ImGui::TreePop();
+		//	}
+		//});
+		//operationConsole->AddFunction([this] {
+		//	ImGui::Checkbox("Use Bloom", &useBloom);
+		//	if (useBloom) {
+		//		ImGui::SliderFloat("Box Bloom Intensity", &boxInfo.emissionFactor, 0.0f, 20.0f);
+		//	}
+		//});
+		//operationConsole->AddFunction([this] {
+		//	ImGui::Checkbox("Use Tonemap", &useTonemap);
+		//});
 	}
 	SceneGBufferCompression::~SceneGBufferCompression() {
 		GBufferDecodeRenderer::Finalize();

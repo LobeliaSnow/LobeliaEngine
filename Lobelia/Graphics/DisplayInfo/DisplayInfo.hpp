@@ -2,7 +2,7 @@
 namespace Lobelia::Graphics {
 		class DisplayInfo {
 			friend class DisplayInfoList;
-		private:
+		public:
 			ComPtr<IDXGIOutput> output;
 			DXGI_OUTPUT_DESC desc;
 			HDC hdc;

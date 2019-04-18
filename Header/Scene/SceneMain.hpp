@@ -74,10 +74,14 @@ namespace Lobelia::Game {
 	//		void Render()override;
 	//	};
 	//}
+
+#include <dxgi1_6.h>
 	class SceneMain :public Lobelia::Scene {
 	private:
 		std::unique_ptr<Graphics::View> view;
 		std::unique_ptr<Graphics::Font> font;
+		std::shared_ptr<Graphics::RenderTarget> d3d11Texture;
+		Microsoft::WRL::ComPtr<IDXGIOutputDuplication> outputDuplication;
 	public:
 		SceneMain();
 		~SceneMain();

@@ -214,6 +214,7 @@
     </ClCompile>
     <ClCompile Include="Lobelia\Game\Fuzzy\Fuzzy.cpp" />
     <ClCompile Include="Lobelia\Game\PathPlanner\NaviMesh.cpp" />
+    <ClCompile Include="Lobelia\Game\StringView.cpp" />
     <ClCompile Include="Lobelia\Graphics\BufferCreator\BufferCreator.cpp" />
     <ClCompile Include="Lobelia\Graphics\Device\Device.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)/Graphics</ObjectFileName>
