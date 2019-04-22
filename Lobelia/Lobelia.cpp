@@ -6,13 +6,8 @@
 
 namespace Lobelia {
 	void Bootup() {
-//#if (_WIN32_WINNT >= 0x0A00 /*_WIN32_WINNT_WIN10*/)
-//		//https://github.com/Microsoft/DirectXTex/wiki/DirectXTex
-//		Microsoft::WRL::Wrappers::RoInitializeWrapper initialize(RO_INIT_MULTITHREADED);
-//		if (FAILED(initialize))STRICT_THROW("COMÇÃèâä˙âªÇ…é∏îsÇµÇ‹ÇµÇΩ");
-//#else
-//#endif
-		if (FAILED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)))STRICT_THROW("COMÇÃèâä˙âªÇ…é∏îsÇµÇ‹ÇµÇΩ");
+		//if (FAILED(CoInitializeEx(nullptr, COINIT_MULTITHREADED)))STRICT_THROW("COMÇÃèâä˙âªÇ…é∏îsÇµÇ‹ÇµÇΩ");
+		if (FAILED(CoInitialize(0)))STRICT_THROW("COMÇÃèâä˙âªÇ…é∏îsÇµÇ‹ÇµÇΩ");
 		srand(s_cast<unsigned>(time(NULL)));
 		XMLSystem::Initialize();
 		Config::LoadSetting("Data/Config/Config.xml");
@@ -48,7 +43,7 @@ namespace Lobelia {
 		Network::SocketList::Initialize();
 
 		Graphics::SpriteRenderer::Initialize();
-		
+
 		Lobelia::Graphics::Environment::GetInstance()->SetAmbientColor(0xFFFFFFFF);
 		Lobelia::Math::Vector3 lightDir(1.0f, -1.0f, 1.0f); lightDir.Normalize();
 		Lobelia::Graphics::Environment::GetInstance()->SetLightDirection(lightDir);
@@ -57,10 +52,10 @@ namespace Lobelia {
 		Lobelia::Graphics::EffekseerWrapper::Setting();
 
 		//DijkstraÇÃÉNÉGÉäÅ[ÇÇ†ÇÁÇ©Ç∂Çﬂê›íËÇµÇƒÇ®Ç≠
-		Lobelia::Game::DijkstraEngineVector3::SetQueryCostFunction([](const Math::Vector3& p0, const Math::Vector3& p1) {return (p0 - p1).LengthSq(); });
-		Lobelia::Game::DijkstraEngineVector3::SetQueryFunction([](const Math::Vector3& p0, const Math::Vector3& p1) {return (p0 - p1).LengthSq(); });
-		Lobelia::Game::DijkstraEngineVector2::SetQueryCostFunction([](const Math::Vector2& p0, const Math::Vector2& p1) {return (p0 - p1).LengthSq(); });
-		Lobelia::Game::DijkstraEngineVector2::SetQueryFunction([](const Math::Vector2& p0, const Math::Vector2& p1) {return (p0 - p1).LengthSq(); });
+		Lobelia::Game::DijkstraEngineVector3::SetQueryCostFunction([](const Math::Vector3 & p0, const Math::Vector3 & p1) {return (p0 - p1).LengthSq(); });
+		Lobelia::Game::DijkstraEngineVector3::SetQueryFunction([](const Math::Vector3 & p0, const Math::Vector3 & p1) {return (p0 - p1).LengthSq(); });
+		Lobelia::Game::DijkstraEngineVector2::SetQueryCostFunction([](const Math::Vector2 & p0, const Math::Vector2 & p1) {return (p0 - p1).LengthSq(); });
+		Lobelia::Game::DijkstraEngineVector2::SetQueryFunction([](const Math::Vector2 & p0, const Math::Vector2 & p1) {return (p0 - p1).LengthSq(); });
 	}
 
 	void Shutdown() {

@@ -82,6 +82,7 @@ namespace Lobelia::Game {
 		std::unique_ptr<Graphics::Font> font;
 		std::shared_ptr<Graphics::RenderTarget> d3d11Texture;
 		Microsoft::WRL::ComPtr<IDXGIOutputDuplication> outputDuplication;
+		IDXGIOutput1* output;
 	public:
 		SceneMain();
 		~SceneMain();

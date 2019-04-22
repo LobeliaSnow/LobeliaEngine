@@ -138,7 +138,7 @@ namespace Lobelia::Graphics {
 		case	SAMPLER_PRESET::ANISOTROPIC:							desc->Filter = D3D11_FILTER_ANISOTROPIC; break;
 		case 	SAMPLER_PRESET::COMPARISON_POINT:				desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT; break;
 		case	SAMPLER_PRESET::COMPARISON_LINEAR:				desc->Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR; break;
-		case	SAMPLER_PRESET::COMPARISON_ANISOTROPIC:	desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC; break;
+		case	SAMPLER_PRESET::COMPARISON_ANISOTROPIC:		desc->Filter = D3D11_FILTER_COMPARISON_ANISOTROPIC; break;
 		}
 	}
 	void SamplerState::Set(bool force_set)noexcept { Set(0, force_set); }
@@ -169,7 +169,7 @@ namespace Lobelia::Graphics {
 		default:
 		case RASTERIZER_PRESET::FRONT:	desc->CullMode = D3D11_CULL_FRONT; break;
 		case RASTERIZER_PRESET::BACK:		desc->CullMode = D3D11_CULL_BACK;	break;
-		case RASTERIZER_PRESET::NONE:	desc->CullMode = D3D11_CULL_NONE;	break;
+		case RASTERIZER_PRESET::NONE:		desc->CullMode = D3D11_CULL_NONE;	break;
 		}
 	}
 	void RasterizerState::Set(bool force_set)noexcept {

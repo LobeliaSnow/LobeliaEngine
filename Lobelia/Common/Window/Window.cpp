@@ -22,7 +22,8 @@ namespace Lobelia {
 		//wc.hIcon = LoadIcon(NULL, IDC_ICON);
 		//マウスカーソル設定 ここでカーソルを変えることもできる
 		wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-		wc.hbrBackground = (HBRUSH)::GetStockObject(BLACK_BRUSH);
+		//wc.hbrBackground = (HBRUSH)::GetStockObject(BLACK_BRUSH);
+		wc.hbrBackground = NULL;
 		wc.lpszClassName = APPLICATION_NAME;
 		wc.hIconSm = nullptr;
 		RegisterClassEx(&wc);
